@@ -1,211 +1,222 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ZeraLog</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
+        :root, html[data-theme="dark"] {
             --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-muted: #aaaaaa;
             --accent-finished: #4caf50; --accent-playing: #2196f3; --accent-add: #ff9800;
-            --danger: #f44336; --border-color: #333;
+            --danger: #f44336; --google-blue: #4285f4; --star-color: #ffd700;
+            --input-bg: #121212; --input-text: #ffffff; --border-color: #333;
         }
-        body { font-family: sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; }
+        html[data-theme="light"] {
+            --bg-color: #f5f5f5; --card-bg: #ffffff; --text-main: #121212; --text-muted: #666666;
+            --accent-finished: #2e7d32; --accent-playing: #1976d2; --accent-add: #e65100;
+            --border-color: #e0e0e0; --input-bg: #ffffff; --input-text: #121212;
+        }
+        html[data-theme="pink"] {
+            --bg-color: #fff0f5; --card-bg: #ffffff; --text-main: #4a148c; --text-muted: #7b1fa2;
+            --accent-finished: #c2185b; --accent-playing: #e91e63; --accent-add: #ff4081;
+            --border-color: #f8bbd0; --input-bg: #ffffff; --input-text: #4a148c;
+        }
+        body { font-family: sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; transition: 0.3s; min-height: 100vh;}
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .app-title { font-size: 1.8em; font-weight: bold; color: var(--accent-playing); margin: 0; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 10px; background: var(--card-bg); border: none; color: white; border-radius: 8px; cursor: pointer; }
-        .tab-btn.active { border-bottom: 3px solid var(--accent-playing); background: #2a2a2a; }
+        .app-brand { display: flex; align-items: center; gap: 10px; color: var(--accent-playing); }
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; background: var(--card-bg); padding: 5px; border-radius: 10px; }
+        .tab-btn { flex: 1; padding: 10px; background: transparent; border: none; color: var(--text-muted); font-weight: bold; cursor: pointer; border-radius: 8px; }
+        .tab-btn.active { background: var(--bg-color); color: var(--text-main); border-bottom: 2px solid var(--accent-playing); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        .search-container { display: flex; background: var(--card-bg); padding: 10px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); }
+        .search-container input { background: transparent; border: none; color: white; width: 100%; outline: none; }
         .category { background: var(--card-bg); border-radius: 12px; padding: 15px; margin-bottom: 20px; }
         .category-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px; }
         .game-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; }
-        .game-icon { width: 45px; height: 45px; background: #000; border-radius: 8px; margin-right: 15px; display: flex; align-items: center; justify-content: center; font-size: 1.5em; cursor: pointer; }
-        .game-info { flex: 1; }
-        .game-title { font-weight: bold; display: block; }
+        .game-icon { width: 50px; height: 50px; background: #000; border-radius: 8px; margin-right: 15px; display: flex; align-items: center; justify-content: center; font-size: 1.5em; cursor: pointer; overflow: hidden; border: 1px solid var(--border-color); }
+        .game-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .game-info { flex: 1; overflow: hidden; }
+        .game-title { font-weight: bold; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .game-meta { font-size: 0.8em; color: var(--text-muted); }
-        .actions { display: flex; flex-direction: column; gap: 5px; margin-right: 10px; font-size: 0.8em; }
+        .actions { display: flex; flex-direction: column; gap: 5px; margin-right: 10px; font-size: 0.75em; }
         button { background: var(--accent-add); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         dialog { background: var(--card-bg); color: white; border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; width: 90%; max-width: 400px; }
         .modal-form { display: flex; flex-direction: column; gap: 15px; }
-        input, select { padding: 10px; background: #000; border: 1px solid #333; color: white; border-radius: 6px; }
-        .btn-top { background: transparent; font-size: 1.5em; }
+        input, select { padding: 10px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; }
+        #undo-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 15px; border-radius: 10px; transition: 0.4s; z-index: 9999; display: flex; gap: 10px; align-items: center; }
+        #undo-toast.show { bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .stat-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; text-align: center; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1 class="app-title">ZeraLog</h1>
+        <div class="app-brand"><h1>ZeraLog</h1></div>
         <div>
-            <button class="btn-top" onclick="document.getElementById('modal-backup').showModal()">💾</button>
-            <button class="btn-top" onclick="document.getElementById('modal-settings').showModal()">⚙️</button>
+            <button style="background:transparent; font-size:1.5em" onclick="document.getElementById('modal-backup').showModal()">💾</button>
+            <button style="background:transparent; font-size:1.5em" onclick="document.getElementById('modal-settings').showModal()">⚙️</button>
         </div>
     </div>
+
+    <div class="search-container">🔍 <input type="text" id="search-in" placeholder="Buscar..." onkeyup="filterGames()"></div>
 
     <div class="tabs">
         <button class="tab-btn active" id="b-home" onclick="setTab('home')">🏠 Fila</button>
         <button class="tab-btn" id="b-fin" onclick="setTab('fin')">🏆 Zerados</button>
+        <button class="tab-btn" id="b-st" onclick="setTab('st')">📊 Status</button>
     </div>
 
     <div id="t-home" class="tab-content active">
-        <div id="main-container"></div>
+        <button style="width:100%; background:var(--accent-playing); margin-bottom:15px; padding:12px" onclick="roulette()">🎲 O que jogar hoje?</button>
+        <div id="main-list"></div>
         <button style="width: 100%; padding: 15px; margin-top: 10px;" onclick="document.getElementById('modal-cat').showModal()">+ Nova Categoria</button>
     </div>
 
     <div id="t-fin" class="tab-content">
-        <div class="category">
-            <h2>Sala de Troféus</h2>
-            <div id="finished-list"></div>
-        </div>
+        <div class="category"><h2>🏆 Sala de Troféus</h2><div id="finished-list"></div></div>
     </div>
 
+    <div id="t-st" class="tab-content">
+        <div class="stats-grid">
+            <div class="stat-box"><b id="s-back">0</b><br><small>Fila</small></div>
+            <div class="stat-box"><b id="s-fin">0</b><br><small>Zerados</small></div>
+            <div class="stat-box"><b id="s-avg">0</b><br><small>Média</small></div>
+        </div>
+        <div style="height:200px"><canvas id="myChart"></canvas></div>
+    </div>
+
+    <div id="undo-toast"><span id="undo-msg"></span><button onclick="undo()">Desfazer</button></div>
+
     <!-- Modais -->
-    <dialog id="modal-welcome">
-        <div class="modal-form" style="text-align: center;">
-            <h2>Bem-vindo ao ZeraLog! 🎮</h2>
-            <p>Seu backlog organizado.</p>
-            <button onclick="localStorage.setItem('z_w','1'); document.getElementById('modal-welcome').close()">Começar!</button>
-        </div>
-    </dialog>
-
-    <dialog id="modal-cat">
-        <div class="modal-form">
-            <h3>Nova Categoria</h3>
-            <input type="text" id="cat-in" placeholder="Nome">
-            <button onclick="addCat()">Salvar</button>
-            <button onclick="document.getElementById('modal-cat').close()">Fechar</button>
-        </div>
-    </dialog>
-
-    <dialog id="modal-game">
-        <div class="modal-form">
-            <h3>Novo Jogo</h3>
-            <input type="hidden" id="g-cat-id">
-            <input type="text" id="g-title" placeholder="Nome">
-            <input type="text" id="g-time" placeholder="Tempo (ex: 10h)">
-            <button onclick="addGame()">Adicionar</button>
-            <button onclick="document.getElementById('modal-game').close()">Fechar</button>
-        </div>
-    </dialog>
-
-    <dialog id="modal-rating">
-        <div class="modal-form">
-            <h3>Nota do Jogo</h3>
-            <input type="hidden" id="r-id">
-            <input type="number" id="r-val" min="0" max="10" value="10">
-            <button onclick="saveFin()">Zerar!</button>
-        </div>
-    </dialog>
-
-    <dialog id="modal-backup">
-        <div class="modal-form">
-            <h3>💾 Backup</h3>
-            <button onclick="exportData()">Baixar .json</button>
-            <input type="file" id="f-in" style="display:none" onchange="importData(event)">
-            <button onclick="document.getElementById('f-in').click()">Restaurar Arquivo</button>
-            <button onclick="document.getElementById('modal-backup').close()">Fechar</button>
-        </div>
-    </dialog>
-
-    <dialog id="modal-settings">
-        <div class="modal-form">
-            <h3>⚙️ Configurações</h3>
-            <button style="background:var(--danger)" onclick="if(confirm('Apagar tudo?')){localStorage.clear(); location.reload();}">REDEFINIR APP</button>
-            <button onclick="document.getElementById('modal-settings').close()">Fechar</button>
-        </div>
-    </dialog>
+    <dialog id="modal-welcome"><div class="modal-form" style="text-align:center"><h2>Bem-vindo! 🎮</h2><p>Zere seu backlog com foco.</p><button onclick="localStorage.setItem('zw','1'); document.getElementById('modal-welcome').close()">Começar!</button></div></dialog>
+    <dialog id="modal-cat"><div class="modal-form"><h3>Nova Categoria</h3><input type="text" id="c-in"><button onclick="addCat()">Salvar</button></div></dialog>
+    <dialog id="modal-game"><div class="modal-form"><h3>Novo Jogo</h3><input type="hidden" id="g-cat-id"><input type="text" id="g-t" placeholder="Nome"><div style="display:flex;gap:5px"><input type="number" id="g-v" style="flex:2"><select id="g-u" style="flex:1"><option value="h">h</option><option value="m">m</option></select></div><button onclick="addGame()">Salvar</button></div></dialog>
+    <dialog id="modal-rate"><div class="modal-form"><h3>Nota do Jogo</h3><input type="hidden" id="r-id"><input type="number" id="r-v" min="0" max="10" step="0.5" value="10"><button onclick="confirmFin()">Zerar!</button></div></dialog>
+    <dialog id="modal-img"><div class="modal-form"><h3>Capa</h3><input type="hidden" id="i-id"><div id="i-pre" style="height:100px; background:#000; display:flex; align-items:center; justify-content:center">🎮</div><button onclick="googleImg()">Google Imagens</button><input type="file" accept="image/*" onchange="preImg(this)"><button onclick="saveImg()">Salvar</button></div></dialog>
+    <dialog id="modal-backup"><div class="modal-form"><h3>💾 Backup</h3><button onclick="exportJSON()">Baixar Backup</button><input type="file" id="f-in" style="display:none" onchange="importJSON(event)"><button onclick="document.getElementById('f-in').click()">Restaurar Backup</button><button onclick="this.closest('dialog').close()">Fechar</button></div></dialog>
+    <dialog id="modal-settings"><div class="modal-form"><h3>⚙️ Configurações</h3>Tema: <select onchange="setTheme(this.value)"><option value="dark">Escuro</option><option value="light">Claro</option><option value="pink">Rosa</option></select><button style="background:var(--danger)" onclick="if(confirm('Limpar tudo?')){localStorage.clear();location.reload();}">REDEFINIR TUDO</button><button onclick="this.closest('dialog').close()">Fechar</button></div></dialog>
 
     <script>
-        let db = JSON.parse(localStorage.getItem('z_db')) || { cats: [{id:'c1', name:'Geral'}], games: [] };
+        let db = JSON.parse(localStorage.getItem('z_db')) || { cats: [{id:'c1',name:'Geral'}], games: [] };
+        let bk = null; let chart = null;
 
         function refresh() {
             localStorage.setItem('z_db', JSON.stringify(db));
-            const cont = document.getElementById('main-container');
-            const finCont = document.getElementById('finished-list');
-            cont.innerHTML = ''; finCont.innerHTML = '';
+            const home = document.getElementById('main-list');
+            const fin = document.getElementById('finished-list');
+            home.innerHTML = ''; fin.innerHTML = '';
 
-            // Jogando
             const playing = db.games.filter(g => g.s === 'p');
             if(playing.length) {
-                const d = document.createElement('div'); d.className = 'category';
-                d.innerHTML = '<h2>🕹️ Jogando</h2>';
-                playing.forEach(g => d.appendChild(drawGame(g)));
-                cont.appendChild(d);
+                const d = document.createElement('div'); d.className = 'category'; d.innerHTML = '<h2>🕹️ Jogando</h2>';
+                playing.forEach(g => d.appendChild(createGame(g))); home.appendChild(d);
             }
 
-            // Backlog
             db.cats.forEach(c => {
                 const gs = db.games.filter(g => g.c === c.id && !g.s);
                 const d = document.createElement('div'); d.className = 'category';
                 d.innerHTML = `<div class="category-header"><h2>${c.name}</h2><button onclick="openG('${c.id}')">+ Jogo</button></div>`;
-                gs.forEach(g => d.appendChild(drawGame(g)));
-                cont.appendChild(d);
+                gs.forEach(g => d.appendChild(createGame(g))); home.appendChild(d);
             });
 
-            // Finalizados
-            db.games.filter(g => g.s === 'f').forEach(g => finCont.appendChild(drawGame(g)));
+            db.games.filter(g => g.s === 'f').forEach(g => fin.appendChild(createGame(g)));
+            document.getElementById('count-finished').innerText = db.games.filter(g => g.s === 'f').length;
         }
 
-        function drawGame(g) {
-            const el = document.createElement('div'); el.className = 'game-item';
-            el.innerHTML = `<div class="game-icon">🎮</div><div class="game-info"><span class="game-title">${g.t}</span><span class="game-meta">${g.m||''} ${g.r?'⭐'+g.r:''}</span></div><div class="actions"><label><input type="checkbox" ${g.s==='p'?'checked':''} onchange="setS('${g.id}','p')"> Jogando</label><label><input type="checkbox" ${g.s==='f'?'checked':''} onchange="setS('${g.id}','f')"> Final</label></div><button onclick="delG('${g.id}')">🗑️</button>`;
-            return el;
+        function createGame(g) {
+            const d = document.createElement('div'); d.className = 'game-item';
+            const img = g.i ? `<img src="${g.i}">` : '🎮';
+            d.innerHTML = `<div class="game-icon" onclick="openI('${g.id}')">${img}</div><div class="game-info"><span class="game-title">${g.t}</span><span class="game-meta">${g.m||''} ${g.r?'⭐'+g.r:''}</span></div><div class="actions"><label><input type="checkbox" ${g.s==='p'?'checked':''} onchange="status('${g.id}','p')"> Jogando</label><label><input type="checkbox" ${g.s==='f'?'checked':''} onchange="status('${g.id}','f')"> Final</label></div><button style="background:transparent" onclick="del('${g.id}')">🗑️</button>`;
+            return d;
         }
 
-        function setS(id, s) {
+        function status(id, s) {
             const g = db.games.find(x => x.id === id);
-            if(s === 'f' && g.s !== 'f') {
-                document.getElementById('r-id').value = id;
-                document.getElementById('modal-rating').showModal();
-            } else {
-                g.s = g.s === s ? null : s;
-                refresh();
-            }
+            bk = JSON.stringify(db);
+            if(s === 'f' && g.s !== 'f') { document.getElementById('r-id').value = id; document.getElementById('modal-rate').showModal(); }
+            else { g.s = (g.s === s) ? null : s; refresh(); showUndo("Status alterado"); }
         }
 
-        function saveFin() {
+        function confirmFin() {
             const g = db.games.find(x => x.id === document.getElementById('r-id').value);
-            g.s = 'f'; g.r = document.getElementById('r-val').value;
-            document.getElementById('modal-rating').close(); refresh();
+            g.s = 'f'; g.r = document.getElementById('r-v').value;
+            document.getElementById('modal-rate').close(); refresh();
         }
 
-        function addCat() {
-            const n = document.getElementById('cat-in').value;
-            if(!n) return;
-            db.cats.push({id: 'c'+Date.now(), name: n});
-            document.getElementById('modal-cat').close(); refresh();
-        }
-
-        function openG(cid) { document.getElementById('g-cat-id').value = cid; document.getElementById('modal-game').showModal(); }
+        function openG(id) { document.getElementById('g-cat-id').value = id; document.getElementById('modal-game').showModal(); }
         function addGame() {
-            const t = document.getElementById('g-title').value;
-            if(!t) return;
-            db.games.push({id:'g'+Date.now(), c: document.getElementById('g-cat-id').value, t: t, m: document.getElementById('g-time').value, s: null});
+            const t = document.getElementById('g-t').value; if(!t) return;
+            db.games.push({id:'g'+Date.now(), c:document.getElementById('g-cat-id').value, t:t, m:document.getElementById('g-v').value+document.getElementById('g-u').value, s:null});
             document.getElementById('modal-game').close(); refresh();
         }
-
-        function delG(id) { if(confirm('Excluir?')) { db.games = db.games.filter(x => x.id !== id); refresh(); } }
+        function addCat() {
+            const n = document.getElementById('c-in').value; if(!n) return;
+            db.cats.push({id:'c'+Date.now(), name:n}); document.getElementById('modal-cat').close(); refresh();
+        }
+        function del(id) { if(confirm('Excluir?')) { bk = JSON.stringify(db); db.games = db.games.filter(x => x.id !== id); refresh(); showUndo("Jogo excluído"); } }
+        
+        function showUndo(m) {
+            document.getElementById('undo-msg').innerText = m;
+            const t = document.getElementById('undo-toast'); t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 5000);
+        }
+        function undo() { if(bk) { db = JSON.parse(bk); refresh(); document.getElementById('undo-toast').classList.remove('show'); } }
 
         function setTab(t) {
-            document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
-            document.getElementById('b-'+t).classList.add('active');
-            document.getElementById('t-'+t).classList.add('active');
+            document.querySelectorAll('.tab-btn, .tab-content').forEach(e => e.classList.remove('active'));
+            document.getElementById('b-'+t).classList.add('active'); document.getElementById('t-'+t).classList.add('active');
+            if(t === 'st') updateSt();
         }
 
-        function exportData() {
-            const blob = new Blob([JSON.stringify(db)], {type: 'application/json'});
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'backup.json'; a.click();
+        function setTheme(t) { document.documentElement.setAttribute('data-theme', t); localStorage.setItem('zeralog_theme', t); }
+
+        function openI(id) { document.getElementById('i-id').value = id; document.getElementById('modal-img').showModal(); }
+        function googleImg() { const g = db.games.find(x => x.id === document.getElementById('i-id').value); window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(g.t + " cover")}`, '_blank'); }
+        function preImg(i) { const r = new FileReader(); r.onload = (e) => document.getElementById('i-pre').innerHTML = `<img src="${e.target.result}" style="height:100%">`; r.readAsDataURL(i.files[0]); }
+        function saveImg() {
+            const g = db.games.find(x => x.id === document.getElementById('i-id').value);
+            const f = document.querySelector('input[type=file]').files[0];
+            if(f) { const r = new FileReader(); r.onload = (e) => { g.i = e.target.result; refresh(); document.getElementById('modal-img').close(); }; r.readAsDataURL(f); }
         }
 
-        function importData(e) {
-            const f = e.target.files[0]; if(!f) return;
-            const r = new FileReader(); r.onload = (ev) => { db = JSON.parse(ev.target.result); refresh(); }; r.readAsText(f);
+        function exportJSON() {
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(db)], {type:'application/json'})); a.download = 'zeralog.json'; a.click();
+        }
+        function importJSON(e) {
+            const r = new FileReader(); r.onload = (ev) => { db = JSON.parse(ev.target.result); refresh(); }; r.readAsText(e.target.files[0]);
+        }
+
+        function updateSt() {
+            const f = db.games.filter(g => g.s === 'f');
+            document.getElementById('s-back').innerText = db.games.length - f.length;
+            document.getElementById('s-fin').innerText = f.length;
+            const rs = f.filter(g => g.r).map(g => parseFloat(g.r));
+            document.getElementById('s-avg').innerText = rs.length ? (rs.reduce((a,b)=>a+b,0)/rs.length).toFixed(1) : '0';
+            
+            const ctx = document.getElementById('myChart').getContext('2d');
+            if(chart) chart.destroy();
+            chart = new Chart(ctx, { type:'doughnut', data:{ labels:['Fila','Zerados'], datasets:[{data:[db.games.length-f.length, f.length], backgroundColor:['#ff9800','#4caf50']}]}, options:{maintainAspectRatio:false}});
+        }
+
+        function roulette() {
+            const gs = db.games.filter(g => g.s !== 'f'); if(!gs.length) return alert('Fila vazia!');
+            alert("Missão: " + gs[Math.floor(Math.random()*gs.length)].t);
+        }
+
+        function filterGames() {
+            const val = document.getElementById('search-in').value.toLowerCase();
+            document.querySelectorAll('.game-item').forEach(el => {
+                const txt = el.querySelector('.game-title').innerText.toLowerCase();
+                el.style.display = txt.includes(val) ? 'flex' : 'none';
+            });
         }
 
         refresh();
-        if(!localStorage.getItem('z_w')) document.getElementById('modal-welcome').showModal();
+        if(!localStorage.getItem('zw')) document.getElementById('modal-welcome').showModal();
     </script>
 </body>
 </html>
-          
+       
