@@ -1,0 +1,16 @@
+{
+  "name": "ZeraLog",
+  "short_name": "ZeraLog",
+  "description": "Seu organizador pessoal de Backlog de Jogos.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "icons": [
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Video_game_controller_icon_designed_by_Maico_Amorim.svg/512px-Video_game_controller_icon_designed_by_Maico_Amorim.svg.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

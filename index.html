@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZeraLog</title>
+    
+    <!-- Link para o Manifest (PWA) -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
+    
+    <!-- Biblioteca de Gráficos Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* Variáveis de Tema Padrão (Escuro) */
+        :root, html[data-theme="dark"] {
+            --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-muted: #aaaaaa;
+            --accent-finished: #4caf50; --accent-playing: #2196f3; --accent-add: #ff9800;
+            --danger: #f44336; --google-blue: #4285f4; --star-color: #ffd700;
+            --input-bg: #121212; --input-text: #ffffff; --border-color: #333;
+        }
+        /* Tema Claro */
+        html[data-theme="light"] {
+            --bg-color: #f5f5f5; --card-bg: #ffffff; --text-main: #121212; --text-muted: #666666;
+            --accent-finished: #2e7d32; --accent-playing: #1976d2; --accent-add: #e65100;
+            --border-color: #e0e0e0; --input-bg: #ffffff; --input-text: #121212;
+        }
+        /* Tema Rosa Pastel */
+        html[data-theme="pink"] {
+            --bg-color: #fff0f5; --card-bg: #ffffff; --text-main: #4a148c; --text-muted: #7b1fa2;
+            --accent-finished: #c2185b; --accent-playing: #e91e63; --accent-add: #ff4081;
+            --border-color: #f8bbd0; --input-bg: #ffffff; --input-text: #4a148c;
+        }
+        /* Tema Drácula / Neon */
+        html[data-theme="dracula"] {
+            --bg-color: #282a36; --card-bg: #44475a; --text-main: #f8f8f2; --text-muted: #6272a4;
+            --accent-finished: #50fa7b; --accent-playing: #8be9fd; --accent-add: #ffb86c;
+            --danger: #ff5555; --border-color: #6272a4; --input-bg: #282a36; --input-text: #f8f8f2; --star-color: #f1fa8c;
+        }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; line-height: 1.6; transition: background-color 0.3s, color 0.3s; }
+
+        /* Topo e Botões Superiores */
+        .header-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; margin-top: 10px; }
+        .app-brand { display: flex; align-items: center; gap: 12px; margin: 0 auto; padding-left: 60px; }
+        .app-logo { width: 42px; height: 42px; filter: drop-shadow(0 4px 6px rgba(33, 150, 243, 0.4)); }
+        .app-brand h1 { margin: 0; font-size: 2.2em; font-weight: 800; background: linear-gradient(45deg, var(--accent-playing), var(--accent-finished)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px; }
+        .header-actions { display: flex; gap: 10px; }
+        .btn-top { font-size: 1.5em; background: transparent; border: none; cursor: pointer; color: var(--text-main); transition: transform 0.2s; }
+        .btn-top:hover { transform: scale(1.1); }
+
+        /* Barra de Pesquisa & Abas */
+        .search-container { display: flex; align-items: center; background-color: var(--card-bg); border-radius: 8px; padding: 12px 15px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid var(--border-color); }
+        .search-container input { background: transparent; border: none; color: var(--text-main); font-size: 1.05em; width: 100%; margin-left: 10px; outline: none; }
+        .search-container input::placeholder { color: var(--text-muted); }
+        
+        /* Filtro de Plataforma */
+        .platform-filter { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 5px; scrollbar-width: none; }
+        .platform-filter::-webkit-scrollbar { display: none; }
+        .filter-chip { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 20px; font-size: 0.85em; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+        .filter-chip.active { background: var(--accent-playing); color: white; border-color: var(--accent-playing); }
+
+        .tabs { display: flex; gap: 5px; margin-bottom: 25px; background-color: var(--card-bg); padding: 8px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .tab-btn { flex: 1; background-color: transparent; color: var(--text-muted); border: none; padding: 10px 5px; border-radius: 8px; font-size: 0.95em; cursor: pointer; transition: all 0.3s; font-weight: bold; }
+        .tab-btn:hover { background-color: rgba(128,128,128,0.1); }
+        .tab-btn.active { background-color: var(--bg-color); color: var(--text-main); border-bottom: 3px solid var(--accent-playing); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Categorias e Listas */
+        .category { background-color: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s;}
+        .category-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; cursor: pointer; user-select: none; }
+        .cat-title-area { display: flex; align-items: center; gap: 8px; flex-grow: 1; }
+        .chevron { font-size: 0.8em; color: var(--text-muted); transition: transform 0.3s; }
+        .category h2 { margin: 0; font-size: 1.3em; color: var(--text-main); transition: color 0.2s;}
+        .cat-actions { display: flex; align-items: center; gap: 8px; }
+        .game-list-wrapper { overflow: hidden; transition: max-height 0.3s ease-out; }
+        .category.collapsed .game-list-wrapper { display: none; }
+        .category.collapsed .chevron { transform: rotate(-90deg); }
+        .category.collapsed .category-header { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        
+        #playing-category { border: 2px solid var(--accent-playing); display: none; }
+        #playing-category h2 { color: var(--accent-playing); }
+        #finished-category h2 { color: var(--accent-finished); }
+        
+        /* Estilos da Aba de Finalizados */
+        .finished-year-group { margin-bottom: 15px; border-left: 3px solid var(--accent-finished); padding-left: 15px; }
+        .finished-sort-bar { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
+        .finished-sort-bar::-webkit-scrollbar { display: none; }
+        .sort-chip { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-muted); padding: 5px 10px; border-radius: 6px; font-size: 0.8em; cursor: pointer; white-space: nowrap; }
+        .sort-chip.active { border-color: var(--accent-finished); color: var(--accent-finished); }
+
+        /* Itens de Jogo & Modo Compacto */
+        .game-list { list-style: none; padding: 0; margin: 0; }
+        .game-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+        .game-item:last-child { border-bottom: none; }
+        .game-icon { width: 50px; height: 50px; border-radius: 8px; background-color: var(--bg-color); object-fit: cover; margin-right: 15px; display: flex; align-items: center; justify-content: center; font-size: 1.8em; cursor: pointer; border: 1px solid var(--border-color);}
+        
+        body.compact-mode .game-icon { display: none; }
+        body.compact-mode .game-item { padding: 6px 0; }
+        body.compact-mode .game-title { font-size: 1em; }
+        body.compact-mode .actions { flex-direction: row; min-width: auto; }
+        body.compact-mode .category { padding: 15px; margin-bottom: 15px; }
+
+        .actions { display: flex; flex-direction: column; gap: 8px; margin-right: 15px; min-width: 95px; }
+        .actions label { font-size: 0.85em; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted); }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .chk-playing { accent-color: var(--accent-playing); }
+        .chk-finished { accent-color: var(--accent-finished); }
+        
+        .game-info { flex-grow: 1; overflow: hidden; }
+        .game-title { font-weight: bold; font-size: 1.1em; transition: color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .game-meta { font-size: 0.85em; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+        .user-rating { color: var(--star-color); font-weight: bold; background: rgba(128, 128, 128, 0.1); padding: 2px 6px; border-radius: 4px; }
+        .date-finished { color: var(--text-muted); font-size: 0.95em; }
+        .platform-badge { background: rgba(128,128,128,0.2); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em; }
+        .empty-state { text-align: center; color: var(--text-muted); padding: 20px 0; font-style: italic; }
+
+        /* Botões Especiais e Utilitários */
+        button { background-color: var(--accent-add); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
+        button:hover { opacity: 0.8; }
+        .btn-add-cat { display: block; width: 100%; padding: 15px; margin-top: 10px; font-size: 1.1em; }
+        .btn-roulette { background-color: var(--accent-playing); display: block; width: 100%; padding: 15px; margin-bottom: 20px; font-size: 1.1em; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        
+        .btn-icon { background-color: transparent; font-size: 1.2em; padding: 5px; border-radius: 50%; color: var(--text-main); }
+        .btn-icon:hover { background-color: rgba(128, 128, 128, 0.2); }
+        .btn-delete { color: var(--danger); }
+        .btn-delete:hover { background-color: rgba(244, 67, 54, 0.1); }
+        .btn-quick-link { background-color: #333; color: white; font-size: 0.8em; padding: 6px 10px; border-radius: 4px; flex: 1; text-align: center; }
+
+        /* Toast e Modais */
+        #undo-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background-color: var(--text-main); color: var(--bg-color); padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: bottom 0.3s ease-in-out; z-index: 1000; font-weight: bold; }
+        #undo-toast.show { bottom: 25px; }
+        .btn-undo { background-color: var(--accent-playing); padding: 6px 12px; color: white;}
+
+        /* Estilo para Notificação de Conquista */
+        #achievement-notif { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: linear-gradient(45deg, #ffd700, #ff9800); color: #000; padding: 15px 25px; border-radius: 50px; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 2000; font-weight: 800; border: 2px solid white; }
+        #achievement-notif.show { top: 20px; }
+
+        dialog { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; width: 90%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
+        .modal-form { display: flex; flex-direction: column; gap: 15px; }
+        .modal-form input, .modal-form select { background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; outline: none; font-size: 1em; font-family: inherit; }
+        .modal-form input:focus, .modal-form select:focus { border-color: var(--accent-playing); }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; flex-wrap: wrap;}
+        .btn-cancel { background-color: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
+        
+        /* Dashboard Stats & Gamification */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+        .stat-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px 10px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
+        .stat-num { font-size: 1.8em; font-weight: bold; display: block; margin-bottom: 5px;}
+        .stat-label { font-size: 0.8em; color: var(--text-muted); text-transform: uppercase; font-weight: bold;}
+        
+        .chart-container { background: var(--card-bg); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); margin-bottom: 20px; position: relative; height: 250px;}
+        
+        .achievements-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .badge { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; text-align: center; transition: all 0.3s; }
+        .badge.locked { filter: grayscale(100%); opacity: 0.4; }
+        .badge-icon { font-size: 2.5em; margin-bottom: 10px; display: block; }
+        .badge-title { font-weight: bold; font-size: 0.9em; margin-bottom: 5px; color: var(--text-main);}
+        .badge-desc { font-size: 0.75em; color: var(--text-muted); }
+
+        .setting-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .file-input-wrapper { position: relative; overflow: hidden; display: block; width: 100%; }
+
+        /* Estilos Plataforma Management */
+        .platform-manager { border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-top: 10px; }
+        .platform-list-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border-color); }
+        .platform-list-item:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+
+    <script>
+        const savedTheme = localStorage.getItem('zeralog_theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        // Inicializa o Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(reg => {
+                    console.log('ZeraLog PWA ativado!', reg);
+                }).catch(err => console.log('Erro no PWA: ', err));
+            });
+        }
+    </script>
+
+    <!-- Notificação de Conquista -->
+    <div id="achievement-notif">
+        <span style="font-size: 1.5em;">🏆</span>
+        <div>
+            <div style="font-size: 0.7em; text-transform: uppercase; opacity: 0.8;">Conquista Desbloqueada!</div>
+            <div id="ach-notif-name">Mestre do Jogo</div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header-container">
+        <div class="header-actions"><div style="width: 32px;"></div></div>
+        <div class="app-brand">
+            <svg class="app-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <defs><linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:var(--accent-playing); stop-opacity:1" /><stop offset="100%" style="stop-color:var(--accent-finished); stop-opacity:1" /></linearGradient></defs>
+                <path d="M4 4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4H4ZM4 6H20V12H4V6ZM10.59 17.41L7 13.83L8.41 12.41L10.59 14.58L15.59 9.59L17 11L10.59 17.41Z" fill="url(#logo-grad)"/>
+            </svg>
+            <h1>ZeraLog</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn-top" onclick="openBackupModal()" title="Salvar Backup">💾</button>
+            <button class="btn-top" onclick="openSettings()" title="Configurações">⚙️</button>
+        </div>
+    </div>
+
+    <!-- Search & Tabs -->
+    <div class="search-container"><span style="font-size: 1.2em;">🔍</span><input type="text" id="search-bar" placeholder="Buscar jogo na lista..." onkeyup="filterGames()"></div>
+    
+    <!-- Filtros Rápidos de Plataforma -->
+    <div class="platform-filter" id="platform-chips-container">
+        <!-- Gerado dinamicamente via JS -->
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" id="btn-tab-home" onclick="switchTab('home')">🏠 Fila</button>
+        <button class="tab-btn" id="btn-tab-finished" onclick="switchTab('finished')">🏆 Zerados (<span id="count-finished">0</span>)</button>
+        <button class="tab-btn" id="btn-tab-stats" onclick="switchTab('stats')">📊 Status</button>
+    </div>
+
+    <!-- TAB 1: HOME (FILA) -->
+    <div id="tab-home" class="tab-content active">
+        <button class="btn-roulette" onclick="spinRoulette()">🎲 Sortear: O que jogar agora?</button>
+        <div id="app-container"></div>
+        <button class="btn-add-cat" onclick="openCatModal()">+ Adicionar Categoria</button>
+    </div>
+
+    <!-- TAB 2: FINALIZADOS -->
+    <div id="tab-finished" class="tab-content">
+        <div class="finished-sort-bar">
+            <div class="sort-chip active" id="sort-fin-date" onclick="setFinishedSort('date')">📅 Data</div>
+            <div class="sort-chip" id="sort-fin-rating" onclick="setFinishedSort('rating')">🌟 Nota</div>
+            <div class="sort-chip" id="sort-fin-time" onclick="setFinishedSort('time')">⏱️ Tempo</div>
+        </div>
+        <div id="finished-list-container">
+            <!-- Anos e jogos gerados aqui -->
+        </div>
+    </div>
+
+    <!-- TAB 3: ESTATÍSTICAS E CONQUISTAS -->
+    <div id="tab-stats" class="tab-content">
+        <div class="stats-grid">
+            <div class="stat-box"><span class="stat-num" id="stat-backlog" style="color: var(--accent-add);">0</span><span class="stat-label">Na Fila</span></div>
+            <div class="stat-box"><span class="stat-num" id="stat-finished-dash" style="color: var(--accent-finished);">0</span><span class="stat-label">Zerados</span></div>
+            <div class="stat-box"><span class="stat-num" id="stat-avg" style="color: var(--star-color);">0</span><span class="stat-label">Nota Média</span></div>
+        </div>
+
+        <!-- Nova Grid de Soma de Horas -->
+        <div class="stats-grid" style="margin-bottom: 20px;">
+            <div class="stat-box" style="padding: 10px;"><span class="stat-num" id="stat-hours-backlog" style="font-size: 1.2em; color: var(--text-muted);">0h</span><span class="stat-label" style="font-size: 0.65em;">Fila</span></div>
+            <div class="stat-box" style="padding: 10px;"><span class="stat-num" id="stat-hours-playing" style="font-size: 1.2em; color: var(--accent-playing);">0h</span><span class="stat-label" style="font-size: 0.65em;">Jogando</span></div>
+            <div class="stat-box" style="padding: 10px;"><span class="stat-num" id="stat-hours-finished" style="font-size: 1.2em; color: var(--accent-finished);">0h</span><span class="stat-label" style="font-size: 0.65em;">Zerados</span></div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="statusChart"></canvas>
+        </div>
+
+        <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">🏅 Suas Conquistas</h3>
+        <div class="achievements-grid">
+            <div class="badge locked" id="ach-1">
+                <span class="badge-icon">🐣</span><div class="badge-title">Primeiro Passo</div><div class="badge-desc">Zerou seu primeiro jogo!</div>
+            </div>
+            <div class="badge locked" id="ach-5">
+                <span class="badge-icon">🔥</span><div class="badge-title">Embalado</div><div class="badge-desc">Zerou 5 jogos.</div>
+            </div>
+            <div class="badge locked" id="ach-10">
+                <span class="badge-icon">👑</span><div class="badge-title">Mestre do Backlog</div><div class="badge-desc">Zerou 10 jogos no total.</div>
+            </div>
+            <div class="badge locked" id="ach-covers">
+                <span class="badge-icon">🖼️</span><div class="badge-title">Colecionador</div><div class="badge-desc">Todos os jogos possuem capa.</div>
+            </div>
+            <!-- Novas Conquistas -->
+            <div class="badge locked" id="ach-platforms">
+                <span class="badge-icon">🌈</span><div class="badge-title">Multipotencial</div><div class="badge-desc">Jogos em 3+ plataformas.</div>
+            </div>
+            <div class="badge locked" id="ach-marathon">
+                <span class="badge-icon">🏃</span><div class="badge-title">Maratonista</div><div class="badge-desc">100h+ de jogos na lista.</div>
+            </div>
+            <div class="badge locked" id="ach-critic">
+                <span class="badge-icon">✍️</span><div class="badge-title">Crítico de Arte</div><div class="badge-desc">Avaliou 10 jogos zerados.</div>
+            </div>
+            <!-- Conquistas de 100% -->
+            <div class="badge locked" id="ach-perfectionist">
+                <span class="badge-icon">💎</span><div class="badge-title">Perfeccionista</div><div class="badge-desc">Fez 100% em 1 jogo.</div>
+            </div>
+            <div class="badge locked" id="ach-legend">
+                <span class="badge-icon">🌌</span><div class="badge-title">Lendário</div><div class="badge-desc">Fez 100% em 5 jogos.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Undo -->
+    <div id="undo-toast"><span id="undo-message">Ação realizada.</span><button class="btn-undo" onclick="undoAction()">Desfazer</button></div>
+
+    <!-- Modais do Sistema -->
+    <dialog id="modal-welcome">
+        <div class="modal-form" style="text-align: center;">
+            <h2 style="margin-top: 0; color: var(--accent-playing);">Bem-vindo ao ZeraLog! 🎮</h2>
+            <p style="font-size: 1.05em; margin-bottom: 10px;">Seu app para organizar e focar nos jogos.</p>
+            <div style="text-align: left; background: rgba(128,128,128,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin: 5px 0;"><strong>🎲 Sorteio:</strong> Use a roleta se não souber o que jogar.</p>
+                <p style="margin: 5px 0;"><strong>📊 Status:</strong> Acompanhe seus gráficos e conquistas.</p>
+                <p style="margin: 5px 0;"><strong>📱 App:</strong> Você pode adicionar esta página à tela inicial do celular!</p>
+            </div>
+            <div style="background-color: rgba(244, 67, 54, 0.1); border: 1px solid var(--danger); padding: 15px; border-radius: 8px; text-align: left;">
+                <p style="margin: 0; font-size: 0.95em;"><strong>⚠️ IMPORTANTE - BACKUP:</strong></p>
+                <p style="margin: 5px 0 0 0; font-size: 0.85em;">Seus dados ficam no navegador. Limpar o cache apaga tudo. Use o <strong>disquete (💾) no topo</strong> frequentemente para baixar seu backup!</p>
+            </div>
+            <div class="modal-actions" style="margin-top: 20px; justify-content: center;"><button style="width: 100%; padding: 15px; font-size: 1.1em;" onclick="closeWelcome()">Vamos começar! 🚀</button></div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-backup-info">
+        <div class="modal-form">
+            <h3 style="margin-top: 0; color: var(--accent-playing);">💾 Salvar / Restaurar</h3>
+            <p style="font-size: 0.9em; color: var(--text-muted);">Mantenha seu progresso a salvo baixando o arquivo .json regularmente.</p>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                <button style="background-color: var(--accent-finished); padding: 12px;" onclick="exportBackup()">⬇️ Baixar Backup (.json)</button>
+                <button style="background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px;" onclick="document.getElementById('backup-input-home').click()">⬆️ Restaurar Backup</button>
+                <input type="file" id="backup-input-home" accept=".json, application/json, text/*" style="display: none;" onchange="importBackup(event)">
+            </div>
+            <div class="modal-actions" style="margin-top: 15px;"><button class="btn-cancel" onclick="closeModal('modal-backup-info')">Fechar</button></div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-settings">
+        <div class="modal-form">
+            <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">⚙️ Configurações</h3>
+            <div class="setting-row"><label style="font-weight: bold;">Tema Visual:</label><select id="theme-selector" onchange="changeTheme(this.value)" style="width: 150px;"><option value="dark">🌙 Escuro</option><option value="light">☀️ Claro</option><option value="pink">🌸 Rosa Pastel</option><option value="dracula">🦇 Drácula (Neon)</option></select></div>
+            <div class="setting-row"><label style="font-weight: bold;">Ordem da Lista:</label><select id="sort-selector" onchange="changeSort(this.value)" style="width: 150px;"><option value="manual">Mão Própria</option><option value="az">A - Z</option><option value="time">Menos Tempo</option></select></div>
+            <div class="setting-row"><label style="font-weight: bold;">Modo Compacto:</label><input type="checkbox" id="compact-toggle" onchange="toggleCompact(this.checked)" style="width: 20px; height: 20px; accent-color: var(--accent-playing);"></div>
+            
+            <!-- Gerenciamento de Plataformas -->
+            <div style="margin-top: 15px;">
+                <label style="font-weight: bold;">🎮 Gerenciar Plataformas:</label>
+                <div class="platform-manager">
+                    <div id="platforms-list-admin"></div>
+                    <div style="display: flex; gap: 5px; margin-top: 10px;">
+                        <input type="text" id="new-platform-icon" placeholder="Ícone" style="width: 50px;">
+                        <input type="text" id="new-platform-name" placeholder="Nome (Ex: Switch)" style="flex:1;">
+                        <button onclick="addPlatform()">Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;"><button style="background-color: var(--danger); width: 100%;" onclick="openFactoryReset()">⚠️ Redefinição Geral (Apagar Tudo)</button></div>
+            <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+        </div>
+    </dialog>
+
+    <!-- Modal Novo Jogo / Editar Jogo -->
+    <dialog id="modal-game">
+        <div class="modal-form">
+            <h3 id="game-modal-title" style="margin-top: 0;">Adicionar Jogo</h3>
+            <input type="hidden" id="game-cat-id">
+            <input type="hidden" id="edit-game-id">
+            <input type="text" id="game-title" placeholder="Nome do Jogo" oninput="updateQuickLinks()">
+            
+            <div style="display:flex; gap: 10px; margin-top: -5px; margin-bottom: 5px;">
+                <button type="button" class="btn-quick-link" style="background:#f44336;" onclick="quickSearch('hltb')">Buscar no HLTB</button>
+                <button type="button" class="btn-quick-link" style="background:#ffcc33; color:black;" onclick="quickSearch('meta')">Buscar no Metacritic</button>
+            </div>
+
+            <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Plataforma:</label>
+            <select id="game-platform">
+                <!-- Populado dinamicamente -->
+            </select>
+
+            <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Tempo Estimado:</label>
+            <div style="display:flex; gap:10px;">
+                <input type="number" id="game-time-val" placeholder="Ex: 10" min="0" step="0.5" style="flex: 2;">
+                <select id="game-time-unit" style="flex: 1;">
+                    <option value="h">Horas</option>
+                    <option value="m">Minutos</option>
+                </select>
+            </div>
+
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-game')">Cancelar</button><button id="btn-save-game" onclick="saveGame()">Salvar</button></div>
+        </div>
+    </dialog>
+
+    <!-- Modal Roleta -->
+    <dialog id="modal-roulette">
+        <div class="modal-form" style="text-align: center;">
+            <h3 style="margin-top: 0; color: var(--accent-playing);">Sua missão de hoje é:</h3>
+            <div style="font-size: 3em; margin: 15px 0;">🎯</div>
+            <h2 id="roulette-game-name" style="margin-bottom: 25px; border-bottom: 2px dashed var(--border-color); padding-bottom: 15px;"></h2>
+            <div class="modal-actions" style="justify-content: center;">
+                <button class="btn-cancel" onclick="closeModal('modal-roulette')" style="flex:1;">Talvez depois</button>
+                <button onclick="acceptRoulette()" style="flex:1;">Jogar Agora!</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Outros Modais Padrões -->
+    <dialog id="modal-factory-reset"><div class="modal-form"><h3 style="margin-top: 0; color: var(--danger);">⚠️ APAGAR TUDO?</h3><p style="font-size: 0.9em;">Esta ação <strong>NÃO PODE SER DESFEITA</strong>.</p><label style="font-size: 0.9em; color: var(--text-muted);">Digite <strong>APAGAR</strong> para confirmar:</label><input type="text" id="reset-confirm-input" placeholder="Digite APAGAR"><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-factory-reset')">Cancelar</button><button style="background-color: var(--danger);" onclick="confirmFactoryReset()">Confirmar Exclusão</button></div></div></dialog>
+    <dialog id="modal-cat"><div class="modal-form"><h3 id="cat-modal-title" style="margin-top: 0;">Nova Categoria</h3><input type="hidden" id="edit-cat-id"><input type="text" id="cat-name" placeholder="Nome (Ex: RPGs)"><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-cat')">Cancelar</button><button onclick="saveCategory()">Salvar</button></div></div></dialog>
+    <dialog id="modal-rating"><div class="modal-form"><h3 style="margin-top: 0; color: var(--star-color);">Parabéns por zerar! 🎉</h3><p id="rating-game-name" style="margin: 0; font-weight: bold;"></p><input type="hidden" id="rating-game-id">
+        <label style="font-size: 0.9em; color: var(--text-muted);">Sua nota (0 a 10):</label><input type="number" id="game-rating" min="0" max="10" step="0.5" value="10">
+        <div style="display: flex; align-items: center; gap: 10px; background: rgba(128,128,128,0.1); padding: 10px; border-radius: 8px; margin-top: 5px;">
+            <input type="checkbox" id="game-completed-100" style="width: 22px; height: 22px; accent-color: var(--star-color);">
+            <label for="game-completed-100" style="font-weight: bold; cursor: pointer;">Fiz 100% (Platina/Mil)</label>
+        </div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="cancelRating()">Cancelar</button><button class="btn-cancel" onclick="skipRating()">Pular Nota</button><button onclick="saveRating()">Salvar Nota</button></div></div></dialog>
+    <dialog id="modal-edit-finished"><div class="modal-form"><h3 style="margin-top: 0;">Editar Conclusão</h3><p id="edit-fin-game-name" style="margin: 0; font-weight: bold;"></p><input type="hidden" id="edit-fin-game-id"><label style="font-size: 0.9em; color: var(--text-muted);">Nota (0 a 10):</label><input type="number" id="edit-fin-rating" min="0" max="10" step="0.5"><label style="font-size: 0.9em; color: var(--text-muted);">Data (Ex: 08/03/2026):</label><input type="text" id="edit-fin-date">
+        <div style="display: flex; align-items: center; gap: 10px; background: rgba(128,128,128,0.1); padding: 10px; border-radius: 8px;">
+            <input type="checkbox" id="edit-fin-100" style="width: 22px; height: 22px; accent-color: var(--star-color);">
+            <label for="edit-fin-100" style="font-weight: bold; cursor: pointer;">Fiz 100% (Platina/Mil)</label>
+        </div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-edit-finished')">Cancelar</button><button onclick="saveFinishedEdit()">Salvar Alterações</button></div></div></dialog>
+    <dialog id="modal-image"><div class="modal-form"><h3 style="margin-top: 0; margin-bottom: 0;">Editar Capa</h3><p style="font-size: 0.85em; color: var(--text-muted); margin-top: 0;" id="edit-game-name"></p><input type="hidden" id="edit-img-game-id"><div id="image-preview" class="image-preview-box">🎮</div><button type="button" class="btn-search-google" onclick="searchCoverOnGoogle()">🔍 Buscar Capa no Google</button><div style="position: relative; overflow: hidden; display: block; width: 100%;"><span class="btn-upload" style="background-color: var(--bg-color); color: var(--text-main); display: block; text-align: center; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: bold; width: 100%;">➕ Escolher Foto</span><input type="file" id="edit-game-icon" accept="image/*" style="font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%;" onchange="previewImageEdit(this)"></div><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-image')">Cancelar</button><button onclick="saveEditedImage()">Salvar</button></div></div></dialog>
+
+    <script>
+        // --- DADOS E INICIALIZAÇÃO ---
+        const defaultData = {
+            settings: { sort: 'manual', compact: false, finishedSort: 'date' }, collapsedCats: [], 
+            categories: [ { id: 'c1', name: '🃏 Cartas e Estratégia' }, { id: 'c2', name: '🍄 Plataforma 3D' } ],
+            platforms: [
+                { name: 'PC', icon: '💻' },
+                { name: 'Nintendo', icon: '🍄' },
+                { name: 'Playstation', icon: '🎮' },
+                { name: 'Xbox', icon: '💚' },
+                { name: 'Mobile', icon: '📱' }
+            ],
+            games: [],
+            unlockedAchievements: [] // Novo campo para rastrear quais já foram mostradas
+        };
+        let appData = JSON.parse(localStorage.getItem('myBacklogData')) || defaultData;
+        
+        // Garantir campos novos em backups antigos
+        if (!appData.settings) appData.settings = { sort: 'manual', compact: false, finishedSort: 'date' };
+        if (!appData.settings.finishedSort) appData.settings.finishedSort = 'date';
+        if (!appData.collapsedCats) appData.collapsedCats = [];
+        if (!appData.platforms) appData.platforms = defaultData.platforms;
+        if (!appData.unlockedAchievements) appData.unlockedAchievements = [];
+        
+        let backupData = null; let toastTimeout = null; let chartInstance = null; let currentRouletteId = null;
+        let currentPlatformFilter = 'All';
+
+        if(appData.settings.compact) document.body.classList.add('compact-mode');
+
+        // --- SISTEMA DE NOTIFICAÇÃO DE CONQUISTA ---
+        function notifyAchievement(name) {
+            const el = document.getElementById('achievement-notif');
+            document.getElementById('ach-notif-name').innerText = name;
+            el.classList.add('show');
+            setTimeout(() => { el.classList.remove('show'); }, 4000);
+        }
+
+        function checkNewAchievements() {
+            const finishedGames = appData.games.filter(g => g.state === 'finished');
+            const count = finishedGames.length;
+            const count100 = finishedGames.filter(g => g.is100).length;
+            
+            const checks = [
+                { id: 'ach-1', condition: count >= 1, name: 'Primeiro Passo' },
+                { id: 'ach-5', condition: count >= 5, name: 'Embalado' },
+                { id: 'ach-10', condition: count >= 10, name: 'Mestre do Backlog' },
+                { id: 'ach-perfectionist', condition: count100 >= 1, name: 'Perfeccionista' },
+                { id: 'ach-legend', condition: count100 >= 5, name: 'Lendário' }
+            ];
+
+            checks.forEach(ach => {
+                if (ach.condition && !appData.unlockedAchievements.includes(ach.id)) {
+                    appData.unlockedAchievements.push(ach.id);
+                    notifyAchievement(ach.name);
+                    saveData(false); // Salva silenciosamente sem re-renderizar tudo
+                }
+            });
+        }
+
+        // --- BEM VINDO ---
+        function checkWelcome() {
+            if (!localStorage.getItem('zeralog_welcomed')) document.getElementById('modal-welcome').showModal();
+        }
+        function closeWelcome() { localStorage.setItem('zeralog_welcomed', 'true'); document.getElementById('modal-welcome').close(); }
+
+        // --- SISTEMAS DE SALVAMENTO E UNDO ---
+        function saveStateForUndo() { backupData = JSON.stringify(appData); }
+        function triggerToast(message) {
+            const toast = document.getElementById('undo-toast'); document.getElementById('undo-message').innerText = message;
+            toast.classList.add('show'); clearTimeout(toastTimeout); toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 6000);
+        }
+        function undoAction() { if (backupData) { appData = JSON.parse(backupData); document.body.classList.toggle('compact-mode', appData.settings.compact); saveData(true); document.getElementById('undo-toast').classList.remove('show'); backupData = null; filterGames(); } }
+        function saveData(triggerRender = true) { 
+            localStorage.setItem('myBacklogData', JSON.stringify(appData)); 
+            if(triggerRender) render(); 
+            checkNewAchievements(); 
+        }
+
+        function openBackupModal() { document.getElementById('modal-backup-info').showModal(); }
+        function exportBackup() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData)); const dlAnchor = document.createElement('a'); dlAnchor.setAttribute("href", dataStr); dlAnchor.setAttribute("download", "ZeraLog_Backup_" + new Date().toISOString().slice(0,10) + ".json"); document.body.appendChild(dlAnchor); dlAnchor.click(); dlAnchor.remove(); closeModal('modal-backup-info'); triggerToast('Backup Salvo!'); }
+        function importBackup(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = function(e) { try { const imported = JSON.parse(e.target.result); if (imported && imported.games) { saveStateForUndo(); appData = imported; if (!appData.settings) appData.settings = { sort: 'manual', compact: false }; if (!appData.collapsedCats) appData.collapsedCats = []; document.body.classList.toggle('compact-mode', appData.settings.compact); saveData(); closeModal('modal-backup-info'); triggerToast('Restaurado!'); } } catch (err) { alert("Erro ao ler o arquivo."); } event.target.value = ''; }; reader.readAsText(file); }
+
+        function openSettings() { 
+            document.getElementById('theme-selector').value = localStorage.getItem('zeralog_theme') || 'dark'; 
+            document.getElementById('sort-selector').value = appData.settings.sort; 
+            document.getElementById('compact-toggle').checked = appData.settings.compact; 
+            renderPlatformAdmin();
+            document.getElementById('modal-settings').showModal(); 
+        }
+        
+        function changeTheme(theme) { document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('zeralog_theme', theme); }
+        function changeSort(val) { appData.settings.sort = val; saveData(); }
+        function toggleCompact(val) { appData.settings.compact = val; document.body.classList.toggle('compact-mode', val); saveData(false); }
+        function openFactoryReset() { document.getElementById('reset-confirm-input').value = ''; document.getElementById('modal-factory-reset').showModal(); }
+        function confirmFactoryReset() { if (document.getElementById('reset-confirm-input').value === 'APAGAR') { saveStateForUndo(); appData = { settings: { sort: 'manual', compact: false }, collapsedCats: [], categories: [], platforms: defaultData.platforms, games: [], unlockedAchievements: [] }; saveData(); closeModal('modal-factory-reset'); closeModal('modal-settings'); localStorage.removeItem('zeralog_welcomed'); triggerToast('Apagado.'); setTimeout(checkWelcome, 500); } else { alert('Digite APAGAR'); } }
+
+        // --- GESTÃO DE PLATAFORMAS ---
+        function renderPlatformAdmin() {
+            const list = document.getElementById('platforms-list-admin');
+            list.innerHTML = '';
+            appData.platforms.forEach((p, index) => {
+                const item = document.createElement('div');
+                item.className = 'platform-list-item';
+                item.innerHTML = `
+                    <span>${p.icon} ${p.name}</span>
+                    <button class="btn-icon btn-delete" onclick="removePlatform(${index})">🗑️</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function addPlatform() {
+            const icon = document.getElementById('new-platform-icon').value || '🎮';
+            const name = document.getElementById('new-platform-name').value;
+            if(!name) return;
+            saveStateForUndo();
+            appData.platforms.push({ name, icon });
+            document.getElementById('new-platform-icon').value = '';
+            document.getElementById('new-platform-name').value = '';
+            renderPlatformAdmin();
+            saveData();
+        }
+
+        function removePlatform(index) {
+            if(confirm("Remover esta plataforma? Jogos nela continuarão existindo, mas sem o ícone correto.")) {
+                saveStateForUndo();
+                appData.platforms.splice(index, 1);
+                renderPlatformAdmin();
+                saveData();
+            }
+        }
+
+        // --- ABAS E PESQUISA ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`btn-tab-${tabId}`).classList.add('active');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            if(tabId === 'stats') updateStatsAndCharts();
+            else filterGames();
+        }
+
+        // --- FILTRAGEM POR PLATAFORMA ---
+        function setPlatformFilter(platform, el) {
+            currentPlatformFilter = platform;
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            filterGames();
+        }
+
+        function filterGames() {
+            const term = document.getElementById('search-bar').value.toLowerCase();
+            document.querySelectorAll('.category').forEach(cat => {
+                let hasVisibleGames = false;
+                cat.querySelectorAll('.game-item').forEach(item => {
+                    const titleMatch = item.querySelector('.game-title').innerText.toLowerCase().includes(term);
+                    const platformMatch = currentPlatformFilter === 'All' || item.dataset.platform === currentPlatformFilter;
+                    
+                    if (titleMatch && platformMatch) { 
+                        item.style.display = 'flex'; 
+                        hasVisibleGames = true; 
+                    } else { 
+                        item.style.display = 'none'; 
+                    }
+                });
+                if (term !== '' || currentPlatformFilter !== 'All') { 
+                    cat.style.display = hasVisibleGames ? 'block' : 'none'; 
+                } else { 
+                    if (cat.id === 'playing-category') cat.style.display = cat.querySelectorAll('.game-item').length > 0 ? 'block' : 'none'; 
+                    else cat.style.display = 'block'; 
+                }
+            });
+        }
+
+        function toggleCollapse(id, event) { if(event && event.target.closest('button')) return; const idx = appData.collapsedCats.indexOf(id); if (idx > -1) appData.collapsedCats.splice(idx, 1); else appData.collapsedCats.push(id); const catDiv = document.getElementById(id); if(catDiv) catDiv.classList.toggle('collapsed'); saveData(false); }
+
+        // --- LÓGICA DE JOGOS, TEMPO, LINKS, ROLETA ---
+        function quickSearch(site) {
+            const title = document.getElementById('game-title').value;
+            if(!title) return alert('Digite o nome do jogo primeiro!');
+            if(site === 'hltb') window.open(`https://howlongtobeat.com/?q=${encodeURIComponent(title)}`, '_blank');
+            if(site === 'meta') window.open(`https://www.metacritic.com/search/${encodeURIComponent(title)}/`, '_blank');
+        }
+        
+        function spinRoulette() {
+            const pool = appData.games.filter(g => g.state !== 'finished');
+            if(pool.length === 0) return alert('Seu backlog está vazio! Adicione mais jogos.');
+            const winner = pool[Math.floor(Math.random() * pool.length)];
+            currentRouletteId = winner.id;
+            document.getElementById('roulette-game-name').innerText = winner.title;
+            document.getElementById('modal-roulette').showModal();
+        }
+        function acceptRoulette() {
+            closeModal('modal-roulette');
+            toggleState(currentRouletteId, 'playing');
+        }
+
+        function saveGame() {
+            const gameId = document.getElementById('edit-game-id').value;
+            const catId = document.getElementById('game-cat-id').value;
+            const title = document.getElementById('game-title').value;
+            const platform = document.getElementById('game-platform').value;
+            const timeVal = document.getElementById('game-time-val').value;
+            const timeUnit = document.getElementById('game-time-unit').value;
+            if(!title) return;
+            
+            const meta = timeVal ? `${timeVal}${timeUnit}` : '';
+            saveStateForUndo();
+
+            if (gameId) {
+                // Modo Edição
+                const game = appData.games.find(g => g.id === gameId);
+                if (game) {
+                    game.title = title;
+                    game.platform = platform;
+                    game.meta = meta;
+                }
+            } else {
+                // Modo Novo Jogo
+                appData.games.push({ 
+                    id: 'g' + Date.now(), 
+                    catId: catId, 
+                    title: title, 
+                    platform: platform, 
+                    meta: meta, 
+                    state: null, 
+                    image: null, 
+                    userRating: null, 
+                    dateFinished: null,
+                    is100: false
+                });
+            }
+            closeModal('modal-game'); saveData(); triggerToast(gameId ? 'Informações atualizadas.' : 'Jogo adicionado.');
+        }
+
+        // --- ORDENAÇÃO MATEMÁTICA DO TEMPO ---
+        function getSortedGames(gamesArray, sortOverride) {
+            const sort = sortOverride || appData.settings.sort; let arr = [...gamesArray];
+            
+            if (sort === 'az') return arr.sort((a, b) => a.title.localeCompare(b.title));
+            if (sort === 'rating') return arr.sort((a, b) => (parseFloat(b.userRating) || 0) - (parseFloat(a.userRating) || 0));
+            if (sort === 'date') {
+                return arr.sort((a, b) => {
+                    const dateA = a.dateFinished ? new Date(a.dateFinished.split('/').reverse().join('-')) : new Date(0);
+                    const dateB = b.dateFinished ? new Date(b.dateFinished.split('/').reverse().join('-')) : new Date(0);
+                    return dateB - dateA;
+                });
+            }
+            if (sort === 'time') {
+                return arr.sort((a, b) => {
+                    let valA = parseFloat((a.meta || '0').replace(',', '.')) || 0;
+                    if(a.meta && a.meta.includes('m')) valA /= 60;
+                    let valB = parseFloat((b.meta || '0').replace(',', '.')) || 0;
+                    if(b.meta && b.meta.includes('m')) valB /= 60;
+                    return valB - valA;
+                });
+            }
+            return arr; 
+        }
+
+        // --- ESTATÍSTICAS E GRÁFICOS ---
+        function updateStatsAndCharts() {
+            const backlogGames = appData.games.filter(g => g.state === null);
+            const playingGames = appData.games.filter(g => g.state === 'playing');
+            const finishedGames = appData.games.filter(g => g.state === 'finished');
+            
+            const backlog = backlogGames.length;
+            const playing = playingGames.length;
+            const finished = finishedGames.length;
+            const completed100 = finishedGames.filter(g => g.is100).length;
+            
+            document.getElementById('stat-backlog').innerText = backlog;
+            document.getElementById('stat-finished-dash').innerText = finished;
+            
+            const ratings = appData.games.filter(g => g.state === 'finished' && g.userRating).map(g => parseFloat(g.userRating));
+            document.getElementById('stat-avg').innerText = ratings.length > 0 ? (ratings.reduce((a,b) => a+b, 0) / ratings.length).toFixed(1) : '-';
+
+            // FUNÇÃO AUXILIAR PARA SOMAR HORAS
+            const sumHours = (arr) => {
+                let total = 0;
+                arr.forEach(g => {
+                    if (g.meta) {
+                        let val = parseFloat(g.meta.replace(',', '.')) || 0;
+                        if (g.meta.includes('m')) val /= 60;
+                        total += val;
+                    }
+                });
+                return total < 10 ? total.toFixed(1) : Math.round(total);
+            };
+
+            // Atualizar os novos campos de horas
+            document.getElementById('stat-hours-backlog').innerText = sumHours(backlogGames) + 'h';
+            document.getElementById('stat-hours-playing').innerText = sumHours(playingGames) + 'h';
+            document.getElementById('stat-hours-finished').innerText = sumHours(finishedGames) + 'h';
+
+            // Gráfico
+            if(typeof Chart !== 'undefined') {
+                const ctx = document.getElementById('statusChart');
+                if(chartInstance) chartInstance.destroy();
+                
+                const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim();
+                
+                chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Backlog', 'Jogando', 'Finalizados'],
+                        datasets: [{ data: [backlog, playing, finished], backgroundColor: ['#ff9800', '#2196f3', '#4caf50'], borderWidth: 0 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: textColor } } } }
+                });
+            }
+
+            // Conquistas
+            document.getElementById('ach-1').classList.toggle('locked', finished < 1);
+            document.getElementById('ach-5').classList.toggle('locked', finished < 5);
+            document.getElementById('ach-10').classList.toggle('locked', finished < 10);
+            document.getElementById('ach-perfectionist').classList.toggle('locked', completed100 < 1);
+            document.getElementById('ach-legend').classList.toggle('locked', completed100 < 5);
+            
+            const allCovers = appData.games.length > 0 && appData.games.every(g => g.image !== null);
+            document.getElementById('ach-covers').classList.toggle('locked', !allCovers);
+
+            // Novas Conquistas
+            const platformsUsed = new Set(appData.games.map(g => g.platform)).size;
+            document.getElementById('ach-platforms').classList.toggle('locked', platformsUsed < 3);
+
+            let totalHours = sumHours(appData.games);
+            document.getElementById('ach-marathon').classList.toggle('locked', totalHours < 100);
+            document.getElementById('ach-critic').classList.toggle('locked', ratings.length < 10);
+        }
+
+        // --- RENDERIZAÇÃO GERAL ---
+        function render() {
+            const containerHome = document.getElementById('app-container'); 
+            const finishedContainer = document.getElementById('finished-list-container');
+            containerHome.innerHTML = ''; finishedContainer.innerHTML = '';
+
+            // Atualizar Chips de Filtro
+            const filterContainer = document.getElementById('platform-chips-container');
+            filterContainer.innerHTML = `<div class="filter-chip ${currentPlatformFilter === 'All' ? 'active' : ''}" onclick="setPlatformFilter('All', this)">Todas</div>`;
+            appData.platforms.forEach(p => {
+                filterContainer.innerHTML += `<div class="filter-chip ${currentPlatformFilter === p.name ? 'active' : ''}" onclick="setPlatformFilter('${p.name}', this)">${p.icon} ${p.name}</div>`;
+            });
+
+            // --- RENDER HOME (FILA) ---
+            const playingGames = getSortedGames(appData.games.filter(g => g.state === 'playing'));
+            const playingCatDiv = document.createElement('div');
+            playingCatDiv.className = `category ${appData.collapsedCats.includes('playing-category') ? 'collapsed' : ''}`; playingCatDiv.id = 'playing-category';
+            if(playingGames.length > 0) playingCatDiv.style.display = 'block';
+            playingCatDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('playing-category', event)"><div class="cat-title-area"><span class="chevron">▼</span><h2>🕹️ Jogando Atualmente</h2></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-playing"></ul></div>`;
+            containerHome.appendChild(playingCatDiv);
+            const listPlaying = playingCatDiv.querySelector('#list-playing'); playingGames.forEach(game => listPlaying.appendChild(createGameElement(game)));
+
+            appData.categories.forEach(cat => {
+                const catGames = getSortedGames(appData.games.filter(g => g.catId === cat.id && g.state === null));
+                const catDiv = document.createElement('div'); catDiv.className = `category ${appData.collapsedCats.includes(cat.id) ? 'collapsed' : ''}`; catDiv.id = cat.id;
+                catDiv.innerHTML = `
+                    <div class="category-header" onclick="toggleCollapse('${cat.id}', event)">
+                        <div class="cat-title-area"><span class="chevron">▼</span><h2>${cat.name}</h2></div>
+                        <div class="cat-actions"><button class="btn-icon" onclick="openEditCatModal('${cat.id}')" title="Editar Categoria">✏️</button><button class="btn-icon btn-delete" onclick="askDeleteCategory('${cat.id}')" title="Excluir Categoria">🗑️</button><button onclick="openGameModal('${cat.id}')">+ Jogo</button></div>
+                    </div>
+                    <div class="game-list-wrapper"><ul class="game-list" id="list-${cat.id}"></ul></div>
+                `;
+                containerHome.appendChild(catDiv);
+                const listEl = catDiv.querySelector(`#list-${cat.id}`); catGames.forEach(game => listEl.appendChild(createGameElement(game)));
+            });
+
+            // --- RENDER FINALIZADOS ---
+            renderFinishedTab();
+            
+            filterGames();
+            if(document.getElementById('tab-stats').classList.contains('active')) updateStatsAndCharts();
+        }
+
+        function renderFinishedTab() {
+            const finishedContainer = document.getElementById('finished-list-container');
+            const finishedGames = getSortedGames(appData.games.filter(g => g.state === 'finished'), appData.settings.finishedSort);
+            document.getElementById('count-finished').innerText = finishedGames.length;
+
+            // Atualizar chips de ordenação
+            document.querySelectorAll('.sort-chip').forEach(c => c.classList.remove('active'));
+            const activeChip = document.getElementById(`sort-fin-${appData.settings.finishedSort}`);
+            if(activeChip) activeChip.classList.add('active');
+
+            if (finishedGames.length === 0) {
+                finishedContainer.innerHTML = `<div class="empty-state">Nenhum jogo finalizado ainda. Hora de focar no backlog!</div>`;
+                return;
+            }
+
+            // Agrupar por Ano
+            const years = {};
+            finishedGames.forEach(game => {
+                let year = "Sem Data";
+                if(game.dateFinished) {
+                    const parts = game.dateFinished.split('/');
+                    if(parts.length === 3) year = parts[2];
+                }
+                if(!years[year]) years[year] = [];
+                years[year].push(game);
+            });
+
+            // Ordenar anos (maior para o menor)
+            const sortedYears = Object.keys(years).sort((a, b) => b.localeCompare(a));
+
+            sortedYears.forEach(year => {
+                const yearId = `finished-year-${year}`;
+                const yearDiv = document.createElement('div');
+                yearDiv.className = `category ${appData.collapsedCats.includes(yearId) ? 'collapsed' : ''}`;
+                yearDiv.id = yearId;
+                
+                yearDiv.innerHTML = `
+                    <div class="category-header" onclick="toggleCollapse('${yearId}', event)">
+                        <div class="cat-title-area"><span class="chevron">▼</span><h2 style="color: var(--accent-finished)">🏆 Concluídos em ${year}</h2></div>
+                        <div class="cat-actions"><span style="font-size: 0.8em; color: var(--text-muted); font-weight: bold;">${years[year].length} jogos</span></div>
+                    </div>
+                    <div class="game-list-wrapper"><ul class="game-list"></ul></div>
+                `;
+                
+                const listEl = yearDiv.querySelector('ul');
+                years[year].forEach(game => listEl.appendChild(createGameElement(game)));
+                finishedContainer.appendChild(yearDiv);
+            });
+        }
+
+        function setFinishedSort(type) {
+            appData.settings.finishedSort = type;
+            saveData();
+        }
+
+        function createGameElement(game) {
+            const li = document.createElement('li'); 
+            li.className = `game-item`;
+            li.dataset.platform = game.platform;
+            
+            const isPlaying = game.state === 'playing' ? 'checked' : ''; const isFinished = game.state === 'finished' ? 'checked' : '';
+            let imgContent = game.image ? `<img src="${game.image}" class="game-icon" onclick="openImageModal('${game.id}')" title="Trocar Capa">` : `<div class="game-icon" onclick="openImageModal('${game.id}')" title="Adicionar Capa">🎮</div>`;
+            
+            const platObj = appData.platforms.find(p => p.name === game.platform) || { icon: '🎮', name: game.platform };
+
+            let metaDisplay = `<span>${platObj.icon} ${platObj.name}</span>`;
+            if (game.meta) metaDisplay += `<span>⏱️ ${game.meta}</span>`;
+            
+            if (game.state === 'finished') {
+                if (game.is100) metaDisplay += `<span style="color: var(--star-color); font-weight: bold; background: rgba(255, 215, 0, 0.1); padding: 2px 6px; border-radius: 4px;">💎 100%</span>`;
+                if (game.userRating) metaDisplay += `<span class="user-rating">🌟 ${game.userRating}/10</span>`;
+                if (game.dateFinished) metaDisplay += `<span class="date-finished">📅 ${game.dateFinished}</span>`;
+            }
+
+            // Botão de Editar Conclusão ou Editar Jogo
+            let editBtn = '';
+            if (game.state === 'finished') {
+                editBtn = `<button class="btn-icon" onclick="openEditFinishedModal('${game.id}')" title="Editar Conclusão">✏️</button>`;
+            } else {
+                editBtn = `<button class="btn-icon" onclick="openEditGameModal('${game.id}')" title="Editar Informações">✏️</button>`;
+            }
+
+            li.innerHTML = `
+                ${imgContent}
+                <div class="actions"><label><input type="checkbox" class="chk-playing" onchange="toggleState('${game.id}', 'playing')" ${isPlaying}> Jogando</label><label><input type="checkbox" class="chk-finished" onchange="toggleState('${game.id}', 'finished')" ${isFinished}> Final</label></div>
+                <div class="game-info"><div class="game-title">${game.title}</div><div class="game-meta">${metaDisplay}</div></div>
+                <div style="display: flex; gap: 4px;">${editBtn}<button class="btn-icon btn-delete" onclick="askDeleteGame('${game.id}')" title="Remover Jogo">🗑️</button></div>
+            `;
+            return li;
+        }
+
+        // Funções de Exclusão e Modais Secundários
+        function toggleState(gameId, action) { const game = appData.games.find(g => g.id === gameId); if (action === 'playing') { saveStateForUndo(); game.state = game.state === 'playing' ? null : 'playing'; saveData(); triggerToast(game.state ? 'Movido para Jogando.' : 'Removido.'); } else if (action === 'finished') { if (game.state === 'finished') { saveStateForUndo(); game.state = null; game.userRating = null; game.dateFinished = null; game.is100 = false; saveData(); triggerToast('Removido dos Troféus.'); } else { openRatingModal(gameId); } } }
+        function askDeleteGame(gameId) { const game = appData.games.find(g => g.id === gameId); if(confirm(`Remover "${game.title}"?`)) { saveStateForUndo(); appData.games = appData.games.filter(g => g.id !== gameId); saveData(); triggerToast('Excluído.'); } }
+        function askDeleteCategory(catId) { const cat = appData.categories.find(c => c.id === catId); const hasGames = appData.games.some(g => g.catId === catId); if(confirm(hasGames ? `Excluir APAGARÁ OS JOGOS nela. Continuar?` : `Excluir "${cat.name}"?`)) { saveStateForUndo(); appData.categories = appData.categories.filter(c => c.id !== catId); appData.games = appData.games.filter(g => g.catId !== catId); saveData(); triggerToast('Excluída.'); } }
+
+        function openRatingModal(gameId) { const game = appData.games.find(g => g.id === gameId); document.getElementById('rating-game-id').value = gameId; document.getElementById('rating-game-name').innerText = game.title; document.getElementById('game-rating').value = '10'; document.getElementById('game-completed-100').checked = false; document.getElementById('modal-rating').showModal(); }
+        function openEditFinishedModal(gameId) { const game = appData.games.find(g => g.id === gameId); document.getElementById('edit-fin-game-id').value = gameId; document.getElementById('edit-fin-game-name').innerText = game.title; document.getElementById('edit-fin-rating').value = game.userRating || ''; document.getElementById('edit-fin-date').value = game.dateFinished || ''; document.getElementById('edit-fin-100').checked = game.is100 || false; document.getElementById('modal-edit-finished').showModal(); }
+        
+        // Função para Abrir o Modal de Edição de Informações
+        function openEditGameModal(gameId) {
+            const game = appData.games.find(g => g.id === gameId);
+            document.getElementById('game-modal-title').innerText = 'Editar Informações';
+            document.getElementById('edit-game-id').value = gameId;
+            document.getElementById('game-cat-id').value = game.catId;
+            document.getElementById('game-title').value = game.title;
+            
+            const select = document.getElementById('game-platform');
+            select.innerHTML = '';
+            appData.platforms.forEach(p => {
+                const selected = p.name === game.platform ? 'selected' : '';
+                select.innerHTML += `<option value="${p.name}" ${selected}>${p.icon} ${p.name}</option>`;
+            });
+
+            // Parse do tempo (Ex: "10h" -> 10 e "h")
+            if (game.meta) {
+                const unit = game.meta.includes('m') ? 'm' : 'h';
+                const val = game.meta.replace(/[^\d.,]/g, '');
+                document.getElementById('game-time-val').value = val;
+                document.getElementById('game-time-unit').value = unit;
+            } else {
+                document.getElementById('game-time-val').value = '';
+                document.getElementById('game-time-unit').value = 'h';
+            }
+
+            document.getElementById('modal-game').showModal();
+        }
+
+        function cancelRating() { closeModal('modal-rating'); render(); }
+        function skipRating() { const gameId = document.getElementById('rating-game-id').value; const game = appData.games.find(g => g.id === gameId); saveStateForUndo(); if (game) { game.state = 'finished'; game.dateFinished = new Date().toLocaleDateString('pt-BR'); } closeModal('modal-rating'); saveData(); triggerToast('Zerado!'); }
+        function saveRating() { const gameId = document.getElementById('rating-game-id').value; const rating = document.getElementById('game-rating').value; const is100 = document.getElementById('game-completed-100').checked; const game = appData.games.find(g => g.id === gameId); saveStateForUndo(); if (game) { game.state = 'finished'; game.userRating = rating; game.dateFinished = new Date().toLocaleDateString('pt-BR'); game.is100 = is100; } closeModal('modal-rating'); saveData(); triggerToast(is100 ? 'Mestre do Jogo! 100% concluído!' : 'Zerado com nota!'); }
+        function saveFinishedEdit() { const gameId = document.getElementById('edit-fin-game-id').value; const rating = document.getElementById('edit-fin-rating').value; const dateStr = document.getElementById('edit-fin-date').value; const is100 = document.getElementById('edit-fin-100').checked; const game = appData.games.find(g => g.id === gameId); saveStateForUndo(); if (game) { game.userRating = rating; game.dateFinished = dateStr; game.is100 = is100; } closeModal('modal-edit-finished'); saveData(); triggerToast('Atualizado.'); }
+
+        function openCatModal() { document.getElementById('cat-modal-title').innerText = 'Nova Categoria'; document.getElementById('edit-cat-id').value = ''; document.getElementById('cat-name').value = ''; document.getElementById('modal-cat').showModal(); }
+        function openEditCatModal(catId) { const cat = appData.categories.find(c => c.id === catId); document.getElementById('cat-modal-title').innerText = 'Editar Categoria'; document.getElementById('edit-cat-id').value = cat.id; document.getElementById('cat-name').value = cat.name; document.getElementById('modal-cat').showModal(); }
+        
+        function openGameModal(catId) { 
+            document.getElementById('game-modal-title').innerText = 'Adicionar Jogo';
+            document.getElementById('edit-game-id').value = ''; 
+            document.getElementById('game-cat-id').value = catId; 
+            document.getElementById('game-title').value = ''; 
+            document.getElementById('game-time-val').value = ''; 
+            
+            const select = document.getElementById('game-platform');
+            select.innerHTML = '';
+            appData.platforms.forEach(p => {
+                select.innerHTML += `<option value="${p.name}">${p.icon} ${p.name}</option>`;
+            });
+            
+            document.getElementById('modal-game').showModal(); 
+        }
+        
+        function closeModal(id) { document.getElementById(id).close(); }
+        
+        function saveCategory() { const name = document.getElementById('cat-name').value; const editId = document.getElementById('edit-cat-id').value; if(!name) return; saveStateForUndo(); if (editId) { const cat = appData.categories.find(c => c.id === editId); if(cat) cat.name = name; } else { appData.categories.push({ id: 'c' + Date.now(), name: name }); } closeModal('modal-cat'); saveData(); triggerToast(editId ? 'Categoria editada.' : 'Categoria criada.'); }
+        
+        function openImageModal(gameId) { const game = appData.games.find(g => g.id === gameId); document.getElementById('edit-img-game-id').value = gameId; document.getElementById('edit-game-name').innerText = game.title; const previewEl = document.getElementById('image-preview'); if(game.image) previewEl.innerHTML = `<img src="${game.image}">`; else previewEl.innerHTML = `🎮`; document.getElementById('modal-image').showModal(); }
+        
+        function searchCoverOnGoogle() { 
+            const gameId = document.getElementById('edit-img-game-id').value; 
+            const game = appData.games.find(g => g.id === gameId); 
+            if (game) window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, '_blank'); 
+        }
+
+        function previewImageEdit(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { document.getElementById('image-preview').innerHTML = `<img src="${e.target.result}">`; }; reader.readAsDataURL(input.files[0]); } }
+        function saveEditedImage() { const gameId = document.getElementById('edit-img-game-id').value; const fileInput = document.getElementById('edit-game-icon'); const game = appData.games.find(g => g.id === gameId); if (fileInput.files && fileInput.files[0]) { const reader = new FileReader(); reader.onload = function(e) { saveStateForUndo(); game.image = e.target.result; fileInput.value = ''; closeModal('modal-image'); saveData(); triggerToast('Capa atualizada.'); }; reader.readAsDataURL(fileInput.files[0]); } else { closeModal('modal-image'); } }
+
+        render();
+        checkWelcome();
+    </script>
+</body>
+</html>
