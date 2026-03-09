@@ -30,71 +30,53 @@
             --danger: #ff5555; --border-color: #6272a4; --input-bg: #282a36; --input-text: #f8f8f2; --star-color: #f1fa8c;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; line-height: 1.6; transition: background-color 0.3s, color 0.3s; min-height: 100vh;}
-        .header-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; margin-top: 10px; }
-        .app-brand { display: flex; align-items: center; gap: 12px; margin: 0 auto; padding-left: 60px; }
+        .header-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .app-brand { display: flex; align-items: center; gap: 12px; margin: 0 auto; padding-left: 50px; }
         .app-logo { width: 42px; height: 42px; filter: drop-shadow(0 4px 6px rgba(33, 150, 243, 0.4)); }
         .app-brand h1 { margin: 0; font-size: 2.2em; font-weight: 800; background: linear-gradient(45deg, var(--accent-playing), var(--accent-finished)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px; }
-        .header-actions { display: flex; gap: 10px; }
-        .btn-top { font-size: 1.5em; background: transparent; border: none; cursor: pointer; color: var(--text-main); transition: transform 0.2s; }
-        .search-container { display: flex; align-items: center; background-color: var(--card-bg); border-radius: 8px; padding: 12px 15px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid var(--border-color); }
+        .btn-top { font-size: 1.5em; background: transparent; border: none; cursor: pointer; color: var(--text-main); }
+        .search-container { display: flex; align-items: center; background-color: var(--card-bg); border-radius: 8px; padding: 12px 15px; margin-bottom: 20px; border: 1px solid var(--border-color); }
         .search-container input { background: transparent; border: none; color: var(--text-main); font-size: 1.05em; width: 100%; margin-left: 10px; outline: none; }
-        .tabs { display: flex; gap: 5px; margin-bottom: 25px; background-color: var(--card-bg); padding: 8px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .tab-btn { flex: 1; background-color: transparent; color: var(--text-muted); border: none; padding: 10px 5px; border-radius: 8px; font-size: 0.95em; cursor: pointer; transition: all 0.3s; font-weight: bold; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 25px; background-color: var(--card-bg); padding: 8px; border-radius: 12px; }
+        .tab-btn { flex: 1; background-color: transparent; color: var(--text-muted); border: none; padding: 10px 5px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .tab-btn.active { background-color: var(--bg-color); color: var(--text-main); border-bottom: 3px solid var(--accent-playing); }
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .category { background-color: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .category-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; cursor: pointer; }
-        .cat-title-area { display: flex; align-items: center; gap: 8px; flex-grow: 1; }
-        .chevron { font-size: 0.8em; color: var(--text-muted); transition: transform 0.3s; }
-        #playing-category { border: 2px solid var(--accent-playing); display: none; }
-        .game-list { list-style: none; padding: 0; margin: 0; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .category { background-color: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 25px; }
+        .category-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; }
         .game-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
         .game-icon { width: 50px; height: 50px; border-radius: 8px; background-color: var(--bg-color); object-fit: cover; margin-right: 15px; display: flex; align-items: center; justify-content: center; font-size: 1.8em; cursor: pointer; border: 1px solid var(--border-color); flex-shrink: 0;}
         body.compact-mode .game-icon { display: none; }
-        .actions { display: flex; flex-direction: column; gap: 8px; margin-right: 15px; min-width: 95px; }
         .game-info { flex-grow: 1; overflow: hidden; }
-        .game-title { font-weight: bold; font-size: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .game-meta { font-size: 0.85em; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
-        .user-rating { color: var(--star-color); font-weight: bold; background: rgba(128, 128, 128, 0.1); padding: 2px 6px; border-radius: 4px; }
+        .game-title { font-weight: bold; font-size: 1.1em; }
+        .game-meta { font-size: 0.85em; color: var(--text-muted); }
+        .actions { display: flex; flex-direction: column; gap: 5px; margin-right: 10px; font-size: 0.8em;}
         button { background-color: var(--accent-add); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-add-cat { display: block; width: 100%; padding: 15px; margin-top: 10px; font-size: 1.1em; }
         .btn-roulette { background-color: var(--accent-playing); display: block; width: 100%; padding: 15px; margin-bottom: 20px; font-size: 1.1em; border-radius: 12px; }
-        #undo-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background-color: var(--text-main); color: var(--bg-color); padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: bottom 0.3s; z-index: 1000; font-weight: bold; }
+        #undo-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background-color: var(--text-main); color: var(--bg-color); padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; gap: 15px; transition: 0.3s; z-index: 1000; font-weight: bold; }
         #undo-toast.show { bottom: 25px; }
-        dialog { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; width: 90%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        dialog { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; width: 90%; max-width: 450px; }
         .modal-form { display: flex; flex-direction: column; gap: 15px; }
-        .modal-form input, .modal-form select { background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; outline: none; }
+        .modal-form input, .modal-form select { background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; }
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px 10px; text-align: center; }
-        .stat-num { font-size: 1.8em; font-weight: bold; display: block; }
-        .chart-container { background: var(--card-bg); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); height: 250px;}
-        .achievements-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        .badge { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; text-align: center; opacity: 0.4; filter: grayscale(1); transition: 0.3s; }
+        .stat-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; text-align: center; }
+        .stat-num { font-size: 1.5em; font-weight: bold; display: block; }
+        .badge { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; text-align: center; opacity: 0.3; filter: grayscale(1); }
         .badge.unlocked { opacity: 1; filter: grayscale(0); border-color: var(--accent-finished); }
+        .achievements-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     </style>
 </head>
 <body>
-    <script>
-        const savedTheme = localStorage.getItem('zeralog_theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW fail'));
-            });
-        }
-    </script>
 
     <div class="header-container">
-        <div class="header-actions"><div style="width: 32px;"></div></div>
         <div class="app-brand">
             <svg class="app-logo" viewBox="0 0 24 24"><defs><linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:var(--accent-playing)" /><stop offset="100%" style="stop-color:var(--accent-finished)" /></linearGradient></defs><path d="M4 4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4H4ZM4 6H20V12H4V6ZM10.59 17.41L7 13.83L8.41 12.41L10.59 14.58L15.59 9.59L17 11L10.59 17.41Z" fill="url(#logo-grad)"/></svg>
             <h1>ZeraLog</h1>
         </div>
         <div class="header-actions">
-            <button class="btn-top" onclick="openBackupModal()">💾</button>
-            <button class="btn-top" onclick="openSettings()">⚙️</button>
+            <button class="btn-top" onclick="openModal('modal-backup-info')">💾</button>
+            <button class="btn-top" onclick="openModal('modal-settings')">⚙️</button>
         </div>
     </div>
 
@@ -113,20 +95,17 @@
     </div>
 
     <div id="tab-finished" class="tab-content">
-        <div class="category" id="finished-category">
-            <div class="category-header" onclick="toggleCollapse('finished-category')"><div class="cat-title-area"><span class="chevron">▼</span><h2>🏆 Sala de Troféus</h2></div></div>
-            <div class="game-list-wrapper"><ul class="game-list" id="list-finished-tab"></ul></div>
-        </div>
+        <div class="category"><h2>🏆 Sala de Troféus</h2><ul class="game-list" id="list-finished-tab"></ul></div>
     </div>
 
     <div id="tab-stats" class="tab-content">
         <div class="stats-grid">
-            <div class="stat-box"><span class="stat-num" id="stat-backlog" style="color: var(--accent-add);">0</span><span>Fila</span></div>
-            <div class="stat-box"><span class="stat-num" id="stat-finished-dash" style="color: var(--accent-finished);">0</span><span>Zerados</span></div>
-            <div class="stat-box"><span class="stat-num" id="stat-avg" style="color: var(--star-color);">0</span><span>Média</span></div>
+            <div class="stat-box"><span class="stat-num" id="stat-backlog">0</span><span>Fila</span></div>
+            <div class="stat-box"><span class="stat-num" id="stat-finished-dash">0</span><span>Zerados</span></div>
+            <div class="stat-box"><span class="stat-num" id="stat-avg">0</span><span>Média</span></div>
         </div>
-        <div class="chart-container"><canvas id="statusChart"></canvas></div>
-        <div class="achievements-grid" style="margin-top: 20px;">
+        <div style="height:200px; margin-bottom:20px"><canvas id="statusChart"></canvas></div>
+        <div class="achievements-grid">
             <div class="badge" id="ach-1">🐣<br>Primeiro Passo</div>
             <div class="badge" id="ach-5">🔥<br>Embalado</div>
             <div class="badge" id="ach-10">👑<br>Mestre</div>
@@ -134,29 +113,26 @@
         </div>
     </div>
 
-    <div id="undo-toast"><span id="undo-message"></span><button onclick="undoAction()" style="background:var(--accent-playing); padding:5px 10px; margin-left:10px; border-radius:5px; color:white; font-weight:bold;">Desfazer</button></div>
+    <div id="undo-toast"><span id="undo-message"></span><button onclick="undoAction()" style="background:var(--accent-playing); padding:5px 10px; color:white; border-radius:5px">Desfazer</button></div>
 
-    <dialog id="modal-welcome"><div class="modal-form" style="text-align:center"><h2>Bem-vindo! 🎮</h2><p>Organize seu backlog de forma simples.</p><div style="text-align:left; background:rgba(128,128,128,0.1); padding:15px; border-radius:8px; font-size:0.9em"><b>Dica:</b> Use o disquete (💾) para salvar seu backup. Se limpar o navegador, os dados somem!</div><button onclick="closeWelcome()" style="width:100%; padding:15px">Vamos começar!</button></div></dialog>
-    <dialog id="modal-backup-info"><div class="modal-form"><h3>💾 Backup</h3><button onclick="exportBackup()" style="background:var(--accent-finished); padding:12px">Baixar Arquivo .json</button><button onclick="document.getElementById('backup-input').click()" style="background:var(--card-bg); border:1px solid var(--border-color); color:var(--text-main); padding:12px">Restaurar Arquivo</button><input type="file" id="backup-input" style="display:none" onchange="importBackup(event)"><button onclick="closeModal('modal-backup-info')" class="btn-cancel">Fechar</button></div></dialog>
-    <dialog id="modal-settings"><div class="modal-form"><h3>⚙️ Configurações</h3><div style="display:flex; justify-content:space-between; align-items:center">Tema: <select id="theme-selector" onchange="changeTheme(this.value)"><option value="dark">Escuro</option><option value="light">Claro</option><option value="pink">Rosa</option><option value="dracula">Dracula</option></select></div><div style="display:flex; justify-content:space-between; align-items:center">Modo Compacto: <input type="checkbox" id="compact-toggle" onchange="toggleCompact(this.checked)"></div><button onclick="openFactoryReset()" style="background:var(--danger)">Apagar Tudo</button><button onclick="closeModal('modal-settings')">Fechar</button></div></dialog>
-    <dialog id="modal-game"><div class="modal-form"><h3>Novo Jogo</h3><input type="hidden" id="game-cat-id"><input type="text" id="game-title" placeholder="Nome do Jogo"><div style="display:flex; gap:10px"><input type="number" id="game-time-val" placeholder="Tempo" style="flex:2"><select id="game-time-unit" style="flex:1"><option value="h">h</option><option value="m">m</option></select></div><button onclick="saveGame()">Salvar</button><button onclick="closeModal('modal-game')" class="btn-cancel">Cancelar</button></div></dialog>
-    <dialog id="modal-rating"><div class="modal-form"><h3>Parabéns! 🎉</h3><input type="hidden" id="rating-game-id"><input type="number" id="game-rating" min="0" max="10" step="0.5" value="10"><button onclick="saveRating()">Dar Nota</button><button onclick="skipRating()">Pular</button></div></dialog>
-    <dialog id="modal-image"><div class="modal-form"><h3>Capa</h3><input type="hidden" id="edit-img-game-id"><div id="image-preview" style="height:150px; background:#000; display:flex; align-items:center; justify-content:center; font-size:3em">🎮</div><button onclick="searchCoverOnGoogle()">Buscar no Google</button><input type="file" id="edit-game-icon" accept="image/*" onchange="previewImageEdit(this)"><button onclick="saveEditedImage()">Salvar</button><button onclick="closeModal('modal-image')" class="btn-cancel">Fechar</button></div></dialog>
-    <dialog id="modal-factory-reset"><div class="modal-form"><h3>Apagar Tudo?</h3><input type="text" id="reset-confirm-input" placeholder="Digite APAGAR"><button onclick="confirmFactoryReset()" style="background:var(--danger)">Confirmar</button><button onclick="closeModal('modal-factory-reset')">Cancelar</button></div></dialog>
+    <!-- Modais -->
+    <dialog id="modal-welcome"><div class="modal-form" style="text-align:center"><h2>Bem-vindo! 🎮</h2><p>Tudo pronto para organizar seu backlog.</p><button onclick="closeWelcome()" style="width:100%; padding:15px">Vamos começar!</button></div></dialog>
+    <dialog id="modal-backup-info"><div class="modal-form"><h3>💾 Backup</h3><button onclick="exportBackup()">Baixar .json</button><button onclick="document.getElementById('backup-input').click()">Restaurar Backup</button><input type="file" id="backup-input" style="display:none" onchange="importBackup(event)"><button onclick="closeModal('modal-backup-info')">Fechar</button></div></dialog>
+    <dialog id="modal-settings"><div class="modal-form"><h3>⚙️ Configurações</h3>Tema: <select id="theme-selector" onchange="changeTheme(this.value)"><option value="dark">Escuro</option><option value="light">Claro</option><option value="pink">Rosa</option><option value="dracula">Dracula</option></select><button onclick="openFactoryReset()" style="background:var(--danger)">APAGAR TUDO</button><button onclick="closeModal('modal-settings')">Fechar</button></div></dialog>
+    <dialog id="modal-game"><div class="modal-form"><h3>Novo Jogo</h3><input type="hidden" id="game-cat-id"><input type="text" id="game-title" placeholder="Nome"><div style="display:flex;gap:10px"><input type="number" id="game-time-val" style="flex:2"><select id="game-time-unit" style="flex:1"><option value="h">h</option><option value="m">m</option></select></div><button onclick="saveGame()">Salvar</button><button onclick="closeModal('modal-game')">Cancelar</button></div></dialog>
+    <dialog id="modal-cat"><div class="modal-form"><h3>Nova Categoria</h3><input type="text" id="cat-name-input"><button onclick="saveCategory()">Salvar</button><button onclick="closeModal('modal-cat')">Fechar</button></div></dialog>
+    <dialog id="modal-rating"><div class="modal-form"><h3>Nota do Jogo</h3><input type="hidden" id="rating-game-id"><input type="number" id="game-rating" min="0" max="10" step="0.5" value="10"><button onclick="saveRating()">Salvar</button></div></dialog>
+    <dialog id="modal-image"><div class="modal-form"><h3>Capa</h3><input type="hidden" id="edit-img-game-id"><div id="image-preview" style="height:100px; background:#000; display:flex; align-items:center; justify-content:center">🎮</div><button onclick="searchCoverOnGoogle()">Google Imagens</button><input type="file" id="edit-game-icon" accept="image/*" onchange="previewImageEdit(this)"><button onclick="saveEditedImage()">Salvar</button><button onclick="closeModal('modal-image')">Fechar</button></div></dialog>
+    <dialog id="modal-factory-reset"><div class="modal-form"><h3>Confirmar?</h3><input type="text" id="reset-confirm-input" placeholder="Digite APAGAR"><button onclick="confirmFactoryReset()" style="background:var(--danger)">Confirmar</button></div></dialog>
 
     <script>
-        const defaultData = { settings: { sort: 'manual', compact: false }, categories: [{ id: 'c1', name: 'Geral' }], games: [] };
-        let appData = JSON.parse(localStorage.getItem('myBacklogData')) || defaultData;
-        let backupData = null; let toastTimeout = null; let chartInstance = null;
+        // --- CORE ENGINE ---
+        const initialData = { settings: { sort: 'manual', compact: false }, categories: [{ id: 'c1', name: 'Geral' }], games: [] };
+        let appData = JSON.parse(localStorage.getItem('myBacklogData')) || initialData;
+        let backupData = null; let chartInstance = null;
 
-        function saveData(renderNow = true) { localStorage.setItem('myBacklogData', JSON.stringify(appData)); if(renderNow) render(); }
-        function switchTab(id) { document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active')); document.getElementById('btn-tab-'+id).classList.add('active'); document.getElementById('tab-'+id).classList.add('active'); if(id === 'stats') updateStats(); }
+        function openModal(id) { document.getElementById(id).showModal(); }
         function closeModal(id) { document.getElementById(id).close(); }
-        function openCatModal() { document.getElementById('modal-cat').showModal(); }
-        function openSettings() { document.getElementById('modal-settings').showModal(); }
-        function openBackupModal() { document.getElementById('modal-backup-info').showModal(); }
-        function toggleCompact(v) { appData.settings.compact = v; document.body.classList.toggle('compact-mode', v); saveData(false); }
-        function changeTheme(t) { document.documentElement.setAttribute('data-theme', t); localStorage.setItem('zeralog_theme', t); }
 
         function render() {
             const container = document.getElementById('app-container');
@@ -168,8 +144,8 @@
             document.getElementById('count-finished').innerText = finished.length;
 
             if(playing.length > 0) {
-                const div = document.createElement('div'); div.className = 'category'; div.innerHTML = '<h2>🕹️ Jogando</h2><ul class="game-list"></ul>';
-                playing.forEach(g => div.querySelector('ul').appendChild(createEl(g)));
+                const div = document.createElement('div'); div.className = 'category'; div.innerHTML = '<h2>🕹️ Jogando Atualmente</h2><ul class="game-list"></ul>';
+                playing.forEach(g => div.querySelector('ul').appendChild(createGameEl(g)));
                 container.appendChild(div);
             }
 
@@ -177,42 +153,127 @@
                 const games = appData.games.filter(g => g.catId === c.id && !g.state);
                 const div = document.createElement('div'); div.className = 'category';
                 div.innerHTML = `<div class="category-header"><h2>${c.name}</h2><button onclick="openGameModal('${c.id}')">+ Jogo</button></div><ul class="game-list"></ul>`;
-                games.forEach(g => div.querySelector('ul').appendChild(createEl(g)));
+                games.forEach(g => div.querySelector('ul').appendChild(createGameEl(g)));
                 container.appendChild(div);
             });
 
-            finished.forEach(g => finishedList.appendChild(createEl(g)));
+            finished.forEach(g => finishedList.appendChild(createGameEl(g)));
         }
 
-        function createEl(g) {
+        function createGameEl(g) {
             const li = document.createElement('li'); li.className = 'game-item';
-            const img = g.image ? `<img src="${g.image}" class="game-icon" onclick="openImg('${g.id}')">` : `<div class="game-icon" onclick="openImg('${g.id}')">🎮</div>`;
-            li.innerHTML = `${img}<div class="game-info"><div class="game-title">${g.title}</div><div class="game-meta">${g.meta || ''} ${g.userRating ? '⭐'+g.userRating : ''}</div></div><div class="actions"><label><input type="checkbox" ${g.state==='playing'?'checked':''} onchange="toggle('${g.id}','playing')"> Jogando</label><label><input type="checkbox" ${g.state==='finished'?'checked':''} onchange="toggle('${g.id}','finished')"> Final</label></div><button onclick="del('${g.id}')" style="background:transparent; font-size:1.2em">🗑️</button>`;
+            const img = g.image ? `<img src="${g.image}" class="game-icon" onclick="openImgModal('${g.id}')">` : `<div class="game-icon" onclick="openImgModal('${g.id}')">🎮</div>`;
+            li.innerHTML = `
+                ${img}
+                <div class="game-info"><div class="game-title">${g.title}</div><div class="game-meta">${g.meta || ''} ${g.userRating ? '⭐'+g.userRating : ''}</div></div>
+                <div class="actions">
+                    <label><input type="checkbox" ${g.state==='playing'?'checked':''} onchange="toggleState('${g.id}','playing')"> Jogando</label>
+                    <label><input type="checkbox" ${g.state==='finished'?'checked':''} onchange="toggleState('${g.id}','finished')"> Final</label>
+                </div>
+                <button onclick="deleteGame('${g.id}')" style="background:transparent; font-size:1.2em">🗑️</button>
+            `;
             return li;
         }
 
-        function toggle(id, s) { 
+        function toggleState(id, s) {
             const g = appData.games.find(x => x.id === id);
             backupData = JSON.stringify(appData);
             if(s === 'finished' && g.state !== 'finished') {
                 document.getElementById('rating-game-id').value = id;
-                document.getElementById('modal-rating').showModal();
+                openModal('modal-rating');
             } else {
                 g.state = g.state === s ? null : s;
-                saveData();
-                showUndo();
+                saveAndRender();
             }
         }
 
+        function saveAndRender() { localStorage.setItem('myBacklogData', JSON.stringify(appData)); render(); }
+        
+        function switchTab(id) { 
+            document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById('btn-tab-'+id).classList.add('active');
+            document.getElementById('tab-'+id).classList.add('active');
+            if(id === 'stats') updateStats();
+        }
+
+        function openGameModal(id) { document.getElementById('game-cat-id').value = id; openModal('modal-game'); }
         function saveGame() {
             const t = document.getElementById('game-title').value;
-            const v = document.getElementById('game-time-val').value;
-            const u = document.getElementById('game-time-unit').value;
             if(!t) return;
-            appData.games.push({ id: 'g'+Date.now(), catId: document.getElementById('game-cat-id').value, title: t, meta: v+u, state: null, image: null });
-            saveData(); closeModal('modal-game');
+            appData.games.push({ 
+                id: 'g'+Date.now(), 
+                catId: document.getElementById('game-cat-id').value, 
+                title: t, 
+                meta: document.getElementById('game-time-val').value + document.getElementById('game-time-unit').value, 
+                state: null, image: null 
+            });
+            saveAndRender(); closeModal('modal-game');
+        }
+
+        function saveCategory() {
+            const n = document.getElementById('cat-name-input').value;
+            if(!n) return;
+            appData.categories.push({ id: 'c'+Date.now(), name: n });
+            saveAndRender(); closeModal('modal-cat');
         }
 
         function saveRating() {
             const g = appData.games.find(x => x.id === document.getElementById('rating-game-id').value);
-            g.state = 'finished'; g.use
+            g.state = 'finished'; g.userRating = document.getElementById('game-rating').value;
+            saveAndRender(); closeModal('modal-rating');
+        }
+
+        function deleteGame(id) { if(confirm('Excluir jogo?')) { backupData = JSON.stringify(appData); appData.games = appData.games.filter(x => x.id !== id); saveAndRender(); showUndo(); } }
+        function showUndo() { document.getElementById('undo-toast').classList.add('show'); setTimeout(() => document.getElementById('undo-toast').classList.remove('show'), 5000); }
+        function undoAction() { if(backupData) { appData = JSON.parse(backupData); saveAndRender(); document.getElementById('undo-toast').classList.remove('show'); } }
+
+        function changeTheme(t) { document.documentElement.setAttribute('data-theme', t); localStorage.setItem('zeralog_theme', t); }
+        function openImgModal(id) { document.getElementById('edit-img-game-id').value = id; openModal('modal-image'); }
+        function previewImageEdit(i) {
+            const r = new FileReader(); r.onload = (e) => document.getElementById('image-preview').innerHTML = `<img src="${e.target.result}" style="height:100%">`;
+            r.readAsDataURL(i.files[0]);
+        }
+        function saveEditedImage() {
+            const g = appData.games.find(x => x.id === document.getElementById('edit-img-game-id').value);
+            const i = document.getElementById('edit-game-icon').files[0];
+            if(i) { const r = new FileReader(); r.onload = (e) => { g.image = e.target.result; saveAndRender(); closeModal('modal-image'); }; r.readAsDataURL(i); }
+        }
+
+        function exportBackup() {
+            const blob = new Blob([JSON.stringify(appData)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'zeralog_backup.json'; a.click();
+        }
+        function importBackup(e) {
+            const f = e.target.files[0]; if(!f) return;
+            const r = new FileReader(); r.onload = (ex) => { appData = JSON.parse(ex.target.result); saveAndRender(); }; r.readAsText(f);
+        }
+
+        function updateStats() {
+            const f = appData.games.filter(g => g.state === 'finished');
+            document.getElementById('stat-backlog').innerText = appData.games.length - f.length;
+            document.getElementById('stat-finished-dash').innerText = f.length;
+            const r = f.filter(g => g.userRating).map(g => parseFloat(g.userRating));
+            document.getElementById('stat-avg').innerText = r.length ? (r.reduce((a,b)=>a+b,0)/r.length).toFixed(1) : '0';
+            
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            if(chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: ['Fila', 'Zerados'], datasets: [{ data: [appData.games.length - f.length, f.length], backgroundColor: ['#ff9800', '#4caf50'] }] }, options: { maintainAspectRatio: false } });
+        }
+
+        function spinRoulette() {
+            const pool = appData.games.filter(g => g.state !== 'finished');
+            if(!pool.length) return alert('Lista vazia!');
+            const win = pool[Math.floor(Math.random()*pool.length)];
+            alert('Sua missão: ' + win.title);
+        }
+
+        function closeWelcome() { localStorage.setItem('zeralog_welcomed', 'true'); closeModal('modal-welcome'); }
+        function openFactoryReset() { openModal('modal-factory-reset'); }
+        function confirmFactoryReset() { if(document.getElementById('reset-confirm-input').value === 'APAGAR') { localStorage.clear(); location.reload(); } }
+
+        render();
+        if(!localStorage.getItem('zeralog_welcomed')) openModal('modal-welcome');
+    </script>
+</body>
+</html>
