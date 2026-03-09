@@ -174,6 +174,19 @@
 <body>
 
     <script>
+        // RESET DE EMERGÊNCIA (Coloque no topo do seu script)
+(function() {
+    try {
+        // Se o dado no LocalStorage estiver quebrado, ele limpa e recarrega
+        const testData = localStorage.getItem('myBacklogData');
+        if (testData) JSON.parse(testData); 
+    } catch (e) {
+        console.error("Dados corrompidos detectados. Resetando...");
+        localStorage.removeItem('myBacklogData');
+        location.reload();
+    }
+})();
+
         const savedTheme = localStorage.getItem('zeralog_theme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
         
