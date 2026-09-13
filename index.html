@@ -5,14 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ZeraLog</title>
     
+    <!-- Link para o Manifest (PWA) -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#121212">
     
+    <!-- Bibliotecas Externas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
+    <!-- Seu novo arquivo CSS isolado -->
     <link rel="stylesheet" href="style.css">
     
+    <!-- Script inline mantido no head para evitar que a tela pisque branco no tema escuro -->
     <script>
         const savedTheme = localStorage.getItem('zeralog_theme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
@@ -28,6 +32,7 @@
         </div>
     </div>
 
+    <!-- Header -->
     <div class="header-container">
         <div class="header-actions"><div style="width: 32px;"></div></div>
         <div class="app-brand">
@@ -43,9 +48,11 @@
         </div>
     </div>
 
+    <!-- Search & Tabs -->
     <div class="search-container"><span style="font-size: 1.2em;">🔍</span><input type="text" id="search-bar" placeholder="Buscar jogo na lista..." onkeyup="filterGames()"></div>
     
     <div class="platform-filter" id="platform-chips-container">
+        <!-- Gerado dinamicamente via JS -->
     </div>
 
     <div class="tabs">
@@ -54,6 +61,7 @@
         <button class="tab-btn" id="btn-tab-stats" onclick="switchTab('stats')">📊 Status</button>
     </div>
 
+    <!-- HOME TAB -->
     <div id="tab-home" class="tab-content active">
         <button class="btn-roulette" onclick="spinRoulette()">🎲 Sortear: O que jogar agora?</button>
         
@@ -68,6 +76,7 @@
         <button class="btn-add-cat" onclick="openCatModal()">+ Adicionar Categoria</button>
     </div>
 
+    <!-- FINISHED TAB -->
     <div id="tab-finished" class="tab-content">
         <div class="sort-bar">
             <div class="sort-chip" id="sort-fin-date" onclick="setFinishedSort('date')">📅 Data</div>
@@ -110,8 +119,10 @@
         </div>
     </div>
 
+    <!-- Toast Undo -->
     <div id="undo-toast"><span id="undo-message">Ação realizada.</span><button class="btn-undo" onclick="undoAction()">Desfazer</button></div>
 
+    <!-- Modais do Sistema -->
     <dialog id="modal-welcome">
         <div class="modal-form" style="text-align: center;">
             <h2 style="margin-top: 0; color: var(--accent-playing);">Bem-vindo ao ZeraLog! 🎮</h2>
@@ -269,4 +280,49 @@
             </div>
 
             <label style="font-size: 0.9em; color: var(--text-muted); margin-top: 5px; display: block;">Mini Review (Max 150 carac.):</label>
-            <textarea id="game-review-text" row
+            <textarea id="game-review-text" rows="3" maxlength="150" placeholder="Resuma a experiência..." style="width: 100%; box-sizing: border-box; resize: none;"></textarea>
+            
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(33, 150, 243, 0.1); padding: 10px; border-radius: 8px;">
+                <input type="checkbox" id="game-is-portable" style="width: 22px; height: 22px; accent-color: var(--accent-playing);">
+                <label for="game-is-portable" style="font-weight: bold; cursor: pointer;">🎒 Ideal para Portáteis</label>
+            </div>
+
+            <div class="modal-actions"><button class="btn-cancel" onclick="cancelRating()">Cancelar</button><button class="btn-cancel" onclick="skipRating()">Pular Nota</button><button onclick="saveRating()">Salvar Nota</button></div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-edit-finished">
+        <div class="modal-form">
+            <h3 style="margin-top: 0;">Editar Conclusão</h3>
+            <p id="edit-fin-game-name" style="margin: 0; font-weight: bold;"></p>
+            <input type="hidden" id="edit-fin-game-id">
+            
+            <label style="font-size: 0.9em; color: var(--text-muted);">Nota (0 a 10):</label>
+            <input type="number" id="edit-fin-rating" min="0" max="10" step="0.5">
+            
+            <label style="font-size: 0.9em; color: var(--text-muted);">Data (Ex: 08/03/2026):</label>
+            <input type="text" id="edit-fin-date">
+            
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(128,128,128,0.1); padding: 10px; border-radius: 8px;">
+                <input type="checkbox" id="edit-fin-100" style="width: 22px; height: 22px; accent-color: var(--star-color);">
+                <label for="edit-fin-100" style="font-weight: bold; cursor: pointer;">Fiz 100% (Platina/Mil)</label>
+            </div>
+
+            <label style="font-size: 0.9em; color: var(--text-muted); margin-top: 5px; display: block;">Mini Review (Max 150 carac.):</label>
+            <textarea id="edit-fin-review" rows="3" maxlength="150" style="width: 100%; box-sizing: border-box; resize: none;"></textarea>
+            
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(33, 150, 243, 0.1); padding: 10px; border-radius: 8px;">
+                <input type="checkbox" id="edit-fin-portable" style="width: 22px; height: 22px; accent-color: var(--accent-playing);">
+                <label for="edit-fin-portable" style="font-weight: bold; cursor: pointer;">🎒 Ideal para Portáteis</label>
+            </div>
+
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-edit-finished')">Cancelar</button><button onclick="saveFinishedEdit()">Salvar Alterações</button></div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-image"><div class="modal-form"><h3 style="margin-top: 0; margin-bottom: 0;">Editar Capa</h3><p style="font-size: 0.85em; color: var(--text-muted); margin-top: 0;" id="edit-game-name"></p><input type="hidden" id="edit-img-game-id"><div id="image-preview" class="image-preview-box" style="text-align:center; font-size:3em; margin: 10px 0;">🎮</div><button type="button" class="btn-search-google" style="background-color: var(--google-blue); width:100%;" onclick="searchCoverOnGoogle()">🔍 Buscar Capa no Google</button><div style="position: relative; overflow: hidden; display: block; width: 100%;"><span class="btn-upload" style="background-color: var(--bg-color); color: var(--text-main); display: block; text-align: center; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: bold; width: 100%; margin-top: 10px;">➕ Escolher Foto</span><input type="file" id="edit-game-icon" accept="image/*" style="font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%;" onchange="previewImageEdit(this)"></div><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-image')">Cancelar</button><button onclick="saveEditedImage()">Salvar</button></div></div></dialog>
+
+    <!-- O Módulo Maestro -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
