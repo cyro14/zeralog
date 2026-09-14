@@ -134,22 +134,6 @@ async function fetchViaBackupProxy(query, apiKey, titleInput) {
     }
 }
 
-function convertImageUrlToDataURL(url, callback) {
-    const proxyUrl = "https://corsproxy.io/?s=" + encodeURIComponent(url);
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = function() {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        callback(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => callback(url);
-    img.src = proxyUrl;
-}
-
 export function updateQuickLinks() {
     // Função auxiliar apenas para evitar o erro de referência ao digitar no input
 }
