@@ -73,6 +73,21 @@ export function getSortedGames(gamesArray, sortType, isFinishedTab = false) {
         let vA = a.isPortable ? 1 : 0; let vB = b.isPortable ? 1 : 0;
         return (vA - vB) * mult;
     });
+    if (sort === 'progress') {
+        return arr.sort((a, b) => {
+            let totalA = parseFloat((a.meta || '0').replace(',', '.')) || 1;
+            if (a.meta && a.meta.includes('m')) totalA /= 60;
+            let playedA = parseFloat(a.hoursPlayed || 0);
+            let pctA = totalA > 0 ? (playedA / totalA) : 0;
+
+            let totalB = parseFloat((b.meta || '0').replace(',', '.')) || 1;
+            if (b.meta && b.meta.includes('m')) totalB /= 60;
+            let playedB = parseFloat(b.hoursPlayed || 0);
+            let pctB = totalB > 0 ? (playedB / totalB) : 0;
+
+            return (pctB - pctA) * mult;
+        });
+    }
     return arr;
 }
 
@@ -265,6 +280,45 @@ export function createGameElement(game) {
         if (game.userRating) metaDisplay += `<span class="user-rating">🌟 ${game.userRating}/10</span>`;
         if (game.dateFinished) metaDisplay += `<span class="date-finished">📅 ${game.dateFinished}</span>`;
     }
+
+    // Cálculo de quanto falta
+    let progressText = '';
+    if (game.meta && game.hoursPlayed) {
+        let total = parseFloat(game.meta.replace(',', '.')) || 0;
+        if (game.meta.includes('m')) total /= 60;
+        let played = parseFloat(game.hoursPlayed) || 0;
+        let restante = total - played;
+        if (restante > 0) {
+            progressText = `<span>⏳ Faltam aprox. ${restante.toFixed(1)}h</span>`;
+        } else {
+            progressText = `<span>🎯 Meta atingida!</span>`;
+        }
+    }
+
+    let metaDisplay = `<span style="display:flex; align-items:center; gap:4px; white-space:nowrap;">${platObj.icon} <span>${platObj.name}</span></span>`;
+    if (game.meta) metaDisplay += `<span>⏱️ Total: ${game.meta}</span>`;
+    if (game.hoursPlayed) metaDisplay += `<span>🎮 Jogado: ${game.hoursPlayed}h</span>`;
+    if (progressText) metaDisplay += progressText;
+    if (game.isPortable) metaDisplay += `<span style="color: #fff; background: var(--accent-playing); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em;">🎒 Portátil</span>`;
+
+    // Bloco do Diário de Bordo se houver anotação
+    let journalDisplay = '';
+    if (game.journalNotes && game.state !== 'finished') {
+        journalDisplay = `<div style="font-size: 0.85em; color: var(--accent-add); margin-top: 6px; background: rgba(255,152,0,0.1); padding: 6px 10px; border-radius: 6px; border-left: 3px solid var(--accent-add); width: 100%; box-sizing: border-box;">📖 <strong>Diário:</strong> ${game.journalNotes}</div>`;
+    }
+
+    li.innerHTML = `
+        <div class="game-title" style="width: 100%; text-align: left; margin-bottom: 8px; font-size: 1.15em; white-space: normal;">${game.title}</div>
+        <div style="display: flex; width: 100%; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px; flex-grow: 1;">
+                ${imgContent}
+                <div class="actions" style="margin-right: 10px; min-width: 80px;"><label><input type="checkbox" class="chk-playing" onchange="toggleState('${game.id}', 'playing')" ${isPlaying}> Jogando</label><label><input type="checkbox" class="chk-finished" onchange="toggleState('${game.id}', 'finished')" ${isFinished}> Final</label></div>
+                <div class="game-info" style="flex-grow: 1;"><div class="game-meta" style="margin-top: 0;">${metaDisplay}</div></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">${editBtn}<button class="btn-icon btn-delete" onclick="askDeleteGame('${game.id}')" title="Remover Jogo">🗑️</button></div>
+        </div>
+        ${journalDisplay}
+    `;
 
     let editBtn = game.state === 'finished' ? `<button class="btn-icon" onclick="openCardGenerator('${game.id}')" title="Compartilhar Status">📤</button><button class="btn-icon" onclick="openEditFinishedModal('${game.id}')" title="Editar Conclusão">✏️</button>` : `<button class="btn-icon" onclick="openEditGameModal('${game.id}')" title="Editar Informações">✏️</button>`;
 
