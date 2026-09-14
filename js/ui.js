@@ -65,28 +65,34 @@ export async function fetchGameFromRAWG() {
     triggerToast('Buscando na base de dados...');
     const apiKey = '3b86001a1d824d5483d650117036d0b1';
     
-    // Usando corsproxy.io para burlar o bloqueio de domínios da RAWG
     const targetUrl = `https://api.rawg.io/api/games?search=${encodeURIComponent(query)}&key=${apiKey}&page_size=1`;
-    const proxyUrl = `https://corsproxy.io/?s=${encodeURIComponent(targetUrl)}`;
+    // Usando o allorigins.win que lida perfeitamente com JSON externo sem travar CORS
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
     
     try {
         const response = await fetch(proxyUrl);
-        const data = await response.json();
+        const dataWrapper = await response.json();
         
-        if (data.results && data.results.length > 0) {
-            const gameData = data.results[0];
-            titleInput.value = gameData.name;
+        if (dataWrapper.contents) {
+            const data = JSON.parse(dataWrapper.contents);
             
-            if (gameData.background_image) {
-                convertImageUrlToDataURL(gameData.background_image, (base64Img) => {
-                    window.fetchedGameCover = base64Img;
-                    triggerToast(`Encontrado: ${gameData.name} + Capa carregada!`);
-                });
+            if (data.results && data.results.length > 0) {
+                const gameData = data.results[0];
+                titleInput.value = gameData.name;
+                
+                if (gameData.background_image) {
+                    convertImageUrlToDataURL(gameData.background_image, (base64Img) => {
+                        window.fetchedGameCover = base64Img;
+                        triggerToast(`Encontrado: ${gameData.name} + Capa carregada!`);
+                    });
+                } else {
+                    triggerToast(`Encontrado: ${gameData.name} (Sem capa)`);
+                }
             } else {
-                triggerToast(`Encontrado: ${gameData.name} (Sem capa)`);
+                alert('Nenhum jogo encontrado com esse nome.');
             }
         } else {
-            alert('Nenhum jogo encontrado com esse nome.');
+            alert('Erro ao processar resposta da API.');
         }
     } catch (err) {
         console.error(err);
