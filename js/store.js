@@ -7,7 +7,7 @@ export const defaultPlatformsIcons = {
     'Mobile': '📱'
 };
 
-export const homeSortLabels = { 'manual': '🖐️ Manual', 'az': '🔤 A-Z', 'time': '⏱️ Tempo', 'portable': '🎒 Portátil' };
+export const homeSortLabels = { 'manual': '🖐️ Manual', 'az': '🔤 A-Z', 'time': '⏱️ Tempo', 'portable': '🎒 Portátil' , 'progress': '🎯 Progresso'};
 export const sortLabels = { 'date': '📅 Data', 'rating': '🌟 Nota', 'time': '⏱️ Tempo', 'portable': '🎒 Portátil' };
 
 export const defaultData = {
