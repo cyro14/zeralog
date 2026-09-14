@@ -420,6 +420,8 @@ export function openEditGameModal(gameId) {
     document.getElementById('edit-game-id').value = gameId;
     document.getElementById('game-cat-id').value = game.catId;
     document.getElementById('game-title').value = game.title;
+    document.getElementById('game-hours-played').value = game.hoursPlayed || '';
+    document.getElementById('game-journal-notes').value = game.journalNotes || '';
     document.getElementById('game-is-portable-backlog').checked = game.isPortable || false;
     
     const select = document.getElementById('game-platform');
@@ -448,6 +450,8 @@ export function saveGame() {
     const platform = document.getElementById('game-platform').value;
     const timeVal = document.getElementById('game-time-val').value;
     const timeUnit = document.getElementById('game-time-unit').value;
+    const hoursPlayed = document.getElementById('game-hours-played').value;
+    const journalNotes = document.getElementById('game-journal-notes').value;
     const isPortable = document.getElementById('game-is-portable-backlog').checked;
     
     if(!title) return;
@@ -456,9 +460,21 @@ export function saveGame() {
 
     if (gameId) {
         const game = appData.games.find(g => g.id === gameId);
-        if (game) { game.title = title; game.platform = platform; game.meta = meta; game.isPortable = isPortable; }
+        if (game) { 
+            game.title = title; 
+            game.platform = platform; 
+            game.meta = meta; 
+            game.hoursPlayed = hoursPlayed;
+            game.journalNotes = journalNotes;
+            game.isPortable = isPortable; 
+        }
     } else {
-        appData.games.push({ id: 'g' + Date.now(), catId: catId, title: title, platform: platform, meta: meta, state: null, image: null, userRating: null, dateFinished: null, is100: false, review: '', isPortable: isPortable });
+        appData.games.push({ 
+            id: 'g' + Date.now(), catId: catId, title: title, platform: platform, 
+            meta: meta, hoursPlayed: hoursPlayed, journalNotes: journalNotes, 
+            state: null, image: null, userRating: null, dateFinished: null, 
+            is100: false, review: '', isPortable: isPortable 
+        });
     }
     closeModal('modal-game'); saveData(() => render()); triggerToast(gameId ? 'Informações atualizadas.' : 'Jogo adicionado.');
 }
