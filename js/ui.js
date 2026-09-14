@@ -254,8 +254,25 @@ export function createGameElement(game) {
     let imgContent = game.image ? `<img src="${game.image}" class="game-icon" style="width: 75px; height: 75px; min-width: 75px;" onclick="openImageModal('${game.id}')" title="Trocar Capa">` : `<div class="game-icon" style="width: 75px; height: 75px; min-width: 75px;" onclick="openImageModal('${game.id}')" title="Adicionar Capa">🎮</div>`;
     const platObj = appData.platforms.find(p => p.name === game.platform) || { icon: '🎮', name: game.platform };
 
+    // Cálculo de quanto falta
+    let progressText = '';
+    if (game.meta && game.hoursPlayed) {
+        let total = parseFloat(game.meta.replace(',', '.')) || 0;
+        if (game.meta.includes('m')) total /= 60;
+        let played = parseFloat(game.hoursPlayed) || 0;
+        let restante = total - played;
+        if (restante > 0) {
+            progressText = `<span>⏳ Faltam aprox. ${restante.toFixed(1)}h</span>`;
+        } else {
+            progressText = `<span>🎯 Meta atingida!</span>`;
+        }
+    }
+
+    // Declaração única da variável metaDisplay
     let metaDisplay = `<span style="display:flex; align-items:center; gap:4px; white-space:nowrap;">${platObj.icon} <span>${platObj.name}</span></span>`;
-    if (game.meta) metaDisplay += `<span>⏱️ ${game.meta}</span>`;
+    if (game.meta) metaDisplay += `<span>⏱️ Total: ${game.meta}</span>`;
+    if (game.hoursPlayed) metaDisplay += `<span>🎮 Jogado: ${game.hoursPlayed}h</span>`;
+    if (progressText) metaDisplay += progressText;
     if (game.isPortable) metaDisplay += `<span style="color: #fff; background: var(--accent-playing); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em;">🎒 Portátil</span>`;
     
     if (game.state === 'finished') {
@@ -268,6 +285,12 @@ export function createGameElement(game) {
 
     let editBtn = game.state === 'finished' ? `<button class="btn-icon" onclick="openCardGenerator('${game.id}')" title="Compartilhar Status">📤</button><button class="btn-icon" onclick="openEditFinishedModal('${game.id}')" title="Editar Conclusão">✏️</button>` : `<button class="btn-icon" onclick="openEditGameModal('${game.id}')" title="Editar Informações">✏️</button>`;
 
+    // Bloco do Diário de Bordo se houver anotação
+    let journalDisplay = '';
+    if (game.journalNotes && game.state !== 'finished') {
+        journalDisplay = `<div style="font-size: 0.85em; color: var(--accent-add); margin-top: 6px; background: rgba(255,152,0,0.1); padding: 6px 10px; border-radius: 6px; border-left: 3px solid var(--accent-add); width: 100%; box-sizing: border-box;">📖 <strong>Diário:</strong> ${game.journalNotes}</div>`;
+    }
+
     li.innerHTML = `
         <div class="game-title" style="width: 100%; text-align: left; margin-bottom: 8px; font-size: 1.15em; white-space: normal;">${game.title}</div>
         <div style="display: flex; width: 100%; align-items: center; justify-content: space-between;">
@@ -278,6 +301,7 @@ export function createGameElement(game) {
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px;">${editBtn}<button class="btn-icon btn-delete" onclick="askDeleteGame('${game.id}')" title="Remover Jogo">🗑️</button></div>
         </div>
+        ${journalDisplay}
     `;
     return li;
 }
