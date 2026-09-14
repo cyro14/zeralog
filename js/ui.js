@@ -54,6 +54,7 @@ export function switchTab(tabId) {
 // Variável temporária para armazenar a capa puxada da API durante o cadastro
 export let fetchedGameCover = null;
 
+// ================= BUSCA AUTOMÁTICA DA RAWG =================
 export async function fetchGameFromRAWG() {
     const titleInput = document.getElementById('game-title');
     const query = titleInput.value.trim();
@@ -64,23 +65,18 @@ export async function fetchGameFromRAWG() {
     
     triggerToast('Buscando na base de dados...');
     const apiKey = '3b86001a1d824d5483d650117036d0b1';
-    
-    // Tentativa direta com a API da RAWG
     const targetUrl = `https://api.rawg.io/api/games?search=${encodeURIComponent(query)}&key=${apiKey}&page_size=1`;
     
     try {
         const response = await fetch(targetUrl);
-        
-        // Verifica se a resposta veio em formato de texto comum antes de parsear
         const textResponse = await response.text();
         
         if (!textResponse.startsWith('{')) {
-            throwOopError("A API retornou uma resposta inválida (bloqueio de rede).");
+            fetchViaBackupProxy(query, apiKey, titleInput);
             return;
         }
         
         const data = JSON.parse(textResponse);
-        
         if (data.results && data.results.length > 0) {
             const gameData = data.results[0];
             titleInput.value = gameData.name;
@@ -97,8 +93,6 @@ export async function fetchGameFromRAWG() {
             alert('Nenhum jogo encontrado com esse nome.');
         }
     } catch (err) {
-        console.warn("Busca direta bloqueada por CORS, tentando via proxy secundário...");
-        // Fallback seguro caso o navegador bloqueie por CORS direto
         fetchViaBackupProxy(query, apiKey, titleInput);
     }
 }
@@ -134,11 +128,7 @@ async function fetchViaBackupProxy(query, apiKey, titleInput) {
     }
 }
 
-export function updateQuickLinks() {
-    // Função auxiliar apenas para evitar o erro de referência ao digitar no input
-}
-
-// Auxiliar para converter URL da capa em Base64 seguro para o LocalStorage e Html2Canvas
+// conversão de imagem
 function convertImageUrlToDataURL(url, callback) {
     const proxyUrl = "https://corsproxy.io/?s=" + encodeURIComponent(url);
     const img = new Image();
@@ -153,6 +143,10 @@ function convertImageUrlToDataURL(url, callback) {
     };
     img.onerror = () => callback(url);
     img.src = proxyUrl;
+}
+
+export function updateQuickLinks() {
+    // Função de suporte para links rápidos do input de título
 }
 
 // ================= RENDERIZAÇÃO E LISTAS =================
