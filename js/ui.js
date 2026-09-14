@@ -269,18 +269,6 @@ export function createGameElement(game) {
     let imgContent = game.image ? `<img src="${game.image}" class="game-icon" style="width: 75px; height: 75px; min-width: 75px;" onclick="openImageModal('${game.id}')" title="Trocar Capa">` : `<div class="game-icon" style="width: 75px; height: 75px; min-width: 75px;" onclick="openImageModal('${game.id}')" title="Adicionar Capa">🎮</div>`;
     const platObj = appData.platforms.find(p => p.name === game.platform) || { icon: '🎮', name: game.platform };
 
-    let metaDisplay = `<span style="display:flex; align-items:center; gap:4px; white-space:nowrap;">${platObj.icon} <span>${platObj.name}</span></span>`;
-    if (game.meta) metaDisplay += `<span>⏱️ ${game.meta}</span>`;
-    if (game.isPortable) metaDisplay += `<span style="color: #fff; background: var(--accent-playing); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em;">🎒 Portátil</span>`;
-    
-    if (game.state === 'finished') {
-        const originCat = appData.categories.find(c => c.id === game.catId);
-        if (originCat) metaDisplay += `<span class="cat-tag-badge">📂 ${originCat.name}</span>`;
-        if (game.is100) metaDisplay += `<span style="color: var(--star-color); font-weight: bold; background: rgba(255, 215, 0, 0.1); padding: 2px 6px; border-radius: 4px;">💎 100%</span>`;
-        if (game.userRating) metaDisplay += `<span class="user-rating">🌟 ${game.userRating}/10</span>`;
-        if (game.dateFinished) metaDisplay += `<span class="date-finished">📅 ${game.dateFinished}</span>`;
-    }
-
     // Cálculo de quanto falta
     let progressText = '';
     if (game.meta && game.hoursPlayed) {
@@ -295,11 +283,22 @@ export function createGameElement(game) {
         }
     }
 
+    // Declaração única da variável metaDisplay
     let metaDisplay = `<span style="display:flex; align-items:center; gap:4px; white-space:nowrap;">${platObj.icon} <span>${platObj.name}</span></span>`;
     if (game.meta) metaDisplay += `<span>⏱️ Total: ${game.meta}</span>`;
     if (game.hoursPlayed) metaDisplay += `<span>🎮 Jogado: ${game.hoursPlayed}h</span>`;
     if (progressText) metaDisplay += progressText;
     if (game.isPortable) metaDisplay += `<span style="color: #fff; background: var(--accent-playing); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em;">🎒 Portátil</span>`;
+    
+    if (game.state === 'finished') {
+        const originCat = appData.categories.find(c => c.id === game.catId);
+        if (originCat) metaDisplay += `<span class="cat-tag-badge">📂 ${originCat.name}</span>`;
+        if (game.is100) metaDisplay += `<span style="color: var(--star-color); font-weight: bold; background: rgba(255, 215, 0, 0.1); padding: 2px 6px; border-radius: 4px;">💎 100%</span>`;
+        if (game.userRating) metaDisplay += `<span class="user-rating">🌟 ${game.userRating}/10</span>`;
+        if (game.dateFinished) metaDisplay += `<span class="date-finished">📅 ${game.dateFinished}</span>`;
+    }
+
+    let editBtn = game.state === 'finished' ? `<button class="btn-icon" onclick="openCardGenerator('${game.id}')" title="Compartilhar Status">📤</button><button class="btn-icon" onclick="openEditFinishedModal('${game.id}')" title="Editar Conclusão">✏️</button>` : `<button class="btn-icon" onclick="openEditGameModal('${game.id}')" title="Editar Informações">✏️</button>`;
 
     // Bloco do Diário de Bordo se houver anotação
     let journalDisplay = '';
@@ -318,20 +317,6 @@ export function createGameElement(game) {
             <div style="display: flex; flex-direction: column; gap: 8px;">${editBtn}<button class="btn-icon btn-delete" onclick="askDeleteGame('${game.id}')" title="Remover Jogo">🗑️</button></div>
         </div>
         ${journalDisplay}
-    `;
-
-    let editBtn = game.state === 'finished' ? `<button class="btn-icon" onclick="openCardGenerator('${game.id}')" title="Compartilhar Status">📤</button><button class="btn-icon" onclick="openEditFinishedModal('${game.id}')" title="Editar Conclusão">✏️</button>` : `<button class="btn-icon" onclick="openEditGameModal('${game.id}')" title="Editar Informações">✏️</button>`;
-
-    li.innerHTML = `
-        <div class="game-title" style="width: 100%; text-align: left; margin-bottom: 8px; font-size: 1.15em; white-space: normal;">${game.title}</div>
-        <div style="display: flex; width: 100%; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 12px; flex-grow: 1;">
-                ${imgContent}
-                <div class="actions" style="margin-right: 10px; min-width: 80px;"><label><input type="checkbox" class="chk-playing" onchange="toggleState('${game.id}', 'playing')" ${isPlaying}> Jogando</label><label><input type="checkbox" class="chk-finished" onchange="toggleState('${game.id}', 'finished')" ${isFinished}> Final</label></div>
-                <div class="game-info" style="flex-grow: 1;"><div class="game-meta" style="margin-top: 0;">${metaDisplay}</div></div>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">${editBtn}<button class="btn-icon btn-delete" onclick="askDeleteGame('${game.id}')" title="Remover Jogo">🗑️</button></div>
-        </div>
     `;
     return li;
 }
