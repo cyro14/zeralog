@@ -205,7 +205,14 @@
                     <option value="m">Minutos</option>
                 </select>
             </div>
-            
+            <div style="flex: 1;">
+                <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Horas Jogadas (Atual):</label>
+                <input type="number" id="game-hours-played" placeholder="Ex: 10" min="0" step="0.5" style="width: 100%; box-sizing: border-box; margin-top: 5px;">
+            </div>
+        </div>
+
+        <label style="font-size: 0.85em; color: var(--text-muted); margin-top: 5px;">📖 Diário de Bordo (Onde parei):</label>
+        <textarea id="game-journal-notes" rows="3" placeholder="Ex: Parei no Templo da Água, falta achar a chave..." style="width: 100%; box-sizing: border-box; resize: none;"></textarea>
             <div style="display: flex; align-items: center; gap: 10px; background: rgba(33, 150, 243, 0.1); padding: 10px; border-radius: 8px;">
                 <input type="checkbox" id="game-is-portable-backlog" style="width: 22px; height: 22px; accent-color: var(--accent-playing);">
                 <label for="game-is-portable-backlog" style="font-weight: bold; cursor: pointer;">🎒 Ideal para Portáteis</label>
