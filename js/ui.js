@@ -65,39 +65,89 @@ export async function fetchGameFromRAWG() {
     triggerToast('Buscando na base de dados...');
     const apiKey = '3b86001a1d824d5483d650117036d0b1';
     
+    // Tentativa direta com a API da RAWG
     const targetUrl = `https://api.rawg.io/api/games?search=${encodeURIComponent(query)}&key=${apiKey}&page_size=1`;
-    // Usando o allorigins.win que lida perfeitamente com JSON externo sem travar CORS
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
     
     try {
-        const response = await fetch(proxyUrl);
-        const dataWrapper = await response.json();
+        const response = await fetch(targetUrl);
         
-        if (dataWrapper.contents) {
-            const data = JSON.parse(dataWrapper.contents);
+        // Verifica se a resposta veio em formato de texto comum antes de parsear
+        const textResponse = await response.text();
+        
+        if (!textResponse.startsWith('{')) {
+            throwOopError("A API retornou uma resposta inválida (bloqueio de rede).");
+            return;
+        }
+        
+        const data = JSON.parse(textResponse);
+        
+        if (data.results && data.results.length > 0) {
+            const gameData = data.results[0];
+            titleInput.value = gameData.name;
             
-            if (data.results && data.results.length > 0) {
-                const gameData = data.results[0];
-                titleInput.value = gameData.name;
-                
-                if (gameData.background_image) {
-                    convertImageUrlToDataURL(gameData.background_image, (base64Img) => {
-                        window.fetchedGameCover = base64Img;
-                        triggerToast(`Encontrado: ${gameData.name} + Capa carregada!`);
-                    });
-                } else {
-                    triggerToast(`Encontrado: ${gameData.name} (Sem capa)`);
-                }
+            if (gameData.background_image) {
+                convertImageUrlToDataURL(gameData.background_image, (base64Img) => {
+                    window.fetchedGameCover = base64Img;
+                    triggerToast(`Encontrado: ${gameData.name} + Capa carregada!`);
+                });
             } else {
-                alert('Nenhum jogo encontrado com esse nome.');
+                triggerToast(`Encontrado: ${gameData.name} (Sem capa)`);
             }
         } else {
-            alert('Erro ao processar resposta da API.');
+            alert('Nenhum jogo encontrado com esse nome.');
         }
     } catch (err) {
-        console.error(err);
-        alert('Erro ao conectar com a API da RAWG.');
+        console.warn("Busca direta bloqueada por CORS, tentando via proxy secundário...");
+        // Fallback seguro caso o navegador bloqueie por CORS direto
+        fetchViaBackupProxy(query, apiKey, titleInput);
     }
+}
+
+async function fetchViaBackupProxy(query, apiKey, titleInput) {
+    try {
+        const targetUrl = `https://api.rawg.io/api/games?search=${encodeURIComponent(query)}&key=${apiKey}&page_size=1`;
+        const backupProxy = `https://corsproxy.io/?s=${encodeURIComponent(targetUrl)}`;
+        
+        const response = await fetch(backupProxy);
+        const text = await response.text();
+        
+        if (!text.startsWith('{')) {
+            alert('A base de dados recusou a busca no momento. Preencha o nome manualmente.');
+            return;
+        }
+        
+        const data = JSON.parse(text);
+        if (data.results && data.results.length > 0) {
+            const gameData = data.results[0];
+            titleInput.value = gameData.name;
+            if (gameData.background_image) {
+                convertImageUrlToDataURL(gameData.background_image, (base64Img) => {
+                    window.fetchedGameCover = base64Img;
+                    triggerToast(`Encontrado: ${gameData.name} + Capa carregada!`);
+                });
+            }
+        } else {
+            alert('Nenhum jogo encontrado.');
+        }
+    } catch (e) {
+        alert('Não foi possível conectar à base de dados externa. O modo manual continua funcionando normalmente!');
+    }
+}
+
+function convertImageUrlToDataURL(url, callback) {
+    const proxyUrl = "https://corsproxy.io/?s=" + encodeURIComponent(url);
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        callback(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => callback(url);
+    img.src = proxyUrl;
 }
 
 export function updateQuickLinks() {
