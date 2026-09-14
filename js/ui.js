@@ -63,28 +63,27 @@ export async function fetchGameFromRAWG() {
     }
     
     triggerToast('Buscando na base de dados...');
-    
-    // Chave pública de testes da API da RAWG
     const apiKey = '3b86001a1d824d5483d650117036d0b1';
     
+    // Usando corsproxy.io para burlar o bloqueio de domínios da RAWG
+    const targetUrl = `https://api.rawg.io/api/games?search=${encodeURIComponent(query)}&key=${apiKey}&page_size=1`;
+    const proxyUrl = `https://corsproxy.io/?s=${encodeURIComponent(targetUrl)}`;
+    
     try {
-        const response = await fetch(`https://api.rawg.io/api/games?search=${encodeURIComponent(query)}&key=${apiKey}&page_size=1`);
+        const response = await fetch(proxyUrl);
         const data = await response.json();
         
         if (data.results && data.results.length > 0) {
             const gameData = data.results[0];
-            
-            // Preenche com o nome oficial exato
             titleInput.value = gameData.name;
             
             if (gameData.background_image) {
-                // Carrega a imagem da capa via proxy/canvas para evitar bloqueios de CORS ao gerar o card depois
                 convertImageUrlToDataURL(gameData.background_image, (base64Img) => {
-                    fetchedGameCover = base64Img;
+                    window.fetchedGameCover = base64Img;
                     triggerToast(`Encontrado: ${gameData.name} + Capa carregada!`);
                 });
             } else {
-                triggerToast(`Encontrado: ${gameData.name} (Sem capa disponível)`);
+                triggerToast(`Encontrado: ${gameData.name} (Sem capa)`);
             }
         } else {
             alert('Nenhum jogo encontrado com esse nome.');
@@ -93,6 +92,10 @@ export async function fetchGameFromRAWG() {
         console.error(err);
         alert('Erro ao conectar com a API da RAWG.');
     }
+}
+
+export function updateQuickLinks() {
+    // Função auxiliar apenas para evitar o erro de referência ao digitar no input
 }
 
 // Auxiliar para converter URL da capa em Base64 seguro para o LocalStorage e Html2Canvas
