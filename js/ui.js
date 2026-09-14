@@ -51,6 +51,67 @@ export function switchTab(tabId) {
     else filterGames();
 }
 
+// Variável temporária para armazenar a capa puxada da API durante o cadastro
+export let fetchedGameCover = null;
+
+export async function fetchGameFromRAWG() {
+    const titleInput = document.getElementById('game-title');
+    const query = titleInput.value.trim();
+    if (!query) {
+        alert('Digite o nome do jogo primeiro para buscar!');
+        return;
+    }
+    
+    triggerToast('Buscando na base de dados...');
+    
+    // Chave pública de testes da API da RAWG
+    const apiKey = '3b86001a1d824d5483d650117036d0b1';
+    
+    try {
+        const response = await fetch(`https://api.rawg.io/api/games?search=${encodeURIComponent(query)}&key=${apiKey}&page_size=1`);
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+            const gameData = data.results[0];
+            
+            // Preenche com o nome oficial exato
+            titleInput.value = gameData.name;
+            
+            if (gameData.background_image) {
+                // Carrega a imagem da capa via proxy/canvas para evitar bloqueios de CORS ao gerar o card depois
+                convertImageUrlToDataURL(gameData.background_image, (base64Img) => {
+                    fetchedGameCover = base64Img;
+                    triggerToast(`Encontrado: ${gameData.name} + Capa carregada!`);
+                });
+            } else {
+                triggerToast(`Encontrado: ${gameData.name} (Sem capa disponível)`);
+            }
+        } else {
+            alert('Nenhum jogo encontrado com esse nome.');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Erro ao conectar com a API da RAWG.');
+    }
+}
+
+// Auxiliar para converter URL da capa em Base64 seguro para o LocalStorage e Html2Canvas
+function convertImageUrlToDataURL(url, callback) {
+    const proxyUrl = "https://corsproxy.io/?s=" + encodeURIComponent(url);
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        callback(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => callback(url);
+    img.src = proxyUrl;
+}
+
 // ================= RENDERIZAÇÃO E LISTAS =================
 export function getSortedGames(gamesArray, sortType, isFinishedTab = false) {
     const sort = sortType || (isFinishedTab ? appData.settings.finishedSort : appData.settings.sort); 
@@ -472,6 +533,8 @@ export function saveGame() {
     const platform = document.getElementById('game-platform').value;
     const timeVal = document.getElementById('game-time-val').value;
     const timeUnit = document.getElementById('game-time-unit').value;
+    const hoursPlayed = document.getElementById('game-hours-played').value;
+    const journalNotes = document.getElementById('game-journal-notes').value;
     const isPortable = document.getElementById('game-is-portable-backlog').checked;
     
     if(!title) return;
@@ -480,11 +543,28 @@ export function saveGame() {
 
     if (gameId) {
         const game = appData.games.find(g => g.id === gameId);
-        if (game) { game.title = title; game.platform = platform; game.meta = meta; game.isPortable = isPortable; }
+        if (game) { 
+            game.title = title; 
+            game.platform = platform; 
+            game.meta = meta; 
+            game.hoursPlayed = hoursPlayed;
+            game.journalNotes = journalNotes;
+            game.isPortable = isPortable; 
+            if (window.fetchedGameCover) {
+                game.image = window.fetchedGameCover;
+                window.fetchedGameCover = null;
+            }
+        }
     } else {
-        appData.games.push({ id: 'g' + Date.now(), catId: catId, title: title, platform: platform, meta: meta, state: null, image: null, userRating: null, dateFinished: null, is100: false, review: '', isPortable: isPortable });
+        appData.games.push({ 
+            id: 'g' + Date.now(), catId: catId, title: title, platform: platform, 
+            meta: meta, hoursPlayed: hoursPlayed, journalNotes: journalNotes, 
+            state: null, image: window.fetchedGameCover || null, userRating: null, dateFinished: null, 
+            is100: false, review: '', isPortable: isPortable 
+        });
+        window.fetchedGameCover = null;
     }
-    closeModal('modal-game'); saveData(() => render()); triggerToast(gameId ? 'Informações atualizadas.' : 'Jogo adicionado.');
+    closeModal('modal-game'); saveData(() => render()); triggerToast(gameId ? 'Informações atualizadas.' : 'Jogo adicionado com sucesso!');
 }
 
 export function askDeleteGame(gameId) { const game = appData.games.find(g => g.id === gameId); if(confirm(`Remover "${game.title}"?`)) { saveStateForUndo(); appData.games = appData.games.filter(g => g.id !== gameId); saveData(() => render()); triggerToast('Excluído.'); } }
