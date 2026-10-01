@@ -1,3 +1,4 @@
+import { searchGames, getGameDetails, coverToDataURL, esc, resizeUrl } from './gameApi.js';
 import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels } from './store.js';
 
 let toastTimeout = null;
@@ -51,102 +52,65 @@ export function switchTab(tabId) {
     else filterGames();
 }
 
-// Variável temporária para armazenar a capa puxada da API durante o cadastro
-export let fetchedGameCover = null;
+// ================= BUSCA AUTOMÁTICA (RAWG) =================
+let pendingCover = null;   // capa baixada, aguardando o "Salvar"
+let lastResults = [];
 
-// ================= BUSCA AUTOMÁTICA DA RAWG =================
+function updateCoverPreview(src) {
+    const el = document.getElementById('game-cover-preview');
+    el.innerHTML = src ? `<img src="${esc(src)}" alt="Capa">` : '';
+    el.style.display = src ? 'block' : 'none';
+}
+
+function resetAutoFill() {
+    pendingCover = null;
+    lastResults = [];
+    document.getElementById('rawg-results').innerHTML = '';
+    ['game-description', 'game-genres', 'game-released', 'game-metacritic', 'game-hours-played', 'game-journal-notes']
+        .forEach(id => document.getElementById(id).value = '');
+    document.getElementById('game-extra').open = false;
+    updateCoverPreview(null);
+}
+
 export async function fetchGameFromRAWG() {
-    const titleInput = document.getElementById('game-title');
-    const query = titleInput.value.trim();
-    if (!query) {
-        alert('Digite o nome do jogo primeiro para buscar!');
-        return;
-    }
-    
-    triggerToast('Buscando na base de dados...');
-    const apiKey = '3b86001a1d824d5483d650117036d0b1';
-    const targetUrl = `https://api.rawg.io/api/games?search=${encodeURIComponent(query)}&key=${apiKey}&page_size=1`;
-    
+    const query = document.getElementById('game-title').value.trim();
+    if (!query) { triggerToast('Digite o nome do jogo primeiro.'); return; }
+    const box = document.getElementById('rawg-results');
+    box.innerHTML = '<div class="rawg-msg">🔎 Buscando...</div>';
     try {
-        const response = await fetch(targetUrl);
-        const textResponse = await response.text();
-        
-        if (!textResponse.startsWith('{')) {
-            fetchViaBackupProxy(query, apiKey, titleInput);
-            return;
-        }
-        
-        const data = JSON.parse(textResponse);
-        if (data.results && data.results.length > 0) {
-            const gameData = data.results[0];
-            titleInput.value = gameData.name;
-            
-            if (gameData.background_image) {
-                convertImageUrlToDataURL(gameData.background_image, (base64Img) => {
-                    window.fetchedGameCover = base64Img;
-                    triggerToast(`Encontrado: ${gameData.name} + Capa carregada!`);
-                });
-            } else {
-                triggerToast(`Encontrado: ${gameData.name} (Sem capa)`);
-            }
-        } else {
-            alert('Nenhum jogo encontrado com esse nome.');
-        }
+        lastResults = await searchGames(query);
+        if (!lastResults.length) { box.innerHTML = '<div class="rawg-msg">Nada encontrado. Preencha manualmente ✍️</div>'; return; }
+        box.innerHTML = lastResults.map((g, i) => `
+            <button type="button" class="rawg-item" onclick="pickRawgResult(${i})">
+                ${g.image ? `<img src="${esc(resizeUrl(g.image, 200))}" loading="lazy" alt="">` : '<span class="rawg-noimg">🎮</span>'}
+                <span><strong>${esc(g.title)}</strong><small>${g.released ? esc(g.released.slice(0, 4)) : '—'}${g.genres.length ? ' · ' + esc(g.genres.slice(0, 2).join(', ')) : ''}</small></span>
+            </button>`).join('');
     } catch (err) {
-        fetchViaBackupProxy(query, apiKey, titleInput);
+        console.error(err);
+        box.innerHTML = '<div class="rawg-msg">Não consegui conectar à RAWG. Você pode preencher manualmente ✍️</div>';
     }
 }
 
-async function fetchViaBackupProxy(query, apiKey, titleInput) {
-    try {
-        const targetUrl = `https://api.rawg.io/api/games?search=${encodeURIComponent(query)}&key=${apiKey}&page_size=1`;
-        const backupProxy = `https://corsproxy.io/?s=${encodeURIComponent(targetUrl)}`;
-        
-        const response = await fetch(backupProxy);
-        const text = await response.text();
-        
-        if (!text.startsWith('{')) {
-            alert('A base de dados recusou a busca no momento. Preencha o nome manualmente.');
-            return;
-        }
-        
-        const data = JSON.parse(text);
-        if (data.results && data.results.length > 0) {
-            const gameData = data.results[0];
-            titleInput.value = gameData.name;
-            if (gameData.background_image) {
-                convertImageUrlToDataURL(gameData.background_image, (base64Img) => {
-                    window.fetchedGameCover = base64Img;
-                    triggerToast(`Encontrado: ${gameData.name} + Capa carregada!`);
-                });
-            }
-        } else {
-            alert('Nenhum jogo encontrado.');
-        }
-    } catch (e) {
-        alert('Não foi possível conectar à base de dados externa. O modo manual continua funcionando normalmente!');
+export async function pickRawgResult(i) {
+    const base = lastResults[i];
+    if (!base) return;
+    const box = document.getElementById('rawg-results');
+    box.innerHTML = '<div class="rawg-msg">⬇️ Carregando dados...</div>';
+    let g = base;
+    try { g = { ...base, ...(await getGameDetails(base.rawgId)) }; } catch (e) { /* segue só com os dados da busca */ }
+
+    document.getElementById('game-title').value = g.title;
+    document.getElementById('game-description').value = g.description;
+    document.getElementById('game-genres').value = g.genres.join(', ');
+    document.getElementById('game-released').value = g.released;
+    document.getElementById('game-metacritic').value = g.metacritic ?? '';
+    if (g.playtime && !document.getElementById('game-time-val').value) {
+        document.getElementById('game-time-val').value = g.playtime;
+        document.getElementById('game-time-unit').value = 'h';
     }
-}
-
-// conversão de imagem
-function convertImageUrlToDataURL(url, callback) {
-    const proxyUrl = "https://corsproxy.io/?s=" + encodeURIComponent(url);
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = function() {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        callback(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => callback(url);
-    img.src = proxyUrl;
-}
-
-export function updateQuickLinks() {
-    // Função de suporte para links rápidos do input de título
+    document.getElementById('game-extra').open = true;
+    if (g.image) { pendingCover = await coverToDataURL(g.image); updateCoverPreview(pendingCover); }
+    box.innerHTML = `<div class="rawg-msg">✅ Dados de <strong>${esc(g.title)}</strong> preenchidos. Revise e salve.</div>`;
 }
 
 // ================= RENDERIZAÇÃO E LISTAS =================
@@ -171,21 +135,6 @@ export function getSortedGames(gamesArray, sortType, isFinishedTab = false) {
         let vA = a.isPortable ? 1 : 0; let vB = b.isPortable ? 1 : 0;
         return (vA - vB) * mult;
     });
-    if (sort === 'progress') {
-        return arr.sort((a, b) => {
-            let totalA = parseFloat((a.meta || '0').replace(',', '.')) || 1;
-            if (a.meta && a.meta.includes('m')) totalA /= 60;
-            let playedA = parseFloat(a.hoursPlayed || 0);
-            let pctA = totalA > 0 ? (playedA / totalA) : 0;
-
-            let totalB = parseFloat((b.meta || '0').replace(',', '.')) || 1;
-            if (b.meta && b.meta.includes('m')) totalB /= 60;
-            let playedB = parseFloat(b.hoursPlayed || 0);
-            let pctB = totalB > 0 ? (playedB / totalB) : 0;
-
-            return (pctB - pctA) * mult;
-        });
-    }
     return arr;
 }
 
@@ -386,6 +335,9 @@ export function createGameElement(game) {
     if (game.meta) metaDisplay += `<span>⏱️ Total: ${game.meta}</span>`;
     if (game.hoursPlayed) metaDisplay += `<span>🎮 Jogado: ${game.hoursPlayed}h</span>`;
     if (progressText) metaDisplay += progressText;
+    if (game.metacritic) metaDisplay += `<span class="meta-score ${game.metacritic >= 75 ? 'good' : game.metacritic >= 50 ? 'mid' : 'bad'}" title="Metacritic">Ⓜ ${esc(game.metacritic)}</span>`;
+    if (game.released) metaDisplay += `<span>📆 ${esc(game.released.slice(0, 4))}</span>`;
+    if (game.genres && game.genres.length) metaDisplay += `<span>🏷️ ${esc(game.genres.slice(0, 2).join(', '))}</span>`;
     if (game.isPortable) metaDisplay += `<span style="color: #fff; background: var(--accent-playing); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em;">🎒 Portátil</span>`;
     
     if (game.state === 'finished') {
@@ -404,6 +356,8 @@ export function createGameElement(game) {
         journalDisplay = `<div style="font-size: 0.85em; color: var(--accent-add); margin-top: 6px; background: rgba(255,152,0,0.1); padding: 6px 10px; border-radius: 6px; border-left: 3px solid var(--accent-add); width: 100%; box-sizing: border-box;">📖 <strong>Diário:</strong> ${game.journalNotes}</div>`;
     }
 
+    const descDisplay = game.description ? `<details class="game-desc"><summary>📝 Sobre o jogo</summary><p>${esc(game.description)}</p></details>` : '';
+
     li.innerHTML = `
         <div class="game-title" style="width: 100%; text-align: left; margin-bottom: 8px; font-size: 1.15em; white-space: normal;">${game.title}</div>
         <div style="display: flex; width: 100%; align-items: center; justify-content: space-between;">
@@ -415,6 +369,7 @@ export function createGameElement(game) {
             <div style="display: flex; flex-direction: column; gap: 8px;">${editBtn}<button class="btn-icon btn-delete" onclick="askDeleteGame('${game.id}')" title="Remover Jogo">🗑️</button></div>
         </div>
         ${journalDisplay}
+        ${descDisplay}
     `;
     return li;
 }
@@ -541,6 +496,7 @@ export function openGameModal(catId) {
     document.getElementById('game-cat-id').value = catId; 
     document.getElementById('game-title').value = ''; 
     document.getElementById('game-time-val').value = ''; 
+    resetAutoFill();
     document.getElementById('game-is-portable-backlog').checked = false;
     
     const select = document.getElementById('game-platform');
@@ -557,9 +513,16 @@ export function openEditGameModal(gameId) {
     document.getElementById('edit-game-id').value = gameId;
     document.getElementById('game-cat-id').value = game.catId;
     document.getElementById('game-title').value = game.title;
+    document.getElementById('game-is-portable-backlog').checked = game.isPortable || false;
+    resetAutoFill();
     document.getElementById('game-hours-played').value = game.hoursPlayed || '';
     document.getElementById('game-journal-notes').value = game.journalNotes || '';
-    document.getElementById('game-is-portable-backlog').checked = game.isPortable || false;
+    document.getElementById('game-description').value = game.description || '';
+    document.getElementById('game-genres').value = (game.genres || []).join(', ');
+    document.getElementById('game-released').value = game.released || '';
+    document.getElementById('game-metacritic').value = game.metacritic ?? '';
+    document.getElementById('game-extra').open = !!(game.description || (game.genres && game.genres.length) || game.released || game.metacritic);
+    updateCoverPreview(game.image);
     
     const select = document.getElementById('game-platform');
     select.innerHTML = '';
@@ -581,43 +544,40 @@ export function openEditGameModal(gameId) {
 }
 
 export function saveGame() {
-    const gameId = document.getElementById('edit-game-id').value;
-    const catId = document.getElementById('game-cat-id').value;
-    const title = document.getElementById('game-title').value;
-    const platform = document.getElementById('game-platform').value;
-    const timeVal = document.getElementById('game-time-val').value;
-    const timeUnit = document.getElementById('game-time-unit').value;
-    const hoursPlayed = document.getElementById('game-hours-played').value;
-    const journalNotes = document.getElementById('game-journal-notes').value;
-    const isPortable = document.getElementById('game-is-portable-backlog').checked;
-    
-    if(!title) return;
-    const meta = timeVal ? `${timeVal}${timeUnit}` : '';
+    const val = id => document.getElementById(id).value;
+    const gameId = val('edit-game-id');
+    const catId = val('game-cat-id');
+    const title = val('game-title').trim();
+    if (!title) return;
+
+    const timeVal = val('game-time-val');
+    const extra = {
+        platform: val('game-platform'),
+        meta: timeVal ? `${timeVal}${val('game-time-unit')}` : '',
+        hoursPlayed: val('game-hours-played'),
+        journalNotes: val('game-journal-notes'),
+        isPortable: document.getElementById('game-is-portable-backlog').checked,
+        description: val('game-description').trim(),
+        genres: val('game-genres').split(',').map(x => x.trim()).filter(Boolean),
+        released: val('game-released'),
+        metacritic: val('game-metacritic') === '' ? null : Number(val('game-metacritic'))
+    };
     saveStateForUndo();
 
     if (gameId) {
         const game = appData.games.find(g => g.id === gameId);
-        if (game) { 
-            game.title = title; 
-            game.platform = platform; 
-            game.meta = meta; 
-            game.hoursPlayed = hoursPlayed;
-            game.journalNotes = journalNotes;
-            game.isPortable = isPortable; 
-            if (window.fetchedGameCover) {
-                game.image = window.fetchedGameCover;
-                window.fetchedGameCover = null;
-            }
+        if (game) {
+            Object.assign(game, extra, { title });
+            if (pendingCover) game.image = pendingCover;
         }
     } else {
-        appData.games.push({ 
-            id: 'g' + Date.now(), catId: catId, title: title, platform: platform, 
-            meta: meta, hoursPlayed: hoursPlayed, journalNotes: journalNotes, 
-            state: null, image: window.fetchedGameCover || null, userRating: null, dateFinished: null, 
-            is100: false, review: '', isPortable: isPortable 
+        appData.games.push({
+            id: 'g' + Date.now(), catId, title, ...extra,
+            state: null, image: pendingCover || null, userRating: null, dateFinished: null,
+            is100: false, review: ''
         });
-        window.fetchedGameCover = null;
     }
+    pendingCover = null;
     closeModal('modal-game'); saveData(() => render()); triggerToast(gameId ? 'Informações atualizadas.' : 'Jogo adicionado com sucesso!');
 }
 

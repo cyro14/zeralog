@@ -10,7 +10,7 @@ import {
     openRatingModal, openEditFinishedModal, cancelRating, skipRating, saveRating, saveFinishedEdit,
     spinRoulette, acceptRoulette, quickSearch, openImageModal, searchCoverOnGoogle, previewImageEdit, saveEditedImage,
     openBackupModal, exportBackup, importBackup, openSettings, openFactoryReset, confirmFactoryReset,
-    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, updateQuickLinks
+    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult
 } from './ui.js';
 
 // Anexando ao escopo global para que o index.html possa ler os onlicks
@@ -67,7 +67,7 @@ window.cancelEditPlatform = cancelEditPlatform;
 window.savePlatform = savePlatform;
 window.removePlatform = removePlatform;
 window.fetchGameFromRAWG = fetchGameFromRAWG;
-window.updateQuickLinks = updateQuickLinks;
+window.pickRawgResult = pickRawgResult;
 
 // Inicialização Principal
 document.addEventListener("DOMContentLoaded", () => {
