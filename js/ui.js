@@ -307,69 +307,107 @@ export function renderFinishedTab() {
     });
 }
 
+// Ícones de linha (SVG) para os botões do card, em vez de emojis
+const ICONS = {
+    edit: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+    share: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>'
+};
+
+// Diário com mais que isso (ou muitas linhas) começa recolhido, com botão "Ver tudo"
+const JOURNAL_LIMIT = 140;
+
+export function toggleJournal(btn) {
+    const box = btn.closest('.gi-journal');
+    const collapsed = box.classList.toggle('collapsed');
+    btn.textContent = collapsed ? 'Ver tudo' : 'Recolher';
+    btn.setAttribute('aria-expanded', String(!collapsed));
+}
+
+const fmtTime = t => String(t).endsWith('m') ? `${String(t).slice(0, -1)} min` : String(t);
+
 export function createGameElement(game) {
-    const li = document.createElement('li'); 
-    li.className = `game-item`; li.dataset.platform = game.platform; li.dataset.portable = game.isPortable ? 'true' : 'false';
-    li.style.flexDirection = 'column'; li.style.alignItems = 'flex-start';
-    
-    const isPlaying = game.state === 'playing' ? 'checked' : ''; const isFinished = game.state === 'finished' ? 'checked' : '';
-    let imgContent = game.image ? `<img src="${game.image}" class="game-icon" style="width: 75px; height: 75px; min-width: 75px;" onclick="openImageModal('${game.id}')" title="Trocar Capa">` : `<div class="game-icon" style="width: 75px; height: 75px; min-width: 75px;" onclick="openImageModal('${game.id}')" title="Adicionar Capa">🎮</div>`;
-    const platObj = appData.platforms.find(p => p.name === game.platform) || { icon: '🎮', name: game.platform };
+    const li = document.createElement('li');
+    li.className = 'game-item';
+    li.dataset.platform = game.platform;
+    li.dataset.portable = game.isPortable ? 'true' : 'false';
 
-    // Cálculo de quanto falta
-    let progressText = '';
+    const finished = game.state === 'finished';
+    const isPlaying = game.state === 'playing' ? 'checked' : '';
+    const isFinished = finished ? 'checked' : '';
+    const title = esc(game.title);
+
+    const cover = game.image
+        ? `<img src="${esc(game.image)}" alt="" class="gi-cover" onclick="openImageModal('${game.id}')" title="Trocar capa">`
+        : `<div class="gi-cover gi-cover-empty" onclick="openImageModal('${game.id}')" title="Adicionar capa">${esc((game.title.trim()[0] || '?').toUpperCase())}</div>`;
+
+    // Linha secundária: plataforma · ano · gênero · tempo estimado
+    const sub = [esc(game.platform)];
+    if (game.released) sub.push(esc(game.released.slice(0, 4)));
+    if (game.genres && game.genres.length) sub.push(esc(game.genres.slice(0, 2).join(', ')));
+    if (game.meta) sub.push(`${esc(fmtTime(game.meta))} p/ zerar`);
+
+    // Barra de progresso (só se houver tempo estimado e horas jogadas)
+    let progress = '';
     if (game.meta && game.hoursPlayed) {
-        let total = parseFloat(game.meta.replace(',', '.')) || 0;
-        if (game.meta.includes('m')) total /= 60;
-        let played = parseFloat(game.hoursPlayed) || 0;
-        let restante = total - played;
-        if (restante > 0) {
-            progressText = `<span>⏳ Faltam aprox. ${restante.toFixed(1)}h</span>`;
-        } else {
-            progressText = `<span>🎯 Meta atingida!</span>`;
+        let total = parseFloat(String(game.meta).replace(',', '.')) || 0;
+        if (String(game.meta).includes('m')) total /= 60;
+        const played = parseFloat(game.hoursPlayed) || 0;
+        if (total > 0) {
+            const pct = Math.min(100, Math.round(played / total * 100));
+            const left = total - played;
+            progress = `<div class="gi-progress"><div class="gi-bar"><span style="width:${pct}%"></span></div><small>${played}h de ${total % 1 ? total.toFixed(1) : total}h · ${left > 0 ? `faltam ~${left.toFixed(1)}h` : 'meta atingida'}</small></div>`;
         }
+    } else if (game.hoursPlayed) {
+        progress = `<div class="gi-progress"><small>${esc(game.hoursPlayed)}h jogadas</small></div>`;
     }
 
-    // Declaração única da variável metaDisplay
-    let metaDisplay = `<span style="display:flex; align-items:center; gap:4px; white-space:nowrap;">${platObj.icon} <span>${platObj.name}</span></span>`;
-    if (game.meta) metaDisplay += `<span>⏱️ Total: ${game.meta}</span>`;
-    if (game.hoursPlayed) metaDisplay += `<span>🎮 Jogado: ${game.hoursPlayed}h</span>`;
-    if (progressText) metaDisplay += progressText;
-    if (game.metacritic) metaDisplay += `<span class="meta-score ${game.metacritic >= 75 ? 'good' : game.metacritic >= 50 ? 'mid' : 'bad'}" title="Metacritic">Ⓜ ${esc(game.metacritic)}</span>`;
-    if (game.released) metaDisplay += `<span>📆 ${esc(game.released.slice(0, 4))}</span>`;
-    if (game.genres && game.genres.length) metaDisplay += `<span>🏷️ ${esc(game.genres.slice(0, 2).join(', '))}</span>`;
-    if (game.isPortable) metaDisplay += `<span style="color: #fff; background: var(--accent-playing); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em;">🎒 Portátil</span>`;
-    
-    if (game.state === 'finished') {
+    // Etiquetas
+    const chips = [];
+    if (game.metacritic) chips.push(`<span class="chip score ${game.metacritic >= 75 ? 'good' : game.metacritic >= 50 ? 'mid' : 'bad'}" title="Nota Metacritic">Metacritic ${esc(game.metacritic)}</span>`);
+    if (game.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
+    if (finished) {
         const originCat = appData.categories.find(c => c.id === game.catId);
-        if (originCat) metaDisplay += `<span class="cat-tag-badge">📂 ${originCat.name}</span>`;
-        if (game.is100) metaDisplay += `<span style="color: var(--star-color); font-weight: bold; background: rgba(255, 215, 0, 0.1); padding: 2px 6px; border-radius: 4px;">💎 100%</span>`;
-        if (game.userRating) metaDisplay += `<span class="user-rating">🌟 ${game.userRating}/10</span>`;
-        if (game.dateFinished) metaDisplay += `<span class="date-finished">📅 ${game.dateFinished}</span>`;
+        if (originCat) chips.push(`<span class="chip">${esc(originCat.name)}</span>`);
+        if (game.is100) chips.push('<span class="chip chip-gold">100%</span>');
+        if (game.userRating) chips.push(`<span class="chip chip-gold">Nota ${esc(game.userRating)}/10</span>`);
+        if (game.dateFinished) chips.push(`<span class="chip">Zerado em ${esc(game.dateFinished)}</span>`);
     }
 
-    let editBtn = game.state === 'finished' ? `<button class="btn-icon" onclick="openCardGenerator('${game.id}')" title="Compartilhar Status">📤</button><button class="btn-icon" onclick="openEditFinishedModal('${game.id}')" title="Editar Conclusão">✏️</button>` : `<button class="btn-icon" onclick="openEditGameModal('${game.id}')" title="Editar Informações">✏️</button>`;
+    const editBtn = finished
+        ? `<button type="button" class="icon-btn" onclick="openCardGenerator('${game.id}')" title="Compartilhar" aria-label="Compartilhar">${ICONS.share}</button>
+           <button type="button" class="icon-btn" onclick="openEditFinishedModal('${game.id}')" title="Editar conclusão" aria-label="Editar conclusão">${ICONS.edit}</button>`
+        : `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>`;
 
-    // Bloco do Diário de Bordo se houver anotação
-    let journalDisplay = '';
-    if (game.journalNotes && game.state !== 'finished') {
-        journalDisplay = `<div style="font-size: 0.85em; color: var(--accent-add); margin-top: 6px; background: rgba(255,152,0,0.1); padding: 6px 10px; border-radius: 6px; border-left: 3px solid var(--accent-add); width: 100%; box-sizing: border-box;">📖 <strong>Diário:</strong> ${game.journalNotes}</div>`;
+    // Diário de bordo: recolhível quando for grande
+    let journal = '';
+    if (game.journalNotes && !finished) {
+        const notes = String(game.journalNotes);
+        const long = notes.length > JOURNAL_LIMIT || notes.split('\n').length > 3;
+        journal = `<div class="gi-journal${long ? ' collapsed' : ''}">
+            <div class="gi-journal-head"><span>Diário de bordo</span>${long ? '<button type="button" class="link-btn" aria-expanded="false" onclick="toggleJournal(this)">Ver tudo</button>' : ''}</div>
+            <div class="gi-journal-text">${esc(notes)}</div>
+        </div>`;
     }
 
-    const descDisplay = game.description ? `<details class="game-desc"><summary>📝 Sobre o jogo</summary><p>${esc(game.description)}</p></details>` : '';
+    const desc = game.description
+        ? `<details class="game-desc"><summary>Sobre o jogo</summary><p>${esc(game.description)}</p></details>` : '';
 
     li.innerHTML = `
-        <div class="game-title" style="width: 100%; text-align: left; margin-bottom: 8px; font-size: 1.15em; white-space: normal;">${game.title}</div>
-        <div style="display: flex; width: 100%; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 12px; flex-grow: 1;">
-                ${imgContent}
-                <div class="actions" style="margin-right: 10px; min-width: 80px;"><label><input type="checkbox" class="chk-playing" onchange="toggleState('${game.id}', 'playing')" ${isPlaying}> Jogando</label><label><input type="checkbox" class="chk-finished" onchange="toggleState('${game.id}', 'finished')" ${isFinished}> Final</label></div>
-                <div class="game-info" style="flex-grow: 1;"><div class="game-meta" style="margin-top: 0;">${metaDisplay}</div></div>
+        ${cover}
+        <div class="gi-body">
+            <div class="game-title">${title}</div>
+            <div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div>
+            ${chips.length ? `<div class="gi-chips">${chips.join('')}</div>` : ''}
+            ${progress}
+            <div class="gi-status">
+                <label class="pill pill-playing"><input type="checkbox" class="chk-playing" onchange="toggleState('${game.id}', 'playing')" ${isPlaying}><span>Jogando</span></label>
+                <label class="pill pill-finished"><input type="checkbox" class="chk-finished" onchange="toggleState('${game.id}', 'finished')" ${isFinished}><span>Zerado</span></label>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">${editBtn}<button class="btn-icon btn-delete" onclick="askDeleteGame('${game.id}')" title="Remover Jogo">🗑️</button></div>
         </div>
-        ${journalDisplay}
-        ${descDisplay}
+        <div class="gi-actions">${editBtn}<button type="button" class="icon-btn danger" onclick="askDeleteGame('${game.id}')" title="Remover" aria-label="Remover">${ICONS.trash}</button></div>
+        ${journal}
+        ${desc}
     `;
     return li;
 }
