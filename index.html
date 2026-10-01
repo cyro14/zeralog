@@ -70,7 +70,6 @@
             <div class="sort-chip" id="sort-home-az" onclick="setHomeSort('az')">🔤 A-Z</div>
             <div class="sort-chip" id="sort-home-time" onclick="setHomeSort('time')">⏱️ Tempo</div>
             <div class="sort-chip" id="sort-home-portable" onclick="setHomeSort('portable')">🎒 Portátil</div>
-            <div class="sort-chip" id="sort-home-progress" onclick="setHomeSort('progress')">🎯 Mais Próximo do Fim</div>
         </div>
 
         <div id="app-container"></div>
@@ -188,13 +187,14 @@
             <h3 id="game-modal-title" style="margin-top: 0;">Adicionar Jogo</h3>
             <input type="hidden" id="game-cat-id">
             <input type="hidden" id="edit-game-id">
-            <input type="text" id="game-title" placeholder="Nome do Jogo" oninput="updateQuickLinks()">
 
-            <div style="display:flex; gap: 5px; margin-top: 5px;">
-                <input type="text" id="game-title" placeholder="Ex: Ocarina of Time" oninput="updateQuickLinks()" style="flex: 1;">
-                <button type="button" onclick="fetchGameFromRAWG()" style="background-color: var(--accent-playing); padding: 0 12px; font-size: 0.9em;" title="Buscar dados na RAWG">🌐 Auto</button>
+            <div style="display:flex; gap: 5px;">
+                <input type="text" id="game-title" placeholder="Ex: Ocarina of Time" style="flex: 1;" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchGameFromRAWG();}">
+                <button type="button" onclick="fetchGameFromRAWG()" style="background-color: var(--accent-playing); padding: 0 12px; font-size: 0.9em;" title="Buscar dados automaticamente (RAWG)">🌐 Auto</button>
             </div>
-            
+            <div id="rawg-results"></div>
+            <div id="game-cover-preview" class="game-cover-preview" style="display:none;"></div>
+
             <div style="display:flex; gap: 10px; margin-top: -5px; margin-bottom: 5px;">
                 <button type="button" class="btn-quick-link" style="background:#f44336;" onclick="quickSearch('hltb')">Buscar no HLTB</button>
                 <button type="button" class="btn-quick-link" style="background:#ffcc33; color:black;" onclick="quickSearch('meta')">Buscar no Metacritic</button>
@@ -211,14 +211,23 @@
                     <option value="m">Minutos</option>
                 </select>
             </div>
-            <div style="flex: 1;">
-                <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Horas Jogadas (Atual):</label>
-                <input type="number" id="game-hours-played" placeholder="Ex: 10" min="0" step="0.5" style="width: 100%; box-sizing: border-box; margin-top: 5px;">
-            </div>
-        </div>
 
-        <label style="font-size: 0.85em; color: var(--text-muted); margin-top: 5px;">📖 Diário de Bordo (Onde parei):</label>
-        <textarea id="game-journal-notes" rows="3" placeholder="Ex: Parei no Templo da Água, falta achar a chave..." style="width: 100%; box-sizing: border-box; resize: none;"></textarea>
+            <details id="game-extra" class="game-extra">
+                <summary>➕ Mais detalhes (gênero, lançamento, nota, descrição)</summary>
+                <div class="modal-form" style="margin-top: 10px;">
+                    <input type="text" id="game-genres" placeholder="Gêneros (separe por vírgula)">
+                    <div style="display:flex; gap:10px;">
+                        <input type="date" id="game-released" style="flex: 1;" title="Data de lançamento">
+                        <input type="number" id="game-metacritic" placeholder="Metacritic" min="0" max="100" style="flex: 1;">
+                    </div>
+                    <textarea id="game-description" rows="4" placeholder="Descrição"></textarea>
+                </div>
+            </details>
+
+            <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Horas jogadas:</label>
+            <input type="number" id="game-hours-played" placeholder="Ex: 3.5" min="0" step="0.5">
+            <textarea id="game-journal-notes" rows="2" placeholder="📖 Diário de bordo (opcional)"></textarea>
+
             <div style="display: flex; align-items: center; gap: 10px; background: rgba(33, 150, 243, 0.1); padding: 10px; border-radius: 8px;">
                 <input type="checkbox" id="game-is-portable-backlog" style="width: 22px; height: 22px; accent-color: var(--accent-playing);">
                 <label for="game-is-portable-backlog" style="font-weight: bold; cursor: pointer;">🎒 Ideal para Portáteis</label>
