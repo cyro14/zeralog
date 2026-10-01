@@ -82,27 +82,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 
 /* Itens de Jogo & Modo Compacto */
 .game-list { list-style: none; padding: 0; margin: 0; }
-.game-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
-.game-item:last-child { border-bottom: none; }
-.game-icon { width: 50px; height: 50px; border-radius: 8px; background-color: var(--bg-color); object-fit: cover; margin-right: 15px; display: flex; align-items: center; justify-content: center; font-size: 1.8em; cursor: pointer; border: 1px solid var(--border-color);}
 
-body.compact-mode .game-icon { display: none; }
-body.compact-mode .game-item { padding: 6px 0; }
-body.compact-mode .game-title { font-size: 1em; }
-body.compact-mode .actions { flex-direction: row; min-width: auto; }
 body.compact-mode .category { padding: 15px; margin-bottom: 15px; }
 
-.actions { display: flex; flex-direction: column; gap: 8px; margin-right: 15px; min-width: 95px; }
-.actions label { font-size: 0.85em; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted); }
 input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
 .chk-playing { accent-color: var(--accent-playing); }
 .chk-finished { accent-color: var(--accent-finished); }
 
-.game-info { flex-grow: 1; overflow: hidden; }
-.game-title { font-weight: bold; font-size: 1.1em; transition: color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.game-meta { font-size: 0.85em; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-.user-rating { color: var(--star-color); font-weight: bold; background: rgba(128, 128, 128, 0.1); padding: 2px 6px; border-radius: 4px; }
-.date-finished { color: var(--text-muted); font-size: 0.95em; }
 .platform-badge { background: rgba(128,128,128,0.2); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em; }
 .empty-state { text-align: center; color: var(--text-muted); padding: 20px 0; font-style: italic; }
 
@@ -275,10 +261,56 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
 .rawg-item small { display: block; opacity: 0.7; margin-top: 2px; }
 .game-cover-preview img { width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; }
 .game-extra summary { cursor: pointer; font-weight: bold; font-size: 0.9em; }
-.meta-score { font-weight: bold; font-size: 0.8em; padding: 2px 6px; border-radius: 4px; color: #fff; }
-.meta-score.good { background: #4caf50; }
-.meta-score.mid { background: #ffcc33; color: #000; }
-.meta-score.bad { background: #f44336; }
-.game-desc { width: 100%; margin-top: 6px; font-size: 0.85em; }
+
+
+
+/* ===== Card de jogo (visual limpo) ===== */
+.game-item { display: grid; grid-template-columns: 76px 1fr auto; gap: 4px 16px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--border-color); }
+.game-item:last-child { border-bottom: none; }
+.gi-cover { width: 76px; height: 76px; border-radius: 10px; object-fit: cover; cursor: pointer; border: 1px solid var(--border-color); background: var(--bg-color); }
+.gi-cover-empty { display: flex; align-items: center; justify-content: center; font-size: 1.8em; font-weight: 700; color: var(--text-muted); }
+.gi-body { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.game-title { font-weight: 700; font-size: 1.05em; line-height: 1.3; overflow-wrap: anywhere; }
+.gi-sub { font-size: 0.82em; color: var(--text-muted); }
+.gi-sub .dot { margin: 0 6px; opacity: 0.6; }
+.gi-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 0.72em; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border-color); color: var(--text-muted); white-space: nowrap; }
+.chip-accent { color: var(--accent-playing); border-color: var(--accent-playing); }
+.chip-gold { color: var(--star-color); border-color: var(--star-color); }
+.chip.score { border: none; color: #fff; }
+.chip.score.good { background: #2e9e4f; }
+.chip.score.mid { background: #c9a227; color: #111; }
+.chip.score.bad { background: #d64541; }
+.gi-progress small { font-size: 0.75em; color: var(--text-muted); }
+.gi-bar { height: 5px; border-radius: 999px; background: var(--border-color); overflow: hidden; margin-bottom: 3px; }
+.gi-bar span { display: block; height: 100%; background: var(--accent-playing); border-radius: 999px; }
+.gi-status { display: flex; gap: 6px; margin-top: 2px; }
+.pill { position: relative; cursor: pointer; }
+.pill input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pill span { display: inline-block; font-size: 0.78em; font-weight: 600; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border-color); color: var(--text-muted); transition: all 0.15s; }
+.pill input:focus-visible + span { outline: 2px solid var(--accent-playing); outline-offset: 2px; }
+.pill-playing input:checked + span { background: var(--accent-playing); border-color: var(--accent-playing); color: #fff; }
+.pill-finished input:checked + span { background: var(--accent-finished); border-color: var(--accent-finished); color: #fff; }
+.gi-actions { display: flex; flex-direction: column; gap: 2px; }
+.icon-btn { background: transparent; color: var(--text-muted); padding: 7px; border-radius: 8px; display: flex; line-height: 0; }
+.icon-btn:hover { background: rgba(128,128,128,0.15); color: var(--text-main); opacity: 1; }
+.icon-btn.danger:hover { color: var(--danger); }
+.gi-journal { grid-column: 1 / -1; margin-top: 8px; padding: 10px 12px; border-left: 3px solid var(--accent-add); background: rgba(128,128,128,0.08); border-radius: 0 8px 8px 0; font-size: 0.88em; }
+.gi-journal-head { display: flex; justify-content: space-between; align-items: center; font-size: 0.78em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 4px; }
+.gi-journal-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.gi-journal.collapsed .gi-journal-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gi-journal:not(.collapsed) .gi-journal-text { max-height: 260px; overflow-y: auto; }
+.link-btn { background: none; color: var(--accent-playing); padding: 0; font-size: 1em; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.game-desc { grid-column: 1 / -1; margin-top: 4px; font-size: 0.85em; }
 .game-desc summary { cursor: pointer; color: var(--text-muted); }
 .game-desc p { margin: 6px 0 0; white-space: pre-line; opacity: 0.85; }
+
+/* Modo compacto: sem capa e com menos respiro */
+body.compact-mode .game-item { grid-template-columns: 1fr auto; padding: 8px 0; }
+body.compact-mode .gi-cover { display: none; }
+body.compact-mode .gi-chips, body.compact-mode .gi-progress, body.compact-mode .game-desc { display: none; }
+
+@media (max-width: 480px) {
+    .game-item { grid-template-columns: 60px 1fr auto; gap: 4px 12px; }
+    .gi-cover { width: 60px; height: 60px; }
+}
