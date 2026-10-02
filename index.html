@@ -242,6 +242,41 @@
         </div>
     </dialog>
 
+    <dialog id="modal-wiki" class="wiki-dialog">
+        <div class="wiki-head">
+            <div class="wiki-head-top">
+                <div class="wiki-heading"><small>Wiki</small><strong id="wiki-game-title"></strong></div>
+                <button type="button" class="icon-btn" onclick="closeModal('modal-wiki')" aria-label="Fechar"><span data-icon="x"></span></button>
+            </div>
+            <div class="wiki-search">
+                <select id="wiki-source" onchange="wikiChangeSource(this.value)" aria-label="Wiki"></select>
+                <div class="wiki-search-box">
+                    <input type="text" id="wiki-query" placeholder="Pesquisar na wiki..." enterkeyhint="search" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();wikiSearch();}">
+                    <button type="button" class="icon-btn" onclick="wikiSearch()" aria-label="Pesquisar"><span data-icon="search"></span></button>
+                </div>
+            </div>
+            <div class="wiki-toolbar">
+                <button type="button" class="wiki-tool" id="wiki-back" onclick="wikiBack()" disabled><span data-icon="back" data-size="1em"></span>Voltar</button>
+                <button type="button" class="wiki-tool" id="wiki-link-btn" onclick="wikiLinkGame()" disabled><span data-icon="link" data-size="1em"></span><span id="wiki-link-label">Vincular a este jogo</span></button>
+                <a class="wiki-tool disabled" id="wiki-open-ext" target="_blank" rel="noopener noreferrer"><span data-icon="external" data-size="1em"></span>Abrir no navegador</a>
+                <button type="button" class="wiki-tool" onclick="wikiToggleAdd()"><span data-icon="plus" data-size="1em"></span>Outra wiki</button>
+            </div>
+            <div id="wiki-add" class="wiki-add">
+                <div class="wiki-add-row">
+                    <input type="text" id="wiki-add-url" placeholder="Endereço da wiki (ex.: hollowknight.fandom.com)" autocomplete="off" autocapitalize="off" spellcheck="false">
+                    <button type="button" onclick="wikiAddSource()">Adicionar</button>
+                </div>
+                <small id="wiki-add-msg"></small>
+                <div id="wiki-custom-list"></div>
+            </div>
+        </div>
+        <div class="wiki-scroll" id="wiki-scroll">
+            <div id="wiki-status"></div>
+            <div id="wiki-results"></div>
+            <article id="wiki-body" class="wiki-content"></article>
+        </div>
+    </dialog>
+
     <dialog id="modal-roulette">
         <div class="modal-form" style="text-align: center;">
             <h3 style="margin-top: 0; color: var(--accent-playing);">Sua missão de hoje é:</h3>
