@@ -364,3 +364,5 @@ body.compact-mode .gi-chips, body.compact-mode .gi-progress, body.compact-mode .
     body.compact-mode .gi-actions { margin-top: 0; }
     body.compact-mode .gi-status { margin-top: 8px; }
 }
+
+.rawg-err { color: var(--danger); }

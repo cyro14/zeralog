@@ -158,6 +158,11 @@
             <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Configurações</h3>
             <div class="setting-row"><label style="font-weight: bold;">Tema Visual:</label><select id="theme-selector" onchange="changeTheme(this.value)" style="width: 150px;"><option value="dark">Escuro</option><option value="light">Claro</option><option value="pink">Rosa Pastel</option><option value="dracula">Drácula (Neon)</option></select></div>
             <div class="setting-row"><label style="font-weight: bold;">Modo Compacto:</label><input type="checkbox" id="compact-toggle" onchange="toggleCompact(this.checked)" style="width: 20px; height: 20px; accent-color: var(--accent-playing);"></div>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                <label for="rawg-key-input" style="font-weight: bold;">Chave da API RAWG:</label>
+                <input type="text" id="rawg-key-input" placeholder="Cole sua chave (opcional)" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="saveRawgKey(this.value)">
+                <small style="color: var(--text-muted);">Usada na busca automática de jogos. Se ela falhar, crie uma chave grátis em rawg.io/apidocs e cole aqui. Deixe vazio para usar a padrão.</small>
+            </div>
             
             <div style="margin-top: 15px;">
                 <label style="font-weight: bold;">Editar Plataformas:</label>
