@@ -1,6 +1,6 @@
 // Busca automática de dados de jogos via RAWG (https://rawg.io/apidocs).
-// Dica: crie sua própria chave gratuita lá e troque abaixo.
-const DEFAULT_KEY = '3b86001a1d824d5483d650117036d0b1';
+
+const DEFAULT_KEY = 'ae08037aa9fb40a48b12090819cedb07';
 const KEY_STORAGE = 'zeralog_rawg_key';
 
 // A chave pode ser trocada em Configurações, sem mexer no código
