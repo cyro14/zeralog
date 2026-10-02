@@ -25,7 +25,7 @@
 <body>
 
     <div id="achievement-notif">
-        <span style="font-size: 1.5em;">🏆</span>
+        <span data-icon="trophy" data-size="1.6em"></span>
         <div>
             <div style="font-size: 0.7em; text-transform: uppercase; opacity: 0.8;">Conquista Desbloqueada!</div>
             <div id="ach-notif-name">Mestre do Jogo</div>
@@ -43,33 +43,33 @@
             <h1>ZeraLog</h1>
         </div>
         <div class="header-actions">
-            <button class="btn-top" onclick="openBackupModal()" title="Salvar Backup">💾</button>
-            <button class="btn-top" onclick="openSettings()" title="Configurações">⚙️</button>
+            <button class="btn-top" onclick="openBackupModal()" title="Salvar Backup" aria-label="Salvar Backup"><span data-icon="save" data-size="1em"></span></button>
+            <button class="btn-top" onclick="openSettings()" title="Configurações" aria-label="Configurações"><span data-icon="settings" data-size="1em"></span></button>
         </div>
     </div>
 
     <!-- Search & Tabs -->
-    <div class="search-container"><span style="font-size: 1.2em;">🔍</span><input type="text" id="search-bar" placeholder="Buscar jogo na lista..." onkeyup="filterGames()"></div>
+    <div class="search-container"><span class="search-ic" data-icon="search" data-size="1.2em"></span><input type="text" id="search-bar" placeholder="Buscar jogo na lista..." onkeyup="filterGames()"></div>
     
     <div class="platform-filter" id="platform-chips-container">
         <!-- Gerado dinamicamente via JS -->
     </div>
 
     <div class="tabs">
-        <button class="tab-btn active" id="btn-tab-home" onclick="switchTab('home')">🏠 Fila</button>
-        <button class="tab-btn" id="btn-tab-finished" onclick="switchTab('finished')">🏆 Zerados (<span id="count-finished">0</span>)</button>
-        <button class="tab-btn" id="btn-tab-stats" onclick="switchTab('stats')">📊 Status</button>
+        <button class="tab-btn active" id="btn-tab-home" onclick="switchTab('home')"><span class="ic-lead" data-icon="list"></span>Fila</button>
+        <button class="tab-btn" id="btn-tab-finished" onclick="switchTab('finished')"><span class="ic-lead" data-icon="trophy"></span>Zerados (<span id="count-finished">0</span>)</button>
+        <button class="tab-btn" id="btn-tab-stats" onclick="switchTab('stats')"><span class="ic-lead" data-icon="chart"></span>Status</button>
     </div>
 
     <!-- HOME TAB -->
     <div id="tab-home" class="tab-content active">
-        <button class="btn-roulette" onclick="spinRoulette()">🎲 Sortear: O que jogar agora?</button>
+        <button class="btn-roulette" onclick="spinRoulette()"><span class="ic-lead" data-icon="dice"></span>Sortear: o que jogar agora?</button>
         
         <div class="sort-bar" id="home-sort-bar">
-            <div class="sort-chip active" id="sort-home-manual" onclick="setHomeSort('manual')">🖐️ Manual</div>
-            <div class="sort-chip" id="sort-home-az" onclick="setHomeSort('az')">🔤 A-Z</div>
-            <div class="sort-chip" id="sort-home-time" onclick="setHomeSort('time')">⏱️ Tempo</div>
-            <div class="sort-chip" id="sort-home-portable" onclick="setHomeSort('portable')">🎒 Portátil</div>
+            <div class="sort-chip active" id="sort-home-manual" onclick="setHomeSort('manual')">Manual</div>
+            <div class="sort-chip" id="sort-home-az" onclick="setHomeSort('az')">A-Z</div>
+            <div class="sort-chip" id="sort-home-time" onclick="setHomeSort('time')">Tempo</div>
+            <div class="sort-chip" id="sort-home-portable" onclick="setHomeSort('portable')">Portátil</div>
         </div>
 
         <div id="app-container"></div>
@@ -79,10 +79,10 @@
     <!-- FINISHED TAB -->
     <div id="tab-finished" class="tab-content">
         <div class="sort-bar">
-            <div class="sort-chip" id="sort-fin-date" onclick="setFinishedSort('date')">📅 Data</div>
-            <div class="sort-chip" id="sort-fin-rating" onclick="setFinishedSort('rating')">🌟 Nota</div>
-            <div class="sort-chip" id="sort-fin-time" onclick="setFinishedSort('time')">⏱️ Tempo</div>
-            <div class="sort-chip" id="sort-fin-portable" onclick="setFinishedSort('portable')">🎒 Portátil</div>
+            <div class="sort-chip" id="sort-fin-date" onclick="setFinishedSort('date')">Data</div>
+            <div class="sort-chip" id="sort-fin-rating" onclick="setFinishedSort('rating')">Nota</div>
+            <div class="sort-chip" id="sort-fin-time" onclick="setFinishedSort('time')">Tempo</div>
+            <div class="sort-chip" id="sort-fin-portable" onclick="setFinishedSort('portable')">Portátil</div>
         </div>
         <div id="finished-list-container">
         </div>
@@ -105,17 +105,17 @@
             <canvas id="statusChart"></canvas>
         </div>
 
-        <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">🏅 Suas Conquistas</h3>
+        <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Suas Conquistas</h3>
         <div class="achievements-grid">
-            <div class="badge locked" id="ach-1"><span class="badge-icon">🐣</span><div class="badge-title">Primeiro Passo</div><div class="badge-desc">Zerou seu primeiro jogo!</div></div>
-            <div class="badge locked" id="ach-5"><span class="badge-icon">🔥</span><div class="badge-title">Embalado</div><div class="badge-desc">Zerou 5 jogos.</div></div>
-            <div class="badge locked" id="ach-10"><span class="badge-icon">👑</span><div class="badge-title">Mestre do Backlog</div><div class="badge-desc">Zerou 10 jogos no total.</div></div>
-            <div class="badge locked" id="ach-covers"><span class="badge-icon">🖼️</span><div class="badge-title">Colecionador</div><div class="badge-desc">Todos os jogos possuem capa.</div></div>
-            <div class="badge locked" id="ach-platforms"><span class="badge-icon">🌈</span><div class="badge-title">Multipotencial</div><div class="badge-desc">Jogos em 3+ plataformas.</div></div>
-            <div class="badge locked" id="ach-marathon"><span class="badge-icon">🏃</span><div class="badge-title">Maratonista</div><div class="badge-desc">100h+ de jogos na lista.</div></div>
-            <div class="badge locked" id="ach-critic"><span class="badge-icon">✍️</span><div class="badge-title">Crítico de Arte</div><div class="badge-desc">Avaliou 10 jogos zerados.</div></div>
-            <div class="badge locked" id="ach-perfectionist"><span class="badge-icon">💎</span><div class="badge-title">Perfeccionista</div><div class="badge-desc">Fez 100% em 1 jogo.</div></div>
-            <div class="badge locked" id="ach-legend"><span class="badge-icon">🌌</span><div class="badge-title">Lendário</div><div class="badge-desc">Fez 100% em 5 jogos.</div></div>
+            <div class="badge locked" id="ach-1"><span class="badge-icon" data-icon="flag" data-size="1em"></span><div class="badge-title">Primeiro Passo</div><div class="badge-desc">Zerou seu primeiro jogo!</div></div>
+            <div class="badge locked" id="ach-5"><span class="badge-icon" data-icon="flame" data-size="1em"></span><div class="badge-title">Embalado</div><div class="badge-desc">Zerou 5 jogos.</div></div>
+            <div class="badge locked" id="ach-10"><span class="badge-icon" data-icon="crown" data-size="1em"></span><div class="badge-title">Mestre do Backlog</div><div class="badge-desc">Zerou 10 jogos no total.</div></div>
+            <div class="badge locked" id="ach-covers"><span class="badge-icon" data-icon="image" data-size="1em"></span><div class="badge-title">Colecionador</div><div class="badge-desc">Todos os jogos possuem capa.</div></div>
+            <div class="badge locked" id="ach-platforms"><span class="badge-icon" data-icon="layers" data-size="1em"></span><div class="badge-title">Multipotencial</div><div class="badge-desc">Jogos em 3+ plataformas.</div></div>
+            <div class="badge locked" id="ach-marathon"><span class="badge-icon" data-icon="activity" data-size="1em"></span><div class="badge-title">Maratonista</div><div class="badge-desc">100h+ de jogos na lista.</div></div>
+            <div class="badge locked" id="ach-critic"><span class="badge-icon" data-icon="pen" data-size="1em"></span><div class="badge-title">Crítico de Arte</div><div class="badge-desc">Avaliou 10 jogos zerados.</div></div>
+            <div class="badge locked" id="ach-perfectionist"><span class="badge-icon" data-icon="gem" data-size="1em"></span><div class="badge-title">Perfeccionista</div><div class="badge-desc">Fez 100% em 1 jogo.</div></div>
+            <div class="badge locked" id="ach-legend"><span class="badge-icon" data-icon="award" data-size="1em"></span><div class="badge-title">Lendário</div><div class="badge-desc">Fez 100% em 5 jogos.</div></div>
         </div>
     </div>
 
@@ -125,28 +125,28 @@
     <!-- Modais do Sistema -->
     <dialog id="modal-welcome">
         <div class="modal-form" style="text-align: center;">
-            <h2 style="margin-top: 0; color: var(--accent-playing);">Bem-vindo ao ZeraLog! 🎮</h2>
+            <h2 style="margin-top: 0; color: var(--accent-playing);">Bem-vindo ao ZeraLog!</h2>
             <p style="font-size: 1.05em; margin-bottom: 10px;">Seu app para organizar e focar nos jogos.</p>
             <div style="text-align: left; background: rgba(128,128,128,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <p style="margin: 5px 0;"><strong>🎲 Sorteio:</strong> Use a roleta se não souber o que jogar.</p>
-                <p style="margin: 5px 0;"><strong>📊 Status:</strong> Acompanhe seus gráficos e conquistas.</p>
-                <p style="margin: 5px 0;"><strong>📱 App:</strong> Você pode adicionar esta página à tela inicial do celular!</p>
+                <p style="margin: 5px 0;"><strong>Sorteio:</strong> Use a roleta se não souber o que jogar.</p>
+                <p style="margin: 5px 0;"><strong>Status:</strong> Acompanhe seus gráficos e conquistas.</p>
+                <p style="margin: 5px 0;"><strong>App:</strong> Você pode adicionar esta página à tela inicial do celular!</p>
             </div>
             <div style="background-color: rgba(244, 67, 54, 0.1); border: 1px solid var(--danger); padding: 15px; border-radius: 8px; text-align: left;">
-                <p style="margin: 0; font-size: 0.95em;"><strong>⚠️ IMPORTANTE - BACKUP:</strong></p>
-                <p style="margin: 5px 0 0 0; font-size: 0.85em;">Seus dados ficam no navegador. Limpar o cache apaga tudo. Use o <strong>disquete (💾) no topo</strong> frequentemente para baixar seu backup!</p>
+                <p style="margin: 0; font-size: 0.95em;"><strong>IMPORTANTE - BACKUP:</strong></p>
+                <p style="margin: 5px 0 0 0; font-size: 0.85em;">Seus dados ficam no navegador. Limpar o cache apaga tudo. Use o <strong>ícone de salvar no topo</strong> frequentemente para baixar seu backup!</p>
             </div>
-            <div class="modal-actions" style="margin-top: 20px; justify-content: center;"><button style="width: 100%; padding: 15px; font-size: 1.1em;" onclick="closeWelcome()">Vamos começar! 🚀</button></div>
+            <div class="modal-actions" style="margin-top: 20px; justify-content: center;"><button style="width: 100%; padding: 15px; font-size: 1.1em;" onclick="closeWelcome()">Vamos começar!</button></div>
         </div>
     </dialog>
 
     <dialog id="modal-backup-info">
         <div class="modal-form">
-            <h3 style="margin-top: 0; color: var(--accent-playing);">💾 Salvar / Restaurar</h3>
+            <h3 style="margin-top: 0; color: var(--accent-playing);">Salvar / Restaurar</h3>
             <p style="font-size: 0.9em; color: var(--text-muted);">Mantenha seu progresso a salvo baixando o arquivo .json regularmente.</p>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
-                <button style="background-color: var(--accent-finished); padding: 12px;" onclick="exportBackup()">⬇️ Baixar Backup (.json)</button>
-                <button style="background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px;" onclick="document.getElementById('backup-input-home').click()">⬆️ Restaurar Backup</button>
+                <button style="background-color: var(--accent-finished); padding: 12px;" onclick="exportBackup()"><span class="ic-lead" data-icon="download"></span>Baixar Backup (.json)</button>
+                <button style="background-color: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px;" onclick="document.getElementById('backup-input-home').click()"><span class="ic-lead" data-icon="upload"></span>Restaurar Backup</button>
                 <input type="file" id="backup-input-home" accept=".json, application/json, text/*" style="display: none;" onchange="importBackup(event)">
             </div>
             <div class="modal-actions" style="margin-top: 15px;"><button class="btn-cancel" onclick="closeModal('modal-backup-info')">Fechar</button></div>
@@ -155,21 +155,21 @@
 
     <dialog id="modal-settings">
         <div class="modal-form">
-            <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">⚙️ Configurações</h3>
-            <div class="setting-row"><label style="font-weight: bold;">Tema Visual:</label><select id="theme-selector" onchange="changeTheme(this.value)" style="width: 150px;"><option value="dark">🌙 Escuro</option><option value="light">☀️ Claro</option><option value="pink">🌸 Rosa Pastel</option><option value="dracula">🦇 Drácula (Neon)</option></select></div>
+            <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Configurações</h3>
+            <div class="setting-row"><label style="font-weight: bold;">Tema Visual:</label><select id="theme-selector" onchange="changeTheme(this.value)" style="width: 150px;"><option value="dark">Escuro</option><option value="light">Claro</option><option value="pink">Rosa Pastel</option><option value="dracula">Drácula (Neon)</option></select></div>
             <div class="setting-row"><label style="font-weight: bold;">Modo Compacto:</label><input type="checkbox" id="compact-toggle" onchange="toggleCompact(this.checked)" style="width: 20px; height: 20px; accent-color: var(--accent-playing);"></div>
             
             <div style="margin-top: 15px;">
-                <label style="font-weight: bold;">🎮 Editar Plataformas:</label>
+                <label style="font-weight: bold;">Editar Plataformas:</label>
                 <div class="platform-manager">
                     <div id="platforms-list-admin"></div>
                     <div style="display: flex; gap: 5px; margin-top: 10px; align-items: center; flex-wrap: wrap;">
-                        <label for="new-platform-icon" class="filter-chip" style="cursor: pointer; padding: 6px 10px; margin: 0; display: flex; align-items: center; justify-content: center;" title="Escolher Imagem (Ícone)">🖼️</label>
+                        <label for="new-platform-icon" class="filter-chip" style="cursor: pointer; padding: 6px 10px; margin: 0; display: flex; align-items: center; justify-content: center;" title="Escolher Imagem (Ícone)"><span data-icon="image"></span></label>
                         <input type="file" id="new-platform-icon" accept="image/*, image/svg+xml" style="display: none;" onchange="previewPlatformIcon(this)">
-                        <div id="new-platform-icon-preview" style="font-size: 1.2em; width: 24px; text-align: center;">🎮</div>
+                        <div id="new-platform-icon-preview" style="width: 24px; display: flex; justify-content: center;"><span data-icon="gamepad"></span></div>
                         <input type="text" id="new-platform-name" placeholder="Nome (Ex: Switch)" style="flex:1; min-width: 120px;">
                         
-                        <button class="btn-icon" onclick="searchPlatformIconOnGoogle()" title="Buscar Ícone no Google" style="font-size: 1.1em; background: rgba(128,128,128,0.1);">🔍</button>
+                        <button class="btn-icon" onclick="searchPlatformIconOnGoogle()" title="Buscar Ícone no Google" style="background: rgba(128,128,128,0.1);" aria-label="Buscar ícone"><span data-icon="search"></span></button>
                         
                         <button id="btn-save-platform" onclick="savePlatform()">Add</button>
                         <button id="btn-cancel-platform" onclick="cancelEditPlatform()" style="display:none; background:transparent; border:1px solid var(--border-color); color:var(--text-main);">X</button>
@@ -177,7 +177,7 @@
                 </div>
             </div>
 
-            <div style="margin-top: 20px;"><button style="background-color: var(--danger); width: 100%;" onclick="openFactoryReset()">⚠️ Redefinição Geral (Apagar Tudo)</button></div>
+            <div style="margin-top: 20px;"><button style="background-color: var(--danger); width: 100%;" onclick="openFactoryReset()"><span class="ic-lead" data-icon="alert"></span>Redefinição Geral (Apagar Tudo)</button></div>
             <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
         </div>
     </dialog>
@@ -190,7 +190,7 @@
 
             <div style="display:flex; gap: 5px;">
                 <input type="text" id="game-title" placeholder="Ex: Ocarina of Time" style="flex: 1;" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchGameFromRAWG();}">
-                <button type="button" onclick="fetchGameFromRAWG()" style="background-color: var(--accent-playing); padding: 0 12px; font-size: 0.9em;" title="Buscar dados automaticamente (RAWG)">🌐 Auto</button>
+                <button type="button" onclick="fetchGameFromRAWG()" style="background-color: var(--accent-playing); padding: 0 12px; font-size: 0.9em;" title="Buscar dados automaticamente (RAWG)"><span class="ic-lead" data-icon="globe"></span>Auto</button>
             </div>
             <div id="rawg-results"></div>
             <div id="game-cover-preview" class="game-cover-preview" style="display:none;"></div>
@@ -213,7 +213,7 @@
             </div>
 
             <details id="game-extra" class="game-extra">
-                <summary>➕ Mais detalhes (gênero, lançamento, nota, descrição)</summary>
+                <summary>Mais detalhes (gênero, lançamento, nota, descrição)</summary>
                 <div class="modal-form" style="margin-top: 10px;">
                     <input type="text" id="game-genres" placeholder="Gêneros (separe por vírgula)">
                     <div style="display:flex; gap:10px;">
@@ -226,11 +226,11 @@
 
             <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Horas jogadas:</label>
             <input type="number" id="game-hours-played" placeholder="Ex: 3.5" min="0" step="0.5">
-            <textarea id="game-journal-notes" rows="2" placeholder="📖 Diário de bordo (opcional)"></textarea>
+            <textarea id="game-journal-notes" rows="2" placeholder="Diário de bordo (opcional)"></textarea>
 
             <div style="display: flex; align-items: center; gap: 10px; background: rgba(33, 150, 243, 0.1); padding: 10px; border-radius: 8px;">
                 <input type="checkbox" id="game-is-portable-backlog" style="width: 22px; height: 22px; accent-color: var(--accent-playing);">
-                <label for="game-is-portable-backlog" style="font-weight: bold; cursor: pointer;">🎒 Ideal para Portáteis</label>
+                <label for="game-is-portable-backlog" style="font-weight: bold; cursor: pointer;">Ideal para Portáteis</label>
             </div>
 
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-game')">Cancelar</button><button id="btn-save-game" onclick="saveGame()">Salvar</button></div>
@@ -240,7 +240,7 @@
     <dialog id="modal-roulette">
         <div class="modal-form" style="text-align: center;">
             <h3 style="margin-top: 0; color: var(--accent-playing);">Sua missão de hoje é:</h3>
-            <div style="font-size: 3em; margin: 15px 0;">🎯</div>
+            <div data-icon="target" data-size="1em" style="font-size: 3em; margin: 15px 0; color: var(--accent-playing); justify-content: center;"></div>
             <h2 id="roulette-game-name" style="margin-bottom: 25px; border-bottom: 2px dashed var(--border-color); padding-bottom: 15px;"></h2>
             <div class="modal-actions" style="justify-content: center;">
                 <button class="btn-cancel" onclick="closeModal('modal-roulette')" style="flex:1;">Talvez depois</button>
@@ -251,19 +251,19 @@
 
     <dialog id="modal-card-generator">
         <div class="modal-form">
-            <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">📸 Compartilhar Conquista</h3>
+            <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Compartilhar Conquista</h3>
             
             <div id="export-card-wrapper">
                 <div id="card-bg-layer"></div>
                 <div id="card-bg-overlay"></div>
                 
-                <div id="card-img-preview">🎮</div>
+                <div id="card-img-preview"></div>
                 <div id="card-title">Nome do Jogo</div>
                 <div id="card-details">
-                    <span id="card-platform">💻 PC</span>
-                    <span id="card-cat">📂 Categoria</span>
+                    <span id="card-platform">PC</span>
+                    <span id="card-cat">Categoria</span>
                 </div>
-                <div><span id="card-rating-badge">🌟 10/10</span></div>
+                <div><span id="card-rating-badge">10/10</span></div>
                 
                 <div id="card-date" style="font-size: 0.85em; opacity: 0.8; margin-top: 15px;">Finalizado em: 00/00/0000</div>
                 
@@ -279,17 +279,17 @@
 
             <div class="modal-actions" style="justify-content: center;">
                 <button class="btn-cancel" onclick="closeModal('modal-card-generator')" style="flex:1;">Fechar</button>
-                <button onclick="downloadCard()" style="flex:1; background-color: var(--accent-playing);">💾 Salvar Imagem</button>
+                <button onclick="downloadCard()" style="flex:1; background-color: var(--accent-playing);"><span class="ic-lead" data-icon="download"></span>Salvar Imagem</button>
             </div>
         </div>
     </dialog>
 
-    <dialog id="modal-factory-reset"><div class="modal-form"><h3 style="margin-top: 0; color: var(--danger);">⚠️ APAGAR TUDO?</h3><p style="font-size: 0.9em;">Esta ação <strong>NÃO PODE SER DESFEITA</strong>.</p><label style="font-size: 0.9em; color: var(--text-muted);">Digite <strong>APAGAR</strong> para confirmar:</label><input type="text" id="reset-confirm-input" placeholder="Digite APAGAR"><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-factory-reset')">Cancelar</button><button style="background-color: var(--danger);" onclick="confirmFactoryReset()">Confirmar Exclusão</button></div></div></dialog>
+    <dialog id="modal-factory-reset"><div class="modal-form"><h3 style="margin-top: 0; color: var(--danger);">APAGAR TUDO?</h3><p style="font-size: 0.9em;">Esta ação <strong>NÃO PODE SER DESFEITA</strong>.</p><label style="font-size: 0.9em; color: var(--text-muted);">Digite <strong>APAGAR</strong> para confirmar:</label><input type="text" id="reset-confirm-input" placeholder="Digite APAGAR"><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-factory-reset')">Cancelar</button><button style="background-color: var(--danger);" onclick="confirmFactoryReset()">Confirmar Exclusão</button></div></div></dialog>
     <dialog id="modal-cat"><div class="modal-form"><h3 id="cat-modal-title" style="margin-top: 0;">Nova Categoria</h3><input type="hidden" id="edit-cat-id"><input type="text" id="cat-name" placeholder="Nome (Ex: RPGs)"><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-cat')">Cancelar</button><button onclick="saveCategory()">Salvar</button></div></div></dialog>
     
     <dialog id="modal-rating">
         <div class="modal-form">
-            <h3 style="margin-top: 0; color: var(--star-color);">Parabéns por zerar! 🎉</h3>
+            <h3 style="margin-top: 0; color: var(--star-color);">Parabéns por zerar!</h3>
             <p id="rating-game-name" style="margin: 0; font-weight: bold;"></p>
             <input type="hidden" id="rating-game-id">
             
@@ -306,7 +306,7 @@
             
             <div style="display: flex; align-items: center; gap: 10px; background: rgba(33, 150, 243, 0.1); padding: 10px; border-radius: 8px;">
                 <input type="checkbox" id="game-is-portable" style="width: 22px; height: 22px; accent-color: var(--accent-playing);">
-                <label for="game-is-portable" style="font-weight: bold; cursor: pointer;">🎒 Ideal para Portáteis</label>
+                <label for="game-is-portable" style="font-weight: bold; cursor: pointer;">Ideal para Portáteis</label>
             </div>
 
             <div class="modal-actions"><button class="btn-cancel" onclick="cancelRating()">Cancelar</button><button class="btn-cancel" onclick="skipRating()">Pular Nota</button><button onclick="saveRating()">Salvar Nota</button></div>
@@ -335,14 +335,14 @@
             
             <div style="display: flex; align-items: center; gap: 10px; background: rgba(33, 150, 243, 0.1); padding: 10px; border-radius: 8px;">
                 <input type="checkbox" id="edit-fin-portable" style="width: 22px; height: 22px; accent-color: var(--accent-playing);">
-                <label for="edit-fin-portable" style="font-weight: bold; cursor: pointer;">🎒 Ideal para Portáteis</label>
+                <label for="edit-fin-portable" style="font-weight: bold; cursor: pointer;">Ideal para Portáteis</label>
             </div>
 
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-edit-finished')">Cancelar</button><button onclick="saveFinishedEdit()">Salvar Alterações</button></div>
         </div>
     </dialog>
 
-    <dialog id="modal-image"><div class="modal-form"><h3 style="margin-top: 0; margin-bottom: 0;">Editar Capa</h3><p style="font-size: 0.85em; color: var(--text-muted); margin-top: 0;" id="edit-game-name"></p><input type="hidden" id="edit-img-game-id"><div id="image-preview" class="image-preview-box" style="text-align:center; font-size:3em; margin: 10px 0;">🎮</div><button type="button" class="btn-search-google" style="background-color: var(--google-blue); width:100%;" onclick="searchCoverOnGoogle()">🔍 Buscar Capa no Google</button><div style="position: relative; overflow: hidden; display: block; width: 100%;"><span class="btn-upload" style="background-color: var(--bg-color); color: var(--text-main); display: block; text-align: center; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: bold; width: 100%; margin-top: 10px;">➕ Escolher Foto</span><input type="file" id="edit-game-icon" accept="image/*" style="font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%;" onchange="previewImageEdit(this)"></div><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-image')">Cancelar</button><button onclick="saveEditedImage()">Salvar</button></div></div></dialog>
+    <dialog id="modal-image"><div class="modal-form"><h3 style="margin-top: 0; margin-bottom: 0;">Editar Capa</h3><p style="font-size: 0.85em; color: var(--text-muted); margin-top: 0;" id="edit-game-name"></p><input type="hidden" id="edit-img-game-id"><div id="image-preview" class="image-preview-box" style="text-align:center; font-size:3em; margin: 10px 0;"><span data-icon="gamepad" data-size="1em"></span></div><button type="button" class="btn-search-google" style="background-color: var(--google-blue); width:100%;" onclick="searchCoverOnGoogle()"><span class="ic-lead" data-icon="search"></span>Buscar Capa no Google</button><div style="position: relative; overflow: hidden; display: block; width: 100%;"><span class="btn-upload" style="background-color: var(--bg-color); color: var(--text-main); display: block; text-align: center; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: bold; width: 100%; margin-top: 10px;">Escolher Foto</span><input type="file" id="edit-game-icon" accept="image/*" style="font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%;" onchange="previewImageEdit(this)"></div><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-image')">Cancelar</button><button onclick="saveEditedImage()">Salvar</button></div></div></dialog>
 
     <!-- O Módulo Maestro -->
     <script type="module" src="js/main.js"></script>
