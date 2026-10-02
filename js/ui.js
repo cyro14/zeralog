@@ -371,10 +371,11 @@ export function createGameElement(game) {
         if (game.dateFinished) chips.push(`<span class="chip">Zerado em ${esc(game.dateFinished)}</span>`);
     }
 
-    const editBtn = finished
+    const wikiBtn = `<button type="button" class="icon-btn" onclick="openWiki('${game.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>`;
+    const editBtn = wikiBtn + (finished
         ? `<button type="button" class="icon-btn" onclick="openCardGenerator('${game.id}')" title="Compartilhar" aria-label="Compartilhar">${ICONS.share}</button>
            <button type="button" class="icon-btn" onclick="openEditFinishedModal('${game.id}')" title="Editar conclusão" aria-label="Editar conclusão">${ICONS.edit}</button>`
-        : `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>`;
+        : `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>`);
 
     // Diário de bordo: recolhível quando for grande
     let journal = '';

@@ -1,6 +1,7 @@
 import { appData, saveData, backupData, setAppData, defaultData } from './store.js';
 import { openCardGenerator, downloadCard } from './card.js';
 import { hydrateIcons } from './icons.js';
+import { openWiki, wikiChangeSource, wikiSearch, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource } from './wiki.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleCompact, saveStateForUndo, undoAction, switchTab, 
@@ -71,6 +72,13 @@ window.fetchGameFromRAWG = fetchGameFromRAWG;
 window.pickRawgResult = pickRawgResult;
 window.toggleJournal = toggleJournal;
 window.saveRawgKey = saveRawgKey;
+window.openWiki = openWiki;
+window.wikiChangeSource = wikiChangeSource;
+window.wikiSearch = () => wikiSearch();
+window.wikiBack = wikiBack;
+window.wikiLinkGame = wikiLinkGame;
+window.wikiToggleAdd = wikiToggleAdd;
+window.wikiAddSource = wikiAddSource;
 
 // Inicialização Principal
 document.addEventListener("DOMContentLoaded", () => {

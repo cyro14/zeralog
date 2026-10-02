@@ -18,6 +18,7 @@ export const defaultData = {
         { name: 'Mobile', icon: defaultPlatformsIcons['Mobile'] }
     ],
     games: [],
+    wikis: [],
     unlockedAchievements: [] 
 };
 
@@ -37,9 +38,11 @@ if (!appData.settings.sort) appData.settings.sort = 'manual';
 if (!appData.collapsedCats) appData.collapsedCats = [];
 if (!appData.platforms) appData.platforms = defaultData.platforms;
 if (!appData.unlockedAchievements) appData.unlockedAchievements = [];
+if (!appData.wikis) appData.wikis = [];
 
 // Troca emojis e ícones antigos pelos ícones SVG (mantém imagens personalizadas)
 export function migrateData(data) {
+    if (!data.wikis) data.wikis = [];
     (data.platforms || []).forEach(p => {
         const cur = String(p.icon || '');
         if (cur.startsWith('<img') || cur.includes('class="ic')) return;
