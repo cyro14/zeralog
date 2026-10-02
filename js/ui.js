@@ -1,5 +1,5 @@
 import { icon, platformIcons } from './icons.js';
-import { searchGames, getGameDetails, coverToDataURL, esc, resizeUrl } from './gameApi.js';
+import { searchGames, getGameDetails, coverToDataURL, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey } from './gameApi.js';
 import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
 
 let toastTimeout = null;
@@ -88,7 +88,7 @@ export async function fetchGameFromRAWG() {
             </button>`).join('');
     } catch (err) {
         console.error(err);
-        box.innerHTML = '<div class="rawg-msg">Não consegui conectar à RAWG. Você pode preencher manualmente.</div>';
+        box.innerHTML = `<div class="rawg-msg rawg-err">${esc(describeError(err))} Você pode preencher manualmente.</div>`;
     }
 }
 
@@ -761,7 +761,10 @@ export function importBackup(event) {
     reader.readAsText(file); 
 }
 
+export function saveRawgKey(value) { setRawgKey(value); triggerToast(value.trim() ? 'Chave da RAWG salva.' : 'Voltou para a chave padrão.'); }
+
 export function openSettings() { 
+    document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
     document.getElementById('theme-selector').value = localStorage.getItem('zeralog_theme') || 'dark'; 
     document.getElementById('compact-toggle').checked = appData.settings.compact; 
     cancelEditPlatform(); 

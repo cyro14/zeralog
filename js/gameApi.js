@@ -1,6 +1,12 @@
 // Busca automática de dados de jogos via RAWG (https://rawg.io/apidocs).
 // Dica: crie sua própria chave gratuita lá e troque abaixo.
-const RAWG_KEY = '3b86001a1d824d5483d650117036d0b1';
+const DEFAULT_KEY = '3b86001a1d824d5483d650117036d0b1';
+const KEY_STORAGE = 'zeralog_rawg_key';
+
+// A chave pode ser trocada em Configurações, sem mexer no código
+export const getRawgKey = () => { try { return (localStorage.getItem(KEY_STORAGE) || '').trim() || DEFAULT_KEY; } catch (e) { return DEFAULT_KEY; } };
+export const setRawgKey = k => { try { k ? localStorage.setItem(KEY_STORAGE, k.trim()) : localStorage.removeItem(KEY_STORAGE); } catch (e) {} };
+export const hasCustomRawgKey = () => { try { return !!localStorage.getItem(KEY_STORAGE); } catch (e) { return false; } };
 
 const GENRES_PT = {
     'Action': 'Ação', 'Indie': 'Indie', 'Adventure': 'Aventura', 'RPG': 'RPG',
@@ -32,10 +38,22 @@ function normalize(g) {
 }
 
 async function rawg(path, params = {}) {
-    const qs = new URLSearchParams({ ...params, key: RAWG_KEY });
-    const res = await fetch(`https://api.rawg.io/api${path}?${qs}`);
-    if (!res.ok) throw new Error(`RAWG ${res.status}`);
+    const qs = new URLSearchParams({ ...params, key: getRawgKey() });
+    let res;
+    try { res = await fetch(`https://api.rawg.io/api${path}?${qs}`); }
+    catch (e) { throw Object.assign(new Error('network'), { kind: 'network' }); }
+    if (!res.ok) throw Object.assign(new Error(`RAWG ${res.status}`), { kind: 'http', status: res.status });
     return res.json();
+}
+
+// Mensagem clara para o usuário, conforme o tipo de falha
+export function describeError(err) {
+    if (err && err.kind === 'http') {
+        if (err.status === 401 || err.status === 403) return 'A chave da RAWG foi recusada (inválida ou expirada). Gere uma chave grátis em rawg.io/apidocs e cole em Configurações.';
+        if (err.status === 429) return 'Limite de buscas da chave da RAWG atingido. Use sua própria chave grátis (rawg.io/apidocs) em Configurações.';
+        return `A RAWG respondeu com erro ${err.status}. Tente de novo em instantes.`;
+    }
+    return 'Não consegui falar com a RAWG. Verifique a internet ou se algum bloqueador de anúncios está barrando api.rawg.io.';
 }
 
 export async function searchGames(query) {
