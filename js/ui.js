@@ -1,5 +1,6 @@
+import { icon, platformIcons } from './icons.js';
 import { searchGames, getGameDetails, coverToDataURL, esc, resizeUrl } from './gameApi.js';
-import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels } from './store.js';
+import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
 
 let toastTimeout = null;
 export let chartInstance = null;
@@ -76,18 +77,18 @@ export async function fetchGameFromRAWG() {
     const query = document.getElementById('game-title').value.trim();
     if (!query) { triggerToast('Digite o nome do jogo primeiro.'); return; }
     const box = document.getElementById('rawg-results');
-    box.innerHTML = '<div class="rawg-msg">🔎 Buscando...</div>';
+    box.innerHTML = '<div class="rawg-msg">Buscando...</div>';
     try {
         lastResults = await searchGames(query);
-        if (!lastResults.length) { box.innerHTML = '<div class="rawg-msg">Nada encontrado. Preencha manualmente ✍️</div>'; return; }
+        if (!lastResults.length) { box.innerHTML = '<div class="rawg-msg">Nada encontrado. Preencha manualmente.</div>'; return; }
         box.innerHTML = lastResults.map((g, i) => `
             <button type="button" class="rawg-item" onclick="pickRawgResult(${i})">
-                ${g.image ? `<img src="${esc(resizeUrl(g.image, 200))}" loading="lazy" alt="">` : '<span class="rawg-noimg">🎮</span>'}
+                ${g.image ? `<img src="${esc(resizeUrl(g.image, 200))}" loading="lazy" alt="">` : `<span class="rawg-noimg">${icon('gamepad', { size: '1.6em' })}</span>`}
                 <span><strong>${esc(g.title)}</strong><small>${g.released ? esc(g.released.slice(0, 4)) : '—'}${g.genres.length ? ' · ' + esc(g.genres.slice(0, 2).join(', ')) : ''}</small></span>
             </button>`).join('');
     } catch (err) {
         console.error(err);
-        box.innerHTML = '<div class="rawg-msg">Não consegui conectar à RAWG. Você pode preencher manualmente ✍️</div>';
+        box.innerHTML = '<div class="rawg-msg">Não consegui conectar à RAWG. Você pode preencher manualmente.</div>';
     }
 }
 
@@ -95,7 +96,7 @@ export async function pickRawgResult(i) {
     const base = lastResults[i];
     if (!base) return;
     const box = document.getElementById('rawg-results');
-    box.innerHTML = '<div class="rawg-msg">⬇️ Carregando dados...</div>';
+    box.innerHTML = '<div class="rawg-msg">Carregando dados...</div>';
     let g = base;
     try { g = { ...base, ...(await getGameDetails(base.rawgId)) }; } catch (e) { /* segue só com os dados da busca */ }
 
@@ -110,7 +111,7 @@ export async function pickRawgResult(i) {
     }
     document.getElementById('game-extra').open = true;
     if (g.image) { pendingCover = await coverToDataURL(g.image); updateCoverPreview(pendingCover); }
-    box.innerHTML = `<div class="rawg-msg">✅ Dados de <strong>${esc(g.title)}</strong> preenchidos. Revise e salve.</div>`;
+    box.innerHTML = `<div class="rawg-msg rawg-ok">${icon('check')} Dados de <strong>${esc(g.title)}</strong> preenchidos. Revise e salve.</div>`;
 }
 
 // ================= RENDERIZAÇÃO E LISTAS =================
@@ -147,7 +148,7 @@ export function filterGames() {
             const platformMatch = state.currentPlatformFilter === 'All' || item.dataset.platform === state.currentPlatformFilter;
             const portableMatch = !state.filterPortableOnly || item.dataset.portable === 'true';
             
-            if (titleMatch && platformMatch && portableMatch) { item.style.display = 'flex'; hasVisibleGames = true; } 
+            if (titleMatch && platformMatch && portableMatch) { item.style.display = ''; hasVisibleGames = true; } 
             else { item.style.display = 'none'; }
         });
         if (term !== '' || state.currentPlatformFilter !== 'All' || state.filterPortableOnly) { 
@@ -219,7 +220,7 @@ export function render() {
 
     const filterContainer = document.getElementById('platform-chips-container');
     filterContainer.innerHTML = `<div class="filter-chip ${state.currentPlatformFilter === 'All' ? 'active' : ''}" onclick="setPlatformFilter('All', this)">Todas</div>`;
-    filterContainer.innerHTML += `<div class="filter-chip ${state.filterPortableOnly ? 'active' : ''}" onclick="togglePortableFilter()" id="filter-chip-portable" style="border-color: var(--accent-playing); ${state.filterPortableOnly ? '' : 'color: var(--accent-playing);'}">🎒 Portáteis</div>`;
+    filterContainer.innerHTML += `<div class="filter-chip ${state.filterPortableOnly ? 'active' : ''}" onclick="togglePortableFilter()" id="filter-chip-portable" style="border-color: var(--accent-playing); ${state.filterPortableOnly ? '' : 'color: var(--accent-playing);'}">Portáteis</div>`;
 
     appData.platforms.forEach(p => {
         filterContainer.innerHTML += `<div class="filter-chip ${state.currentPlatformFilter === p.name ? 'active' : ''}" onclick="setPlatformFilter('${p.name}', this)" style="display:inline-flex; align-items:center; gap:6px;">${p.icon} <span>${p.name}</span></div>`;
@@ -229,7 +230,7 @@ export function render() {
     const playingCatDiv = document.createElement('div');
     playingCatDiv.className = `category ${appData.collapsedCats.includes('playing-category') ? 'collapsed' : ''}`; playingCatDiv.id = 'playing-category';
     if(playingGames.length > 0) playingCatDiv.style.display = 'block';
-    playingCatDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('playing-category', event)"><div class="cat-title-area"><span class="chevron">▼</span><h2>🕹️ Jogando Atualmente</h2></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-playing"></ul></div>`;
+    playingCatDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('playing-category', event)"><div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>Jogando Atualmente</h2></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-playing"></ul></div>`;
     containerHome.appendChild(playingCatDiv);
     const listPlaying = playingCatDiv.querySelector('#list-playing'); playingGames.forEach(game => listPlaying.appendChild(createGameElement(game)));
 
@@ -238,12 +239,12 @@ export function render() {
         const catDiv = document.createElement('div'); catDiv.className = `category ${appData.collapsedCats.includes(cat.id) ? 'collapsed' : ''}`; catDiv.id = cat.id;
         catDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${cat.id}', event)">
-                <div class="cat-title-area"><span class="chevron">▼</span><h2>${cat.name}</h2></div>
+                <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>${esc(cat.name)}</h2></div>
                 <div class="cat-actions">
-                    <button class="btn-icon" onclick="moveCategory('${cat.id}', -1)" title="Mover para Cima">⬆️</button>
-                    <button class="btn-icon" onclick="moveCategory('${cat.id}', 1)" title="Mover para Baixo">⬇️</button>
-                    <button class="btn-icon" onclick="openEditCatModal('${cat.id}')" title="Editar Categoria">✏️</button>
-                    <button class="btn-icon btn-delete" onclick="askDeleteCategory('${cat.id}')" title="Excluir Categoria">🗑️</button>
+                    <button class="btn-icon" onclick="moveCategory('${cat.id}', -1)" title="Mover para Cima">${ICONS.up}</button>
+                    <button class="btn-icon" onclick="moveCategory('${cat.id}', 1)" title="Mover para Baixo">${ICONS.down}</button>
+                    <button class="btn-icon" onclick="openEditCatModal('${cat.id}')" title="Editar Categoria">${ICONS.edit}</button>
+                    <button class="btn-icon btn-delete" onclick="askDeleteCategory('${cat.id}')" title="Excluir Categoria">${ICONS.trash}</button>
                     <button onclick="openGameModal('${cat.id}')">+ Jogo</button>
                 </div>
             </div>
@@ -293,11 +294,11 @@ export function renderFinishedTab() {
         yearDiv.className = `category ${appData.collapsedCats.includes(yearId) ? 'collapsed' : ''}`;
         yearDiv.id = yearId;
         
-        let titleText = isDateSort ? `🏆 Concluídos em ${year}` : (appData.settings.finishedSort === 'rating' ? '🌟 Ordenados por Nota' : (appData.settings.finishedSort === 'time' ? '⏱️ Ordenados por Tempo' : '🎒 Ordenados por Portátil'));
+        let titleText = isDateSort ? `Concluídos em ${year}` : (appData.settings.finishedSort === 'rating' ? 'Ordenados por Nota' : (appData.settings.finishedSort === 'time' ? 'Ordenados por Tempo' : 'Ordenados por Portátil'));
         yearDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${yearId}', event)">
-                <div class="cat-title-area"><span class="chevron">▼</span><h2 style="color: var(--accent-finished)">${titleText}</h2></div>
-                <div class="cat-actions"><span style="font-size: 0.8em; color: var(--text-muted); font-weight: bold;">${years[year].length} jogos</span></div>
+                <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2 style="color: var(--accent-finished)">${titleText}</h2></div>
+                <div class="cat-actions"><span style="font-size: 0.8em; color: var(--text-muted); font-weight: bold;">${years[year].length} ${years[year].length === 1 ? 'jogo' : 'jogos'}</span></div>
             </div>
             <div class="game-list-wrapper"><ul class="game-list"></ul></div>
         `;
@@ -307,12 +308,8 @@ export function renderFinishedTab() {
     });
 }
 
-// Ícones de linha (SVG) para os botões do card, em vez de emojis
-const ICONS = {
-    edit: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
-    share: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>',
-    trash: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>'
-};
+// Ícones de linha (SVG) para os botões
+const ICONS = Object.fromEntries(['edit', 'share', 'trash', 'up', 'down'].map(n => [n, icon(n, { size: '18px' })]));
 
 // Diário com mais que isso (ou muitas linhas) começa recolhido, com botão "Ver tudo"
 const JOURNAL_LIMIT = 140;
@@ -731,7 +728,7 @@ export function quickSearch(site) {
     if(site === 'meta') window.open(`https://www.metacritic.com/search/${encodeURIComponent(title)}/`, '_blank');
 }
 
-export function openImageModal(gameId) { const game = appData.games.find(g => g.id === gameId); document.getElementById('edit-img-game-id').value = gameId; document.getElementById('edit-game-name').innerText = game.title; const previewEl = document.getElementById('image-preview'); if(game.image) previewEl.innerHTML = `<img src="${game.image}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; else previewEl.innerHTML = `🎮`; document.getElementById('modal-image').showModal(); }
+export function openImageModal(gameId) { const game = appData.games.find(g => g.id === gameId); document.getElementById('edit-img-game-id').value = gameId; document.getElementById('edit-game-name').innerText = game.title; const previewEl = document.getElementById('image-preview'); if(game.image) previewEl.innerHTML = `<img src="${game.image}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; else previewEl.innerHTML = icon('gamepad', { size: '3em' }); document.getElementById('modal-image').showModal(); }
 export function searchCoverOnGoogle() { const gameId = document.getElementById('edit-img-game-id').value; const game = appData.games.find(g => g.id === gameId); if (game) window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, '_blank'); }
 export function previewImageEdit(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { document.getElementById('image-preview').innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; }; reader.readAsDataURL(input.files[0]); } }
 export function saveEditedImage() { const gameId = document.getElementById('edit-img-game-id').value; const fileInput = document.getElementById('edit-game-icon'); const game = appData.games.find(g => g.id === gameId); if (fileInput.files && fileInput.files[0]) { const reader = new FileReader(); reader.onload = function(e) { saveStateForUndo(); game.image = e.target.result; fileInput.value = ''; closeModal('modal-image'); saveData(() => render()); triggerToast('Capa atualizada.'); }; reader.readAsDataURL(fileInput.files[0]); } else { closeModal('modal-image'); } }
@@ -748,7 +745,7 @@ export function importBackup(event) {
             const imported = JSON.parse(e.target.result); 
             if (imported && imported.games) { 
                 saveStateForUndo(); 
-                setAppData(imported); 
+                setAppData(migrateData(imported)); 
                 if (!appData.settings) appData.settings = { sort: 'manual', compact: false, finishedSortDir: 'desc', homeSortDir: 'asc' }; 
                 if (!appData.settings.homeSortDir) appData.settings.homeSortDir = 'asc';
                 if (!appData.collapsedCats) appData.collapsedCats =[]; 
@@ -784,8 +781,8 @@ export function renderPlatformAdmin() {
         item.innerHTML = `
             <span style="display:flex; align-items:center; gap:8px;">${p.icon} <span>${p.name}</span></span>
             <div style="display:flex; gap:5px;">
-                <button class="btn-icon" onclick="editPlatform(${index})" title="Editar">✏️</button>
-                <button class="btn-icon btn-delete" onclick="removePlatform(${index})" title="Remover">🗑️</button>
+                <button class="btn-icon" onclick="editPlatform(${index})" title="Editar">${ICONS.edit}</button>
+                <button class="btn-icon btn-delete" onclick="removePlatform(${index})" title="Remover">${ICONS.trash}</button>
             </div>
         `;
         list.appendChild(item);
@@ -794,9 +791,9 @@ export function renderPlatformAdmin() {
 export function previewPlatformIcon(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { state.tempPlatformIcon = `<img src="${e.target.result}" style="width: 1.2em; height: 1.2em; vertical-align: middle; border-radius: 4px; object-fit: cover; flex-shrink: 0;">`; document.getElementById('new-platform-icon-preview').innerHTML = state.tempPlatformIcon; }; reader.readAsDataURL(input.files[0]); } }
 export function searchPlatformIconOnGoogle() { const name = document.getElementById('new-platform-name').value; const query = name ? `${name} logo icon transparent png` : 'video game console platform logo icon transparent png'; window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}&tbs=ic:trans`, '_blank'); }
 export function editPlatform(index) { state.editPlatformIndex = index; const p = appData.platforms[index]; document.getElementById('new-platform-name').value = p.name; state.tempPlatformIcon = p.icon; document.getElementById('new-platform-icon-preview').innerHTML = p.icon; document.getElementById('btn-save-platform').innerText = 'Salvar'; document.getElementById('btn-cancel-platform').style.display = 'inline-block'; }
-export function cancelEditPlatform() { state.editPlatformIndex = -1; document.getElementById('new-platform-name').value = ''; state.tempPlatformIcon = ''; document.getElementById('new-platform-icon-preview').innerHTML = '🎮'; document.getElementById('btn-save-platform').innerText = 'Add'; document.getElementById('btn-cancel-platform').style.display = 'none'; }
+export function cancelEditPlatform() { state.editPlatformIndex = -1; document.getElementById('new-platform-name').value = ''; state.tempPlatformIcon = ''; document.getElementById('new-platform-icon-preview').innerHTML = platformIcons.default; document.getElementById('btn-save-platform').innerText = 'Add'; document.getElementById('btn-cancel-platform').style.display = 'none'; }
 export function savePlatform() {
-    const icon = state.tempPlatformIcon || '🎮';
+    const icon = state.tempPlatformIcon || platformIcons.default;
     const name = document.getElementById('new-platform-name').value;
     if(!name) return;
     saveStateForUndo();

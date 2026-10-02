@@ -1,5 +1,6 @@
 import { appData, saveData, backupData, setAppData, defaultData } from './store.js';
 import { openCardGenerator, downloadCard } from './card.js';
+import { hydrateIcons } from './icons.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleCompact, saveStateForUndo, undoAction, switchTab, 
@@ -73,6 +74,7 @@ window.toggleJournal = toggleJournal;
 // Inicialização Principal
 document.addEventListener("DOMContentLoaded", () => {
     if(appData.settings.compact) document.body.classList.add('compact-mode');
+    hydrateIcons();
     render();
     checkWelcome();
 });

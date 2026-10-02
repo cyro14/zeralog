@@ -1,6 +1,6 @@
 // Busca automática de dados de jogos via RAWG (https://rawg.io/apidocs).
 // Dica: crie sua própria chave gratuita lá e troque abaixo.
-const RAWG_KEY = 'ae08037aa9fb40a48b12090819cedb07';
+const RAWG_KEY = '3b86001a1d824d5483d650117036d0b1';
 
 const GENRES_PT = {
     'Action': 'Ação', 'Indie': 'Indie', 'Adventure': 'Aventura', 'RPG': 'RPG',
