@@ -1,4 +1,6 @@
 import { icon, platformIcons } from './icons.js';
+import { getSession } from './session.js';
+import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
 import { searchGames, getGameDetails, coverToDataURL, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey } from './gameApi.js';
 import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
 
@@ -13,9 +15,10 @@ export let state = {
 };
 
 // ================= UTILITÁRIOS =================
-export function triggerToast(message) {
+export function triggerToast(message, withUndo = true) {
     const toast = document.getElementById('undo-toast'); 
     document.getElementById('undo-message').innerText = message;
+    toast.querySelector('.btn-undo').style.display = withUndo ? '' : 'none';
     toast.classList.add('show'); 
     clearTimeout(toastTimeout); 
     toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 6000);
@@ -255,6 +258,7 @@ export function render() {
     });
 
     renderWishlist();
+    renderQuickMatch();
     renderFinishedTab();
     filterGames();
     if(document.getElementById('tab-stats').classList.contains('active')) updateStatsAndCharts();
@@ -380,10 +384,20 @@ export function createGameElement(game) {
         if (game.dateFinished) chips.push(`<span class="chip">Zerado em ${esc(game.dateFinished)}</span>`);
     }
 
-    const wikiBtn = `<button type="button" class="icon-btn" onclick="openWiki('${game.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>`;
+    const sess = getSession();
+    const running = !!(sess && sess.gameId === game.id);
+    const playBtn = game.state === 'playing'
+        ? (running
+            ? `<button type="button" class="icon-btn session-running" onclick="openEndSession()" title="Encerrar sessão" aria-label="Encerrar sessão">${icon('stop', { size: '18px' })}</button>`
+            : `<button type="button" class="icon-btn" onclick="startSession('${game.id}')" title="Iniciar sessão de jogo" aria-label="Iniciar sessão de jogo">${icon('play', { size: '18px' })}</button>`)
+        : '';
+    if (running) chips.unshift('<span class="chip chip-accent">Em sessão</span>');
+    const infoBtn = `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Dados do jogo (editar / buscar automático)" aria-label="Dados do jogo">${icon('info', { size: '18px' })}</button>`;
+    const wikiBtn = playBtn + `<button type="button" class="icon-btn" onclick="openWiki('${game.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>`;
     const editBtn = wikiBtn + (finished
         ? `<button type="button" class="icon-btn" onclick="openCardGenerator('${game.id}')" title="Compartilhar" aria-label="Compartilhar">${ICONS.share}</button>
-           <button type="button" class="icon-btn" onclick="openEditFinishedModal('${game.id}')" title="Editar conclusão" aria-label="Editar conclusão">${ICONS.edit}</button>`
+           ${infoBtn}
+           <button type="button" class="icon-btn" onclick="openEditFinishedModal('${game.id}')" title="Editar conclusão (nota, data, review)" aria-label="Editar conclusão">${ICONS.edit}</button>`
         : `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>`);
 
     // Diário de bordo: recolhível quando for grande
@@ -821,7 +835,8 @@ function renderTimeline(container, finishedGames) {
                 </div>
                 <div class="gi-actions">
                     <button type="button" class="icon-btn" onclick="openCardGenerator('${g.id}')" title="Compartilhar" aria-label="Compartilhar">${ICONS.share}</button>
-                    <button type="button" class="icon-btn" onclick="openEditFinishedModal('${g.id}')" title="Editar conclusão" aria-label="Editar conclusão">${ICONS.edit}</button>
+                    <button type="button" class="icon-btn" onclick="openEditGameModal('${g.id}')" title="Dados do jogo (editar / buscar automático)" aria-label="Dados do jogo">${icon('info', { size: '18px' })}</button>
+                    <button type="button" class="icon-btn" onclick="openEditFinishedModal('${g.id}')" title="Editar conclusão (nota, data, review)" aria-label="Editar conclusão">${ICONS.edit}</button>
                 </div>
             </div>
         </li>`;
@@ -937,6 +952,12 @@ export function openEditFinishedModal(gameId) {
     document.getElementById('modal-edit-finished').showModal(); 
 }
 
+export function openGameDataFromFinished() {
+    const id = document.getElementById('edit-fin-game-id').value;
+    closeModal('modal-edit-finished');
+    openEditGameModal(id);
+}
+
 export function cancelRating() { closeModal('modal-rating'); render(); }
 
 export function skipRating() { 
@@ -985,12 +1006,20 @@ export function saveFinishedEdit() {
 
 // ================= ROLETA E UTILITÁRIOS =================
 export function spinRoulette() {
-    const pool = appData.games.filter(g => g.state !== 'finished');
-    if(pool.length === 0) return alert('Seu backlog está vazio! Adicione mais jogos.');
+    const modal = document.getElementById('modal-roulette');
+    let pool = getMatches();
+    if (pool.length === 0) {
+        if (filtersActive()) return triggerToast('Nenhum jogo da fila combina com esses filtros.');
+        return alert('Seu backlog está vazio! Adicione mais jogos.');
+    }
+    const total = pool.length;
+    if (modal.open && pool.length > 1) pool = pool.filter(g => g.id !== state.currentRouletteId);   // "sortear outro"
     const winner = pool[Math.floor(Math.random() * pool.length)];
     state.currentRouletteId = winner.id;
     document.getElementById('roulette-game-name').innerText = winner.title;
-    document.getElementById('modal-roulette').showModal();
+    document.getElementById('roulette-pool-info').textContent = filtersActive() ? `Entre ${total} ${total === 1 ? 'jogo' : 'jogos'}: ${describeFilters()}` : `Entre ${total} ${total === 1 ? 'jogo' : 'jogos'} da sua fila`;
+    document.getElementById('roulette-reroll').style.display = total > 1 ? '' : 'none';
+    if (!modal.open) modal.showModal();
 }
 
 export function acceptRoulette() {
