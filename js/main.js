@@ -1,9 +1,9 @@
 import { appData, saveData, backupData, setAppData, defaultData } from './store.js';
 import { openCardGenerator, downloadCard } from './card.js';
 import { hydrateIcons } from './icons.js';
-import { initSession, startSession, openEndSession, sessionPreview, sessionFinish } from './session.js';
+import { initSession, startSession, openEndSession, sessionPreview, sessionFinish, openJournalEntry, saveJournalEntry } from './session.js';
 import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset } from './quickmatch.js';
-import { openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
+import { toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
 import { openWiki, wikiChangeSource, wikiSearch, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom } from './wiki.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
@@ -83,7 +83,7 @@ window.wikiLinkGame = wikiLinkGame;
 window.wikiToggleAdd = wikiToggleAdd;
 window.wikiAddSource = wikiAddSource;
 window.wikiFindFandom = wikiFindFandom;
-Object.assign(window, { startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
+Object.assign(window, { openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
 
 // Inicialização Principal
 document.addEventListener("DOMContentLoaded", () => {

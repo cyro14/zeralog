@@ -31,7 +31,7 @@ function hasGenre(g, genre) {
 export const filtersActive = () => !!(F.time || F.genre || F.portable);
 
 export function getMatches() {
-    return appData.games.filter(g => g.state === null).filter(g => {
+    return appData.games.filter(g => g.state === null && !g.continuous).filter(g => {
         if (F.portable && !g.isPortable) return false;
         if (F.time) {
             const h = hoursOf(g.meta);
@@ -52,14 +52,14 @@ export function describeFilters() {
 
 function backlogGenres() {
     const map = new Map();
-    appData.games.filter(g => g.state === null).forEach(g => (g.genres || []).forEach(x => { if (x && !map.has(norm(x))) map.set(norm(x), x); }));
+    appData.games.filter(g => g.state === null && !g.continuous).forEach(g => (g.genres || []).forEach(x => { if (x && !map.has(norm(x))) map.set(norm(x), x); }));
     return [...map.values()].sort((a, b) => a.localeCompare(b));
 }
 
 export function renderQuickMatch() {
     const body = document.getElementById('qm-body');
     if (!body) return;
-    const backlog = appData.games.filter(g => g.state === null);
+    const backlog = appData.games.filter(g => g.state === null && !g.continuous);
     const matches = getMatches();
     const active = filtersActive();
     document.getElementById('qm-count').textContent = active ? `${matches.length} combinam` : `${backlog.length} na fila`;

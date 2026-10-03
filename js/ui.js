@@ -229,7 +229,7 @@ export function render() {
         filterContainer.innerHTML += `<div class="filter-chip ${state.currentPlatformFilter === p.name ? 'active' : ''}" onclick="setPlatformFilter('${p.name}', this)" style="display:inline-flex; align-items:center; gap:6px;">${p.icon} <span>${p.name}</span></div>`;
     });
 
-    const playingGames = getSortedGames(appData.games.filter(g => g.state === 'playing'), null, false);
+    const playingGames = getSortedGames(appData.games.filter(g => g.state === 'playing' && !g.continuous), null, false);
     const playingCatDiv = document.createElement('div');
     playingCatDiv.className = `category ${appData.collapsedCats.includes('playing-category') ? 'collapsed' : ''}`; playingCatDiv.id = 'playing-category';
     if(playingGames.length > 0) playingCatDiv.style.display = 'block';
@@ -237,8 +237,24 @@ export function render() {
     containerHome.appendChild(playingCatDiv);
     const listPlaying = playingCatDiv.querySelector('#list-playing'); playingGames.forEach(game => listPlaying.appendChild(createGameElement(game)));
 
+    // Seção de Jogos Contínuos (live service / sandbox): só horas e diário, sem "Zerado"
+    const contGames = appData.games.filter(g => g.continuous).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
+    if (contGames.length) {
+        const total = contGames.reduce((a, g) => a + hoursNum(g.hoursPlayed), 0);
+        const contDiv = document.createElement('div');
+        contDiv.className = `category continuous ${appData.collapsedCats.includes('continuous-category') ? 'collapsed' : ''}`; contDiv.id = 'continuous-category';
+        contDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('continuous-category', event)"><div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>Jogos Contínuos</h2><span class="chip chip-live">${fmtHours(total)} jogadas</span></div><div class="cat-actions"><button onclick="openGameModal('continuous')">+ Jogo</button></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-continuous"></ul></div>`;
+        containerHome.appendChild(contDiv);
+        const listCont = contDiv.querySelector('#list-continuous'); contGames.forEach(game => listCont.appendChild(createGameElement(game)));
+    } else {
+        const addDiv = document.createElement('div');
+        addDiv.className = 'add-continuous-wrap';
+        addDiv.innerHTML = `<button type="button" class="add-continuous" onclick="openGameModal('continuous')">+ Jogo Contínuo <small>(live service / sandbox infinito)</small></button>`;
+        containerHome.appendChild(addDiv);
+    }
+
     appData.categories.forEach(cat => {
-        const catGames = getSortedGames(appData.games.filter(g => g.catId === cat.id && g.state === null), null, false);
+        const catGames = getSortedGames(appData.games.filter(g => g.catId === cat.id && g.state === null && !g.continuous), null, false);
         const catDiv = document.createElement('div'); catDiv.className = `category ${appData.collapsedCats.includes(cat.id) ? 'collapsed' : ''}`; catDiv.id = cat.id;
         catDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${cat.id}', event)">
@@ -332,6 +348,19 @@ export function toggleJournal(btn) {
     btn.setAttribute('aria-expanded', String(!collapsed));
 }
 
+const DIFF_LABELS = { easy: 'Fácil', normal: 'Normal', hard: 'Difícil', extreme: 'Extremo' };
+const CONSOLES = ['NES', 'Super Nintendo', 'Nintendo 64', 'GameCube', 'Wii', 'Game Boy', 'Game Boy Color', 'Game Boy Advance', 'Nintendo DS', 'Nintendo 3DS', 'Master System', 'Mega Drive', 'Saturn', 'Dreamcast', 'PlayStation', 'PlayStation 2', 'PlayStation Portable', 'Neo Geo', 'Arcade', 'Atari 2600', 'PC Engine'];
+
+// Selos extras (emulado, console original, dificuldade) usados em todos os cards
+export function flagChips(g) {
+    const out = [];
+    if (g.emulated) out.push(`<span class="chip chip-emu" title="Jogado em emulador">Emulado${g.originalConsole ? ' · ' + esc(g.originalConsole) : ''}</span>`);
+    if (g.difficulty && DIFF_LABELS[g.difficulty]) out.push(`<span class="chip chip-diff chip-diff-${esc(g.difficulty)}" title="Dificuldade">${DIFF_LABELS[g.difficulty]}</span>`);
+    return out;
+}
+const hoursNum = h => { const n = parseFloat(String(h || '0').replace(',', '.')); return isNaN(n) ? 0 : n; };
+const fmtHours = n => (Math.round(n * 10) / 10).toString().replace('.', ',') + 'h';
+
 const fmtTime = t => String(t).endsWith('m') ? `${String(t).slice(0, -1)} min` : String(t);
 
 export function createGameElement(game) {
@@ -367,13 +396,17 @@ export function createGameElement(game) {
             const left = total - played;
             progress = `<div class="gi-progress"><div class="gi-bar"><span style="width:${pct}%"></span></div><small>${played}h de ${total % 1 ? total.toFixed(1) : total}h · ${left > 0 ? `faltam ~${left.toFixed(1)}h` : 'meta atingida'}</small></div>`;
         }
+    } else if (game.continuous) {
+        progress = `<div class="gi-hours"><strong>${fmtHours(hoursNum(game.hoursPlayed))}</strong> jogadas</div>`;
     } else if (game.hoursPlayed) {
         progress = `<div class="gi-progress"><small>${esc(game.hoursPlayed)}h jogadas</small></div>`;
     }
 
     // Etiquetas
     const chips = [];
+    if (game.continuous) chips.push('<span class="chip chip-live">Contínuo</span>');
     if (game.franchise) chips.push(franchiseChip(game.franchise));
+    chips.push(...flagChips(game));
     if (game.metacritic) chips.push(`<span class="chip score ${game.metacritic >= 75 ? 'good' : game.metacritic >= 50 ? 'mid' : 'bad'}" title="Nota Metacritic">Metacritic ${esc(game.metacritic)}</span>`);
     if (game.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
     if (finished) {
@@ -386,7 +419,7 @@ export function createGameElement(game) {
 
     const sess = getSession();
     const running = !!(sess && sess.gameId === game.id);
-    const playBtn = game.state === 'playing'
+    const playBtn = (game.state === 'playing' && !game.continuous)
         ? (running
             ? `<button type="button" class="icon-btn session-running" onclick="openEndSession()" title="Encerrar sessão" aria-label="Encerrar sessão">${icon('stop', { size: '18px' })}</button>`
             : `<button type="button" class="icon-btn" onclick="startSession('${game.id}')" title="Iniciar sessão de jogo" aria-label="Iniciar sessão de jogo">${icon('play', { size: '18px' })}</button>`)
@@ -414,6 +447,18 @@ export function createGameElement(game) {
     const desc = game.description
         ? `<details class="game-desc"><summary>Sobre o jogo</summary><p>${esc(game.description)}</p></details>` : '';
 
+    const statusRow = game.continuous
+        ? `<div class="gi-status">
+                ${running
+                    ? '<button type="button" class="pill-btn session-live" onclick="openEndSession()">Encerrar sessão</button>'
+                    : `<button type="button" class="pill-btn primary" onclick="startSession('${game.id}')">Iniciar sessão</button>`}
+                <button type="button" class="pill-btn" onclick="openJournalEntry('${game.id}')">Anotar no diário</button>
+            </div>`
+        : `<div class="gi-status">
+                <label class="pill pill-playing"><input type="checkbox" class="chk-playing" onchange="toggleState('${game.id}', 'playing')" ${isPlaying}><span>Jogando</span></label>
+                <label class="pill pill-finished"><input type="checkbox" class="chk-finished" onchange="toggleState('${game.id}', 'finished')" ${isFinished}><span>Zerado</span></label>
+            </div>`;
+
     li.innerHTML = `
         ${cover}
         <div class="gi-body">
@@ -421,10 +466,7 @@ export function createGameElement(game) {
             <div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div>
             ${chips.length ? `<div class="gi-chips">${chips.join('')}</div>` : ''}
             ${progress}
-            <div class="gi-status">
-                <label class="pill pill-playing"><input type="checkbox" class="chk-playing" onchange="toggleState('${game.id}', 'playing')" ${isPlaying}><span>Jogando</span></label>
-                <label class="pill pill-finished"><input type="checkbox" class="chk-finished" onchange="toggleState('${game.id}', 'finished')" ${isFinished}><span>Zerado</span></label>
-            </div>
+            ${statusRow}
         </div>
         <div class="gi-actions">${editBtn}<button type="button" class="icon-btn danger" onclick="askDeleteGame('${game.id}')" title="Remover" aria-label="Remover">${ICONS.trash}</button></div>
         ${journal}
@@ -464,7 +506,8 @@ export function checkNewAchievements() {
 }
 
 export function updateStatsAndCharts() {
-    const filteredGames = appData.games.filter(g => state.currentPlatformFilter === 'All' || g.platform === state.currentPlatformFilter);
+    const regularGames = appData.games.filter(g => !g.continuous);
+    const filteredGames = regularGames.filter(g => state.currentPlatformFilter === 'All' || g.platform === state.currentPlatformFilter);
     const backlogGames = filteredGames.filter(g => g.state === null);
     const playingGames = filteredGames.filter(g => g.state === 'playing');
     const finishedGames = filteredGames.filter(g => g.state === 'finished');
@@ -512,23 +555,24 @@ export function updateStatsAndCharts() {
         });
     }
 
-    const allFinished = appData.games.filter(g => g.state === 'finished').length;
-    const all100 = appData.games.filter(g => g.is100).length;
+    const allFinished = regularGames.filter(g => g.state === 'finished').length;
+    const all100 = regularGames.filter(g => g.is100).length;
     document.getElementById('ach-1').classList.toggle('locked', allFinished < 1);
     document.getElementById('ach-5').classList.toggle('locked', allFinished < 5);
     document.getElementById('ach-10').classList.toggle('locked', allFinished < 10);
     document.getElementById('ach-perfectionist').classList.toggle('locked', all100 < 1);
     document.getElementById('ach-legend').classList.toggle('locked', all100 < 5);
     
-    const allCovers = appData.games.length > 0 && appData.games.every(g => g.image !== null);
+    const allCovers = regularGames.length > 0 && regularGames.every(g => g.image !== null);
     document.getElementById('ach-covers').classList.toggle('locked', !allCovers);
 
-    const platformsUsed = new Set(appData.games.map(g => g.platform)).size;
+    const platformsUsed = new Set(regularGames.map(g => g.platform)).size;
     document.getElementById('ach-platforms').classList.toggle('locked', platformsUsed < 3);
 
-    let totalHours = sumHours(appData.games);
+    let totalHours = sumHours(regularGames);
     document.getElementById('ach-marathon').classList.toggle('locked', totalHours < 100);
-    document.getElementById('ach-critic').classList.toggle('locked', appData.games.filter(g => g.userRating).length < 10);
+    document.getElementById('ach-critic').classList.toggle('locked', regularGames.filter(g => g.userRating).length < 10);
+    renderContinuousStats();
     renderFranchiseStats();
 }
 
@@ -572,11 +616,26 @@ function prepareGameModal(mode) {
     document.getElementById('franchise-list').innerHTML = franchiseNames().map(f => `<option value="${esc(f)}"></option>`).join('');
     document.getElementById('game-wish-cat').innerHTML = appData.categories.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
     document.getElementById('game-platform').innerHTML = appData.platforms.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
+    document.getElementById('console-list').innerHTML = [...new Set([...CONSOLES, ...appData.platforms.map(p => p.name)])].map(c => `<option value="${esc(c)}"></option>`).join('');
+    document.getElementById('game-continuous').disabled = false;
+}
+
+export function toggleModalFlags() {
+    const cont = document.getElementById('game-continuous').checked;
+    document.getElementById('game-time-fields').style.display = cont ? 'none' : '';
+    document.getElementById('game-emu-fields').style.display = document.getElementById('game-emulated').checked ? 'block' : 'none';
+}
+
+function resetFlagFields() {
+    document.getElementById('game-continuous').checked = false;
+    document.getElementById('game-emulated').checked = false;
+    document.getElementById('game-orig-console').value = '';
+    document.getElementById('game-difficulty').value = '';
 }
 
 export function openGameModal(catId) {
     const wish = catId === 'wishlist';
-    document.getElementById('game-modal-title').innerText = wish ? 'Adicionar à Wishlist' : 'Adicionar Jogo';
+    document.getElementById('game-modal-title').innerText = wish ? 'Adicionar à Wishlist' : (catId === 'continuous' ? 'Adicionar Jogo Contínuo' : 'Adicionar Jogo');
     document.getElementById('edit-game-id').value = '';
     document.getElementById('game-cat-id').value = catId;
     document.getElementById('game-title').value = '';
@@ -587,6 +646,9 @@ export function openGameModal(catId) {
     document.getElementById('game-wish-note').value = '';
     document.getElementById('game-is-portable-backlog').checked = false;
     prepareGameModal(wish ? 'wish' : 'game');
+    resetFlagFields();
+    document.getElementById('game-continuous').checked = catId === 'continuous';
+    toggleModalFlags();
     document.getElementById('modal-game').showModal();
 }
 
@@ -603,6 +665,13 @@ export function openEditGameModal(gameId, isWish = false) {
     resetAutoFill();
     prepareGameModal(isWish ? 'wish' : 'game');
     document.getElementById('game-franchise').value = game.franchise || '';
+    resetFlagFields();
+    document.getElementById('game-continuous').checked = !!game.continuous;
+    document.getElementById('game-continuous').disabled = game.state === 'finished';   // zerado não vira contínuo
+    document.getElementById('game-emulated').checked = !!game.emulated;
+    document.getElementById('game-orig-console').value = game.originalConsole || '';
+    document.getElementById('game-difficulty').value = game.difficulty || '';
+    toggleModalFlags();
     document.getElementById('game-hours-played').value = game.hoursPlayed || '';
     document.getElementById('game-journal-notes').value = game.journalNotes || '';
     document.getElementById('game-description').value = game.description || '';
@@ -637,17 +706,27 @@ export function saveGame() {
     const title = val('game-title').trim();
     if (!title) return;
 
+    const continuous = document.getElementById('game-continuous').checked;
+    const emulated = document.getElementById('game-emulated').checked;
     const timeVal = val('game-time-val');
     const base = {
         platform: val('game-platform'),
-        meta: timeVal ? `${timeVal}${val('game-time-unit')}` : '',
+        meta: (timeVal && !continuous) ? `${timeVal}${val('game-time-unit')}` : '',
         isPortable: document.getElementById('game-is-portable-backlog').checked,
+        continuous,
+        emulated,
+        originalConsole: emulated ? val('game-orig-console').trim() : '',
+        difficulty: val('game-difficulty'),
         description: val('game-description').trim(),
         genres: val('game-genres').split(',').map(x => x.trim()).filter(Boolean),
         released: val('game-released'),
         metacritic: val('game-metacritic') === '' ? null : Number(val('game-metacritic')),
         franchise: canonicalFranchise(val('game-franchise'))
     };
+    if (continuous && gameId && !wish) {
+        const cur = appData.games.find(g => g.id === gameId);
+        if (cur && cur.state === 'finished') { triggerToast('Jogos zerados não podem virar contínuos.', false); return; }
+    }
     saveStateForUndo();
 
     if (wish) {
@@ -660,12 +739,29 @@ export function saveGame() {
         }
     } else {
         const extra = { ...base, hoursPlayed: val('game-hours-played'), journalNotes: val('game-journal-notes') };
+        const existing = gameId ? appData.games.find(g => g.id === gameId) : null;
+        // Jogos contínuos vivem em "continuous"; ao desmarcar, voltam para a categoria de origem
+        let cat = existing ? existing.catId : catId;
+        let homeCatId = existing ? existing.homeCatId : undefined;
+        if (continuous) {
+            if (cat !== 'continuous') homeCatId = cat;
+            else if (!homeCatId && appData.categories[0]) homeCatId = appData.categories[0].id;
+            cat = 'continuous';
+        } else if (cat === 'continuous') {
+            const back = appData.categories.find(c => c.id === homeCatId) || appData.categories[0];
+            if (!back) { triggerToast('Crie uma categoria na aba Fila antes de desmarcar "Jogo Contínuo".', false); return; }
+            cat = back.id;
+        }
         if (gameId) {
-            const game = appData.games.find(g => g.id === gameId);
-            if (game) { Object.assign(game, extra, { title }); if (pendingCover) game.image = pendingCover; }
+            const game = existing;
+            if (game) {
+                Object.assign(game, extra, { title, catId: cat, homeCatId });
+                if (continuous && game.state !== 'finished') game.state = null;
+                if (pendingCover) game.image = pendingCover;
+            }
         } else {
             appData.games.push({
-                id: 'g' + Date.now(), catId, title, ...extra,
+                id: 'g' + Date.now(), catId: cat, homeCatId, title, ...extra,
                 state: null, image: pendingCover || null, userRating: null, dateFinished: null,
                 is100: false, review: ''
             });
@@ -695,7 +791,9 @@ export function createWishElement(w) {
     if (w.genres && w.genres.length) sub.push(esc(w.genres.slice(0, 2).join(', ')));
     if (w.meta) sub.push(`${esc(fmtTime(w.meta))} p/ zerar`);
     const chips = [];
+    if (w.continuous) chips.push('<span class="chip chip-live">Contínuo</span>');
     if (w.franchise) chips.push(franchiseChip(w.franchise));
+    chips.push(...flagChips(w));
     if (w.metacritic) chips.push(scoreChip(w.metacritic));
     if (w.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
 
@@ -741,16 +839,16 @@ function moveWish(id, toPlaying) {
     if (idx < 0) return;
     const w = appData.wishlist[idx];
     const cat = appData.categories.find(c => c.id === w.catId) || appData.categories[0];
-    if (!cat) { triggerToast('Crie uma categoria na aba Fila antes de mover.'); return; }
+    if (!cat && !w.continuous) { triggerToast('Crie uma categoria na aba Fila antes de mover.'); return; }
     saveStateForUndo();
     const { note, addedAt, catId, ...rest } = w;
     appData.games.push({
-        ...rest, id: 'g' + Date.now(), catId: cat.id, hoursPlayed: '', journalNotes: '',
-        state: toPlaying ? 'playing' : null, userRating: null, dateFinished: null, is100: false, review: ''
+        ...rest, id: 'g' + Date.now(), catId: w.continuous ? 'continuous' : cat.id, homeCatId: cat ? cat.id : undefined, hoursPlayed: '', journalNotes: '',
+        state: (toPlaying && !w.continuous) ? 'playing' : null, userRating: null, dateFinished: null, is100: false, review: ''
     });
     appData.wishlist.splice(idx, 1);
     saveData(() => render());
-    triggerToast(toPlaying ? 'Movido para Jogando.' : `Movido para a fila (${cat.name}).`);
+    triggerToast(w.continuous ? 'Movido para Jogos Contínuos.' : (toPlaying ? 'Movido para Jogando.' : `Movido para a fila (${cat.name}).`));
 }
 export const wishToBacklog = id => moveWish(id, false);
 export const wishToPlaying = id => moveWish(id, true);
@@ -816,6 +914,7 @@ function renderTimeline(container, finishedGames) {
             : `<div class="gi-cover gi-cover-empty" onclick="openImageModal('${g.id}')" title="Adicionar capa">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`;
         const chips = [];
         if (g.franchise) chips.push(franchiseChip(g.franchise));
+        chips.push(...flagChips(g));
         if (g.userRating) chips.push(`<span class="chip chip-gold">Nota ${esc(g.userRating)}/10</span>`);
         if (g.is100) chips.push('<span class="chip chip-gold">100%</span>');
         if (g.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
@@ -855,6 +954,32 @@ function renderTimeline(container, finishedGames) {
     container.appendChild(wrap);
 }
 
+// ================= JOGOS CONTÍNUOS (HORAS ISOLADAS) =================
+export function renderContinuousStats() {
+    const box = document.getElementById('continuous-stats');
+    if (!box) return;
+    const list = appData.games
+        .filter(g => g.continuous && (state.currentPlatformFilter === 'All' || g.platform === state.currentPlatformFilter))
+        .map(g => ({ g, h: hoursNum(g.hoursPlayed) }))
+        .sort((a, b) => b.h - a.h);
+    if (!list.length) {
+        box.innerHTML = '<div class="franchise-summary">Marque um jogo como "Jogo Contínuo" (live service, sandbox, competitivo) para acompanhar as horas dele separadamente. Esse tempo não afeta Zerados, Fila nem conquistas.</div>';
+        return;
+    }
+    const total = list.reduce((a, x) => a + x.h, 0);
+    const max = Math.max(...list.map(x => x.h), 0.0001);
+    box.innerHTML = `
+        <div class="stats-grid cont-grid">
+            <div class="stat-box"><span class="stat-num" style="color: var(--accent-live);">${fmtHours(total)}</span><span class="stat-label">Horas em contínuos</span></div>
+            <div class="stat-box"><span class="stat-num" style="color: var(--accent-live);">${list.length}</span><span class="stat-label">${list.length === 1 ? 'Jogo' : 'Jogos'}</span></div>
+        </div>
+        <div class="franchise-summary">Tempo isolado: não entra em Zerados, Fila nem nas conquistas.</div>
+        ${list.map(({ g, h }) => `<div class="fr-item cont-item">
+            <div class="fr-head"><strong>${esc(g.title)}</strong><span>${fmtHours(h)} · ${total ? Math.round(h / total * 100) : 0}%</span></div>
+            <div class="gi-bar"><span style="width:${Math.round(h / max * 100)}%"></span></div>
+        </div>`).join('')}`;
+}
+
 // ================= FRANQUIAS =================
 export function getFranchiseStats() {
     const map = new Map();
@@ -864,7 +989,7 @@ export function getFranchiseStats() {
         return map.get(k);
     };
     appData.games.forEach(g => {
-        if (!g.franchise || !g.franchise.trim()) return;
+        if (g.continuous || !g.franchise || !g.franchise.trim()) return;
         const f = touch(g.franchise);
         f.total++;
         if (g.state === 'finished') f.done++;
@@ -911,6 +1036,7 @@ export function askDeleteGame(gameId) { const game = appData.games.find(g => g.i
 
 export function toggleState(gameId, action) { 
     const game = appData.games.find(g => g.id === gameId); 
+    if (game && game.continuous) { triggerToast('Jogos contínuos não têm status de Jogando/Zerado: use a sessão de jogo.', false); render(); return; }
     if (action === 'playing') { 
         saveStateForUndo(); 
         game.state = game.state === 'playing' ? null : 'playing'; 

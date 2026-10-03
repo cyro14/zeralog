@@ -21,6 +21,15 @@ export function formatClock(ms) {
     const t = Math.floor(ms / 1000);
     return `${pad(Math.floor(t / 3600))}:${pad(Math.floor(t % 3600 / 60))}:${pad(t % 60)}`;
 }
+const todayBR = () => new Date().toLocaleDateString('pt-BR');
+// Entradas novas ficam no topo, cada uma com a data
+export function prependJournal(game, text) {
+    const t = String(text || '').trim();
+    if (!t) return false;
+    const line = `[${todayBR()}] ${t}`;
+    game.journalNotes = game.journalNotes ? `${line}\n${game.journalNotes}` : line;
+    return true;
+}
 const formatHuman = min => min >= 60 ? `${Math.floor(min / 60)}h ${pad(min % 60)}min` : `${min} min`;
 
 function updateBar() {
@@ -66,6 +75,7 @@ export function openEndSession() {
     $('session-summary').textContent = `${g ? g.title : 'Jogo'}: ${formatClock(elapsedMs(s))} de sessão.`;
     $('session-minutes').value = minutes;
     $('session-add').disabled = !g;
+    $('session-note').value = '';
     sessionPreview();
     $('modal-session').showModal();
 }
@@ -85,17 +95,40 @@ export function sessionFinish(add) {
     if (!s) { $('modal-session').close(); return; }
     const g = appData.games.find(x => x.id === s.gameId);
     let msg = 'Sessão descartada.';
+    let msgNote = '';
     if (add && g) {
         const min = Math.max(0, parseInt($('session-minutes').value, 10) || 0);
         const before = parseFloat(String(g.hoursPlayed || '0').replace(',', '.')) || 0;
         hooks.undo();
         g.hoursPlayed = String(Math.round((before + min / 60) * 100) / 100);
+        if (prependJournal(g, $('session-note').value)) msgNote = ' Anotação salva no diário.';
         saveData();
-        msg = `+${formatHuman(min)} somados às horas jogadas de ${g.title}.`;
+        msg = `+${formatHuman(min)} somados às horas jogadas de ${g.title}.${msgNote}`;
     }
     setSession(null);
     updateBar();
     $('modal-session').close();
     hooks.render();
     hooks.toast(msg);
+}
+
+export function openJournalEntry(gameId) {
+    const g = appData.games.find(x => x.id === gameId);
+    if (!g) return;
+    $('journal-game-id').value = gameId;
+    $('journal-game').textContent = g.title;
+    $('journal-entry-text').value = '';
+    $('modal-journal').showModal();
+}
+
+export function saveJournalEntry() {
+    const g = appData.games.find(x => x.id === $('journal-game-id').value);
+    if (!g) return;
+    if (!$('journal-entry-text').value.trim()) { hooks.toast('Escreva algo para salvar a entrada.'); return; }
+    hooks.undo();
+    prependJournal(g, $('journal-entry-text').value);
+    saveData();
+    $('modal-journal').close();
+    hooks.render();
+    hooks.toast('Entrada adicionada ao diário.');
 }
