@@ -1,7 +1,8 @@
 import { appData, saveData, backupData, setAppData, defaultData } from './store.js';
 import { openCardGenerator, downloadCard } from './card.js';
 import { hydrateIcons } from './icons.js';
-import { openWiki, wikiChangeSource, wikiSearch, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource } from './wiki.js';
+import { wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
+import { openWiki, wikiChangeSource, wikiSearch, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom } from './wiki.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleCompact, saveStateForUndo, undoAction, switchTab, 
@@ -79,6 +80,8 @@ window.wikiBack = wikiBack;
 window.wikiLinkGame = wikiLinkGame;
 window.wikiToggleAdd = wikiToggleAdd;
 window.wikiAddSource = wikiAddSource;
+window.wikiFindFandom = wikiFindFandom;
+Object.assign(window, { wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
 
 // Inicialização Principal
 document.addEventListener("DOMContentLoaded", () => {

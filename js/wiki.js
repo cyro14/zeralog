@@ -103,6 +103,61 @@ export async function autoFindWiki(gameTitle) {
     return best || null;
 }
 
+// ================= FANDOM: DESCOBRIR PELO NOME =================
+// O Fandom não tem busca pública entre wikis, então tentamos os subdomínios mais prováveis
+// (franquia primeiro, depois o título) e só aceitamos se o nome da wiki bater com o termo.
+function slugCandidates(game) {
+    const out = new Set();
+    const add = text => {
+        const words = String(text).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/['’]/g, '').replace(/&/g, ' and ').split(/[^a-z0-9]+/).filter(Boolean);
+        if (!words.length) return;
+        const noArticle = words[0] === 'the' ? words.slice(1) : words;
+        [noArticle, words].forEach(ws => { if (ws.length) { out.add(ws.join('')); out.add(ws.join('-')); } });
+    };
+    [game.franchise, game.title].filter(Boolean).forEach(raw => {
+        const t = String(raw).trim();
+        add(t);
+        const main = t.split(/[:\-–—]/)[0].trim();                      // sem subtítulo
+        if (main && main !== t) add(main);
+        const semNumero = t.replace(/\s+(?:[ivx]+|\d+)\s*$/i, '').trim(); // sem número de sequência
+        if (semNumero && semNumero !== t) add(semNumero);
+    });
+    return [...out].filter(s => s.replace(/-/g, '').length >= 4).slice(0, 8);
+}
+
+export async function findFandomWiki(game) {
+    const slugs = slugCandidates(game);
+    if (!slugs.length) return null;
+    const checks = await Promise.all(slugs.map(async slug => {
+        const src = { id: 'fd-' + slug, api: `https://${slug}.fandom.com/api.php`, articlepath: '/wiki/$1' };
+        try {
+            const data = await api(src, { action: 'query', meta: 'siteinfo', siprop: 'general' });
+            const g = data.query && data.query.general;
+            if (!g || !g.sitename || !norm(g.sitename).includes(norm(slug))) return null;
+            return { ...src, name: g.sitename, articlepath: g.articlepath || '/wiki/$1' };
+        } catch (e) { return null; }
+    }));
+    for (const src of checks.filter(Boolean)) {
+        try {
+            const hits = await searchTitles(src, game.title, 5);
+            if (!hits.length) continue;
+            hits.sort((a, b) => similarity(game.title, b.title.replace(/\s*\([^)]*\)\s*$/, '')) - similarity(game.title, a.title.replace(/\s*\([^)]*\)\s*$/, '')));
+            return { src, title: hits[0].title };
+        } catch (e) { /* tenta a próxima */ }
+    }
+    return null;
+}
+
+function registerSource(src) {
+    appData.wikis = appData.wikis || [];
+    const have = appData.wikis.find(s => s.api === src.api);
+    if (have) return have;
+    const saved = { id: src.id, name: src.name, api: src.api, articlepath: src.articlepath };
+    appData.wikis.push(saved);
+    return saved;
+}
+
 // ================= LIMPEZA DO HTML DA WIKI =================
 const DROP = 'script,style,link,meta,base,iframe,frame,object,embed,form,input,button,textarea,select,audio,video,svg,math,noscript,template,.mw-editsection,.noprint,.navbox,.navbox-styles,.mw-empty-elt,.printfooter';
 const KEEP_ATTR = ['href', 'src', 'alt', 'title', 'colspan', 'rowspan', 'class', 'id', 'scope'];
@@ -184,7 +239,8 @@ const ctxFor = src => {
     return { origin, prefix: (src.articlepath || '/wiki/$1').replace('$1', '') };
 };
 const pageUrl = (src, title) => ctxFor(src).origin + (src.articlepath || '/wiki/$1').replace('$1', encodeURIComponent(title.replace(/ /g, '_')).replace(/%3A/gi, ':').replace(/%2F/gi, '/'));
-const currentGame = () => appData.games.find(g => g.id === S.gameId);
+const lookupGame = id => appData.games.find(g => g.id === id) || (appData.wishlist || []).find(g => g.id === id);
+const currentGame = () => lookupGame(S.gameId);
 
 function fillSelect() {
     const sel = $('wiki-source');
@@ -248,7 +304,7 @@ async function loadPage(title, { push = true } = {}) {
 }
 
 export async function openWiki(gameId) {
-    const game = appData.games.find(g => g.id === gameId);
+    const game = lookupGame(gameId);
     if (!game) return;
     const token = ++S.token;
     Object.assign(S, { gameId, title: null, history: [] });
@@ -267,8 +323,14 @@ export async function openWiki(gameId) {
     }
     S.src = findSource('wp-pt'); fillSelect(); updateToolbar();
     setStatus('Procurando a wiki deste jogo...');
-    const found = await autoFindWiki(game.title);
+    let found = await autoFindWiki(game.title);
     if (token !== S.token) return;
+    if (!found || found.src.hint) {   // só Wikipédia (ou nada): procura uma wiki do Fandom
+        setStatus('Procurando no Fandom...');
+        const fd = await findFandomWiki(game);
+        if (token !== S.token) return;
+        if (fd) found = { src: registerSource(fd.src), title: fd.title };
+    }
     if (found) {
         game.wiki = { src: found.src.id, title: found.title };
         saveData();
@@ -307,6 +369,24 @@ export async function wikiSearch(keepStatus = false) {
         console.error(e);
         setStatus('Não consegui buscar nesta wiki. Verifique a internet ou tente outra wiki.');
     }
+}
+
+export async function wikiFindFandom() {
+    const g = currentGame();
+    if (!g) return;
+    const token = S.token;
+    $('wiki-results').innerHTML = '';
+    setStatus('Procurando no Fandom...');
+    const fd = await findFandomWiki(g);
+    if (token !== S.token) return;
+    if (!fd) { setStatus('Não achei uma wiki do Fandom com esse nome. Use "Outra wiki" e cole o endereço dela.'); return; }
+    S.src = registerSource(fd.src);
+    S.history = [];
+    g.wiki = { src: S.src.id, title: fd.title };
+    saveData();
+    fillSelect();
+    triggerToast(`Wiki vinculada: ${S.src.name}`);
+    loadPage(fd.title, { push: false });
 }
 
 export function wikiBack() {

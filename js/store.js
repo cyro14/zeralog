@@ -7,7 +7,7 @@ export const homeSortLabels = { 'manual': 'Manual', 'az': 'A-Z', 'time': 'Tempo'
 export const sortLabels = { 'date': 'Data', 'rating': 'Nota', 'time': 'Tempo', 'portable': 'Portátil' };
 
 export const defaultData = {
-    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc' }, 
+    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc' }, 
     collapsedCats: [], 
     categories: [ { id: 'c1', name: 'Cartas e Estratégia' }, { id: 'c2', name: 'Plataforma 3D' } ],
     platforms: [
@@ -19,6 +19,7 @@ export const defaultData = {
     ],
     games: [],
     wikis: [],
+    wishlist: [],
     unlockedAchievements: [] 
 };
 
@@ -39,10 +40,14 @@ if (!appData.collapsedCats) appData.collapsedCats = [];
 if (!appData.platforms) appData.platforms = defaultData.platforms;
 if (!appData.unlockedAchievements) appData.unlockedAchievements = [];
 if (!appData.wikis) appData.wikis = [];
+if (!appData.wishlist) appData.wishlist = [];
+appData.settings = { finishedView: 'list', timelineDir: 'desc', ...appData.settings };
 
 // Troca emojis e ícones antigos pelos ícones SVG (mantém imagens personalizadas)
 export function migrateData(data) {
     if (!data.wikis) data.wikis = [];
+    if (!data.wishlist) data.wishlist = [];
+    data.settings = { finishedView: 'list', timelineDir: 'desc', ...(data.settings || {}) };
     (data.platforms || []).forEach(p => {
         const cur = String(p.icon || '');
         if (cur.startsWith('<img') || cur.includes('class="ic')) return;

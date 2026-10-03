@@ -143,8 +143,8 @@ export function filterGames() {
     const term = document.getElementById('search-bar').value.toLowerCase();
     document.querySelectorAll('.category').forEach(cat => {
         let hasVisibleGames = false;
-        cat.querySelectorAll('.game-item').forEach(item => {
-            const titleMatch = item.querySelector('.game-title').innerText.toLowerCase().includes(term);
+        cat.querySelectorAll('.game-item, .tl-item').forEach(item => {
+            const titleMatch = item.querySelector('.game-title').innerText.toLowerCase().includes(term) || (item.dataset.franchise || '').includes(term);
             const platformMatch = state.currentPlatformFilter === 'All' || item.dataset.platform === state.currentPlatformFilter;
             const portableMatch = !state.filterPortableOnly || item.dataset.portable === 'true';
             
@@ -254,6 +254,7 @@ export function render() {
         const listEl = catDiv.querySelector(`#list-${cat.id}`); catGames.forEach(game => listEl.appendChild(createGameElement(game)));
     });
 
+    renderWishlist();
     renderFinishedTab();
     filterGames();
     if(document.getElementById('tab-stats').classList.contains('active')) updateStatsAndCharts();
@@ -274,10 +275,16 @@ export function renderFinishedTab() {
         activeChip.innerText = sortLabels[appData.settings.finishedSort] + (appData.settings.finishedSortDir === 'asc' ? ' ↑' : ' ↓');
     }
 
+    const view = appData.settings.finishedView === 'timeline' ? 'timeline' : 'list';
+    document.getElementById('fin-view-list').classList.toggle('active', view === 'list');
+    document.getElementById('fin-view-timeline').classList.toggle('active', view === 'timeline');
+    document.getElementById('fin-sort-bar').style.display = view === 'list' ? '' : 'none';
+
     if (finishedGames.length === 0) {
         finishedContainer.innerHTML = `<div class="empty-state">Nenhum jogo finalizado ainda. Hora de focar no backlog!</div>`;
         return;
     }
+    if (view === 'timeline') { renderTimeline(finishedContainer, finishedGames); return; }
 
     const isDateSort = appData.settings.finishedSort === 'date';
     const years = {};
@@ -328,6 +335,7 @@ export function createGameElement(game) {
     li.className = 'game-item';
     li.dataset.platform = game.platform;
     li.dataset.portable = game.isPortable ? 'true' : 'false';
+    li.dataset.franchise = (game.franchise || '').toLowerCase();
 
     const finished = game.state === 'finished';
     const isPlaying = game.state === 'playing' ? 'checked' : '';
@@ -361,6 +369,7 @@ export function createGameElement(game) {
 
     // Etiquetas
     const chips = [];
+    if (game.franchise) chips.push(franchiseChip(game.franchise));
     if (game.metacritic) chips.push(`<span class="chip score ${game.metacritic >= 75 ? 'good' : game.metacritic >= 50 ? 'mid' : 'bad'}" title="Nota Metacritic">Metacritic ${esc(game.metacritic)}</span>`);
     if (game.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
     if (finished) {
@@ -506,6 +515,7 @@ export function updateStatsAndCharts() {
     let totalHours = sumHours(appData.games);
     document.getElementById('ach-marathon').classList.toggle('locked', totalHours < 100);
     document.getElementById('ach-critic').classList.toggle('locked', appData.games.filter(g => g.userRating).length < 10);
+    renderFranchiseStats();
 }
 
 // ================= CRUD JOGOS E CATEGORIAS =================
@@ -526,31 +536,59 @@ export function moveCategory(catId, direction) {
     }
 }
 
-export function openGameModal(catId) { 
-    document.getElementById('game-modal-title').innerText = 'Adicionar Jogo';
-    document.getElementById('edit-game-id').value = ''; 
-    document.getElementById('game-cat-id').value = catId; 
-    document.getElementById('game-title').value = ''; 
-    document.getElementById('game-time-val').value = ''; 
-    resetAutoFill();
-    document.getElementById('game-is-portable-backlog').checked = false;
-    
-    const select = document.getElementById('game-platform');
-    select.innerHTML = '';
-    appData.platforms.forEach(p => {
-        select.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+const normKey = s => String(s).trim().toLowerCase();
+
+function franchiseNames() {
+    const map = new Map();
+    [...appData.games, ...(appData.wishlist || [])].forEach(g => {
+        const f = (g.franchise || '').trim();
+        if (f && !map.has(normKey(f))) map.set(normKey(f), f);
     });
-    document.getElementById('modal-game').showModal(); 
+    return [...map.values()].sort((a, b) => a.localeCompare(b));
 }
 
-export function openEditGameModal(gameId) {
-    const game = appData.games.find(g => g.id === gameId);
-    document.getElementById('game-modal-title').innerText = 'Editar Informações';
+const canonicalFranchise = raw => { const t = raw.trim(); return franchiseNames().find(f => normKey(f) === normKey(t)) || t; };
+
+// Prepara o modal compartilhado entre "jogo" (fila) e "desejo" (wishlist)
+function prepareGameModal(mode) {
+    const wish = mode === 'wish';
+    document.getElementById('game-mode').value = mode;
+    document.getElementById('game-play-fields').style.display = wish ? 'none' : '';
+    document.getElementById('game-wish-fields').style.display = wish ? '' : 'none';
+    document.getElementById('franchise-list').innerHTML = franchiseNames().map(f => `<option value="${esc(f)}"></option>`).join('');
+    document.getElementById('game-wish-cat').innerHTML = appData.categories.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    document.getElementById('game-platform').innerHTML = appData.platforms.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
+}
+
+export function openGameModal(catId) {
+    const wish = catId === 'wishlist';
+    document.getElementById('game-modal-title').innerText = wish ? 'Adicionar à Wishlist' : 'Adicionar Jogo';
+    document.getElementById('edit-game-id').value = '';
+    document.getElementById('game-cat-id').value = catId;
+    document.getElementById('game-title').value = '';
+    document.getElementById('game-time-val').value = '';
+    document.getElementById('game-time-unit').value = 'h';
+    resetAutoFill();
+    document.getElementById('game-franchise').value = '';
+    document.getElementById('game-wish-note').value = '';
+    document.getElementById('game-is-portable-backlog').checked = false;
+    prepareGameModal(wish ? 'wish' : 'game');
+    document.getElementById('modal-game').showModal();
+}
+
+export function openEditWishModal(id) { openEditGameModal(id, true); }
+
+export function openEditGameModal(gameId, isWish = false) {
+    const game = (isWish ? appData.wishlist : appData.games).find(g => g.id === gameId);
+    if (!game) return;
+    document.getElementById('game-modal-title').innerText = isWish ? 'Editar Desejo' : 'Editar Informações';
     document.getElementById('edit-game-id').value = gameId;
-    document.getElementById('game-cat-id').value = game.catId;
+    document.getElementById('game-cat-id').value = isWish ? 'wishlist' : game.catId;
     document.getElementById('game-title').value = game.title;
     document.getElementById('game-is-portable-backlog').checked = game.isPortable || false;
     resetAutoFill();
+    prepareGameModal(isWish ? 'wish' : 'game');
+    document.getElementById('game-franchise').value = game.franchise || '';
     document.getElementById('game-hours-played').value = game.hoursPlayed || '';
     document.getElementById('game-journal-notes').value = game.journalNotes || '';
     document.getElementById('game-description').value = game.description || '';
@@ -559,13 +597,11 @@ export function openEditGameModal(gameId) {
     document.getElementById('game-metacritic').value = game.metacritic ?? '';
     document.getElementById('game-extra').open = !!(game.description || (game.genres && game.genres.length) || game.released || game.metacritic);
     updateCoverPreview(game.image);
-    
-    const select = document.getElementById('game-platform');
-    select.innerHTML = '';
-    appData.platforms.forEach(p => {
-        const selected = p.name === game.platform ? 'selected' : '';
-        select.innerHTML += `<option value="${p.name}" ${selected}>${p.name}</option>`;
-    });
+    if (isWish) {
+        document.getElementById('game-wish-note').value = game.note || '';
+        if (game.catId) document.getElementById('game-wish-cat').value = game.catId;
+    }
+    document.getElementById('game-platform').value = game.platform;
 
     if (game.meta) {
         const unit = game.meta.includes('m') ? 'm' : 'h';
@@ -583,38 +619,277 @@ export function saveGame() {
     const val = id => document.getElementById(id).value;
     const gameId = val('edit-game-id');
     const catId = val('game-cat-id');
+    const wish = val('game-mode') === 'wish';
     const title = val('game-title').trim();
     if (!title) return;
 
     const timeVal = val('game-time-val');
-    const extra = {
+    const base = {
         platform: val('game-platform'),
         meta: timeVal ? `${timeVal}${val('game-time-unit')}` : '',
-        hoursPlayed: val('game-hours-played'),
-        journalNotes: val('game-journal-notes'),
         isPortable: document.getElementById('game-is-portable-backlog').checked,
         description: val('game-description').trim(),
         genres: val('game-genres').split(',').map(x => x.trim()).filter(Boolean),
         released: val('game-released'),
-        metacritic: val('game-metacritic') === '' ? null : Number(val('game-metacritic'))
+        metacritic: val('game-metacritic') === '' ? null : Number(val('game-metacritic')),
+        franchise: canonicalFranchise(val('game-franchise'))
     };
     saveStateForUndo();
 
-    if (gameId) {
-        const game = appData.games.find(g => g.id === gameId);
-        if (game) {
-            Object.assign(game, extra, { title });
-            if (pendingCover) game.image = pendingCover;
+    if (wish) {
+        const extra = { ...base, catId: val('game-wish-cat') || (appData.categories[0] && appData.categories[0].id) || '', note: val('game-wish-note').trim() };
+        if (gameId) {
+            const item = appData.wishlist.find(g => g.id === gameId);
+            if (item) { Object.assign(item, extra, { title }); if (pendingCover) item.image = pendingCover; }
+        } else {
+            appData.wishlist.push({ id: 'w' + Date.now(), title, ...extra, image: pendingCover || null, addedAt: Date.now() });
         }
     } else {
-        appData.games.push({
-            id: 'g' + Date.now(), catId, title, ...extra,
-            state: null, image: pendingCover || null, userRating: null, dateFinished: null,
-            is100: false, review: ''
-        });
+        const extra = { ...base, hoursPlayed: val('game-hours-played'), journalNotes: val('game-journal-notes') };
+        if (gameId) {
+            const game = appData.games.find(g => g.id === gameId);
+            if (game) { Object.assign(game, extra, { title }); if (pendingCover) game.image = pendingCover; }
+        } else {
+            appData.games.push({
+                id: 'g' + Date.now(), catId, title, ...extra,
+                state: null, image: pendingCover || null, userRating: null, dateFinished: null,
+                is100: false, review: ''
+            });
+        }
     }
     pendingCover = null;
-    closeModal('modal-game'); saveData(() => render()); triggerToast(gameId ? 'Informações atualizadas.' : 'Jogo adicionado com sucesso!');
+    closeModal('modal-game'); saveData(() => render());
+    triggerToast(gameId ? 'Informações atualizadas.' : (wish ? 'Adicionado à wishlist.' : 'Jogo adicionado com sucesso!'));
+}
+
+// ================= WISHLIST =================
+const scoreChip = m => `<span class="chip score ${m >= 75 ? 'good' : m >= 50 ? 'mid' : 'bad'}" title="Nota Metacritic">Metacritic ${esc(m)}</span>`;
+const franchiseChip = name => `<span class="chip chip-franchise" data-f="${esc(name)}" onclick="filterByFranchise(this.dataset.f)" title="Ver jogos da franquia">${esc(name)}</span>`;
+
+export function createWishElement(w) {
+    const li = document.createElement('li');
+    li.className = 'game-item';
+    li.dataset.platform = w.platform;
+    li.dataset.portable = w.isPortable ? 'true' : 'false';
+    li.dataset.franchise = (w.franchise || '').toLowerCase();
+
+    const cover = w.image
+        ? `<img src="${esc(w.image)}" alt="" class="gi-cover" style="cursor:default">`
+        : `<div class="gi-cover gi-cover-empty" style="cursor:default">${esc((w.title.trim()[0] || '?').toUpperCase())}</div>`;
+    const sub = [esc(w.platform)];
+    if (w.released) sub.push(esc(w.released.slice(0, 4)));
+    if (w.genres && w.genres.length) sub.push(esc(w.genres.slice(0, 2).join(', ')));
+    if (w.meta) sub.push(`${esc(fmtTime(w.meta))} p/ zerar`);
+    const chips = [];
+    if (w.franchise) chips.push(franchiseChip(w.franchise));
+    if (w.metacritic) chips.push(scoreChip(w.metacritic));
+    if (w.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
+
+    li.innerHTML = `
+        ${cover}
+        <div class="gi-body">
+            <div class="game-title">${esc(w.title)}</div>
+            <div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div>
+            ${chips.length ? `<div class="gi-chips">${chips.join('')}</div>` : ''}
+            ${w.note ? `<div class="wish-note">${esc(w.note)}</div>` : ''}
+            <div class="gi-status">
+                <button type="button" class="pill-btn primary" onclick="wishToBacklog('${w.id}')">Para a fila</button>
+                <button type="button" class="pill-btn" onclick="wishToPlaying('${w.id}')">Jogar agora</button>
+            </div>
+        </div>
+        <div class="gi-actions">
+            <button type="button" class="icon-btn" onclick="openWiki('${w.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>
+            <button type="button" class="icon-btn" onclick="openEditWishModal('${w.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>
+            <button type="button" class="icon-btn danger" onclick="askDeleteWish('${w.id}')" title="Remover" aria-label="Remover">${ICONS.trash}</button>
+        </div>
+        ${w.description ? `<details class="game-desc"><summary>Sobre o jogo</summary><p>${esc(w.description)}</p></details>` : ''}
+    `;
+    return li;
+}
+
+export function renderWishlist() {
+    const box = document.getElementById('wish-list-container');
+    const items = [...(appData.wishlist || [])].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+    document.getElementById('count-wish').innerText = items.length;
+    box.innerHTML = '';
+    if (!items.length) { box.innerHTML = '<div class="empty-state">Sua wishlist está vazia. Adicione os jogos que pretende comprar ou baixar.</div>'; return; }
+    const cat = document.createElement('div');
+    cat.className = 'category';
+    cat.id = 'wishlist-category';
+    cat.innerHTML = '<div class="game-list-wrapper"><ul class="game-list"></ul></div>';
+    items.forEach(w => cat.querySelector('ul').appendChild(createWishElement(w)));
+    box.appendChild(cat);
+}
+
+// Move o desejo para a biblioteca sem redigitar nada (capa, dados e franquia vão junto)
+function moveWish(id, toPlaying) {
+    const idx = appData.wishlist.findIndex(w => w.id === id);
+    if (idx < 0) return;
+    const w = appData.wishlist[idx];
+    const cat = appData.categories.find(c => c.id === w.catId) || appData.categories[0];
+    if (!cat) { triggerToast('Crie uma categoria na aba Fila antes de mover.'); return; }
+    saveStateForUndo();
+    const { note, addedAt, catId, ...rest } = w;
+    appData.games.push({
+        ...rest, id: 'g' + Date.now(), catId: cat.id, hoursPlayed: '', journalNotes: '',
+        state: toPlaying ? 'playing' : null, userRating: null, dateFinished: null, is100: false, review: ''
+    });
+    appData.wishlist.splice(idx, 1);
+    saveData(() => render());
+    triggerToast(toPlaying ? 'Movido para Jogando.' : `Movido para a fila (${cat.name}).`);
+}
+export const wishToBacklog = id => moveWish(id, false);
+export const wishToPlaying = id => moveWish(id, true);
+
+export function askDeleteWish(id) {
+    const w = appData.wishlist.find(x => x.id === id);
+    if (w && confirm(`Remover "${w.title}" da wishlist?`)) {
+        saveStateForUndo();
+        appData.wishlist = appData.wishlist.filter(x => x.id !== id);
+        saveData(() => render());
+        triggerToast('Excluído.');
+    }
+}
+
+// ================= LINHA DO TEMPO (ZERADOS) =================
+export function setFinishedView(view) { appData.settings.finishedView = view === 'timeline' ? 'timeline' : 'list'; saveData(() => render()); }
+export function setTimelineDir() { appData.settings.timelineDir = appData.settings.timelineDir === 'asc' ? 'desc' : 'asc'; saveData(() => render()); }
+
+function parseFinishedDate(str) {
+    if (!str) return null;
+    const s = String(str).trim();
+    let y, mo, d, m;
+    if ((m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/))) { d = +m[1]; mo = +m[2]; y = +m[3]; if (y < 100) y += 2000; }
+    else if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else return null;
+    const date = new Date(y, mo - 1, d);
+    return date.getMonth() === mo - 1 && date.getDate() === d ? date : null;
+}
+
+function renderTimeline(container, finishedGames) {
+    const dir = appData.settings.timelineDir === 'asc' ? 1 : -1;
+    const items = finishedGames.map((g, i) => ({ g, i, d: parseFinishedDate(g.dateFinished) }));
+    items.sort((a, b) => {
+        if (!a.d && !b.d) return a.i - b.i;
+        if (!a.d) return 1;
+        if (!b.d) return -1;
+        const diff = a.d - b.d;
+        if (diff) return diff * dir;
+        const fa = a.g.finishedAt || 0, fb = b.g.finishedAt || 0;
+        return fa !== fb ? (fa - fb) * dir : (a.i - b.i) * dir;
+    });
+
+    const groups = [];
+    items.forEach(it => {
+        const key = it.d ? `${it.d.getFullYear()}-${String(it.d.getMonth() + 1).padStart(2, '0')}` : 'none';
+        let grp = groups.find(g => g.key === key);
+        if (!grp) {
+            const label = it.d ? it.d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : 'Sem data';
+            grp = { key, label: label.charAt(0).toUpperCase() + label.slice(1), items: [] };
+            groups.push(grp);
+        }
+        grp.items.push(it);
+    });
+
+    const rated = finishedGames.filter(g => g.userRating).map(g => parseFloat(g.userRating)).filter(n => !isNaN(n));
+    const avg = rated.length ? (rated.reduce((a, b) => a + b, 0) / rated.length).toFixed(1) : null;
+    const n100 = finishedGames.filter(g => g.is100).length;
+    const summary = [`${finishedGames.length} ${finishedGames.length === 1 ? 'jogo' : 'jogos'}`, n100 ? `${n100} com 100%` : '', avg ? `nota média ${avg}` : ''].filter(Boolean).join(' · ');
+
+    const entry = ({ g, d }) => {
+        const cover = g.image
+            ? `<img src="${esc(g.image)}" alt="" class="gi-cover" onclick="openImageModal('${g.id}')" title="Trocar capa">`
+            : `<div class="gi-cover gi-cover-empty" onclick="openImageModal('${g.id}')" title="Adicionar capa">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`;
+        const chips = [];
+        if (g.franchise) chips.push(franchiseChip(g.franchise));
+        if (g.userRating) chips.push(`<span class="chip chip-gold">Nota ${esc(g.userRating)}/10</span>`);
+        if (g.is100) chips.push('<span class="chip chip-gold">100%</span>');
+        if (g.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
+        const sub = [esc(g.platform)];
+        if (g.meta) sub.push(esc(fmtTime(g.meta)));
+        const when = d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : esc(g.dateFinished || 'Sem data');
+        return `<li class="tl-item ${g.is100 ? 'is100' : ''}" data-platform="${esc(g.platform)}" data-portable="${g.isPortable ? 'true' : 'false'}" data-franchise="${esc((g.franchise || '').toLowerCase())}">
+            <span class="tl-dot"></span>
+            <div class="tl-date">${when}</div>
+            <div class="tl-card">
+                ${cover}
+                <div class="tl-body">
+                    <div class="game-title">${esc(g.title)}</div>
+                    <div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div>
+                    ${chips.length ? `<div class="gi-chips">${chips.join('')}</div>` : ''}
+                    ${g.review ? `<div class="tl-review">${esc(g.review)}</div>` : ''}
+                </div>
+                <div class="gi-actions">
+                    <button type="button" class="icon-btn" onclick="openCardGenerator('${g.id}')" title="Compartilhar" aria-label="Compartilhar">${ICONS.share}</button>
+                    <button type="button" class="icon-btn" onclick="openEditFinishedModal('${g.id}')" title="Editar conclusão" aria-label="Editar conclusão">${ICONS.edit}</button>
+                </div>
+            </div>
+        </li>`;
+    };
+
+    const wrap = document.createElement('div');
+    wrap.className = 'category';
+    wrap.id = 'finished-timeline';
+    wrap.innerHTML = `
+        <div class="tl-top">
+            <span class="tl-summary">${esc(summary)}</span>
+            <button type="button" class="wiki-tool" onclick="setTimelineDir()">${dir === -1 ? 'Mais recentes primeiro' : 'Mais antigos primeiro'}</button>
+        </div>
+        ${groups.map(grp => `<section class="tl-month"><h3 class="tl-month-title">${esc(grp.label)}<small>${grp.items.length} ${grp.items.length === 1 ? 'jogo' : 'jogos'}</small></h3><ol class="tl-list">${grp.items.map(entry).join('')}</ol></section>`).join('')}
+    `;
+    container.appendChild(wrap);
+}
+
+// ================= FRANQUIAS =================
+export function getFranchiseStats() {
+    const map = new Map();
+    const touch = name => {
+        const k = normKey(name);
+        if (!map.has(k)) map.set(k, { name: name.trim(), total: 0, done: 0, playing: 0, wish: 0 });
+        return map.get(k);
+    };
+    appData.games.forEach(g => {
+        if (!g.franchise || !g.franchise.trim()) return;
+        const f = touch(g.franchise);
+        f.total++;
+        if (g.state === 'finished') f.done++;
+        if (g.state === 'playing') f.playing++;
+    });
+    (appData.wishlist || []).forEach(w => { if (w.franchise && w.franchise.trim()) touch(w.franchise).wish++; });
+    const pct = f => f.total ? f.done / f.total : 0;
+    return [...map.values()].sort((a, b) => pct(b) - pct(a) || b.total - a.total || a.name.localeCompare(b.name));
+}
+
+export function renderFranchiseStats() {
+    const stats = getFranchiseStats();
+    const sum = document.getElementById('franchise-summary');
+    const list = document.getElementById('franchise-stats');
+    if (!stats.length) {
+        sum.textContent = 'Defina a franquia dos jogos (ex.: Zelda, Metroid, Dark Souls) para acompanhar o progresso de cada coleção.';
+        list.innerHTML = '';
+        return;
+    }
+    const withGames = stats.filter(f => f.total > 0);
+    const totalAll = withGames.reduce((a, f) => a + f.total, 0);
+    const doneAll = withGames.reduce((a, f) => a + f.done, 0);
+    const complete = withGames.filter(f => f.done === f.total).length;
+    sum.innerHTML = `Progresso geral nas franquias: <strong>${totalAll ? Math.round(doneAll / totalAll * 100) : 0}%</strong> &nbsp;·&nbsp; Franquias completas: <strong>${complete} de ${withGames.length}</strong>`;
+    list.innerHTML = stats.map(f => {
+        const p = f.total ? Math.round(f.done / f.total * 100) : 0;
+        const full = f.total >= 2 && f.done === f.total;
+        const extra = [f.playing ? `${f.playing} jogando` : '', f.wish ? `+${f.wish} na wishlist` : ''].filter(Boolean).join(' · ');
+        return `<div class="fr-item ${full ? 'complete' : ''}" data-f="${esc(f.name)}" onclick="filterByFranchise(this.dataset.f)">
+            <div class="fr-head"><strong>${esc(f.name)}${full ? '<span class="fr-done">Completa</span>' : ''}</strong><span>${f.total ? `${f.done}/${f.total} · ${p}%` : 'só na wishlist'}</span></div>
+            <div class="gi-bar"><span style="width:${p}%"></span></div>
+            ${extra ? `<small>${esc(extra)}</small>` : ''}
+        </div>`;
+    }).join('');
+}
+
+export function filterByFranchise(name) {
+    document.getElementById('search-bar').value = name;
+    if (document.getElementById('tab-stats').classList.contains('active')) switchTab('home'); else filterGames();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function askDeleteGame(gameId) { const game = appData.games.find(g => g.id === gameId); if(confirm(`Remover "${game.title}"?`)) { saveStateForUndo(); appData.games = appData.games.filter(g => g.id !== gameId); saveData(() => render()); triggerToast('Excluído.'); } }
@@ -629,7 +904,7 @@ export function toggleState(gameId, action) {
     } else if (action === 'finished') { 
         if (game.state === 'finished') { 
             saveStateForUndo(); 
-            game.state = null; game.userRating = null; game.dateFinished = null; game.is100 = false; 
+            game.state = null; game.userRating = null; game.dateFinished = null; game.finishedAt = null; game.is100 = false; 
             saveData(() => render()); 
             triggerToast('Removido dos Troféus.'); 
         } else { 
@@ -671,6 +946,7 @@ export function skipRating() {
     if (game) { 
         game.state = 'finished'; 
         game.dateFinished = new Date().toLocaleDateString('pt-BR'); 
+        game.finishedAt = Date.now();
         game.isPortable = document.getElementById('game-is-portable').checked;
     } 
     closeModal('modal-rating'); saveData(() => render()); triggerToast('Zerado!'); 
@@ -686,7 +962,7 @@ export function saveRating() {
     const game = appData.games.find(g => g.id === gameId); 
     saveStateForUndo(); 
     if (game) { 
-        game.state = 'finished'; game.userRating = rating; game.dateFinished = new Date().toLocaleDateString('pt-BR'); game.is100 = is100; game.review = review; game.isPortable = isPortable;
+        game.state = 'finished'; game.userRating = rating; game.dateFinished = new Date().toLocaleDateString('pt-BR'); game.finishedAt = Date.now(); game.is100 = is100; game.review = review; game.isPortable = isPortable;
     } 
     closeModal('modal-rating'); saveData(() => render()); checkNewAchievements(); triggerToast(is100 ? 'Mestre do Jogo! 100% concluído!' : 'Zerado com nota!'); 
 }
@@ -773,7 +1049,7 @@ export function openSettings() {
     document.getElementById('modal-settings').showModal(); 
 }
 export function openFactoryReset() { document.getElementById('reset-confirm-input').value = ''; document.getElementById('modal-factory-reset').showModal(); }
-export function confirmFactoryReset() { if (document.getElementById('reset-confirm-input').value === 'APAGAR') { saveStateForUndo(); setAppData({ settings: { sort: 'manual', compact: false, finishedSortDir: 'desc', homeSortDir: 'asc' }, collapsedCats:[], categories:[], platforms: defaultData.platforms, games:[], unlockedAchievements:[] }); saveData(() => render()); closeModal('modal-factory-reset'); closeModal('modal-settings'); localStorage.removeItem('zeralog_welcomed'); triggerToast('Apagado.'); setTimeout(checkWelcome, 500); } else { alert('Digite APAGAR'); } }
+export function confirmFactoryReset() { if (document.getElementById('reset-confirm-input').value === 'APAGAR') { saveStateForUndo(); setAppData({ settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc' }, collapsedCats:[], categories:[], platforms: defaultData.platforms, games:[], wikis:[], wishlist:[], unlockedAchievements:[] }); saveData(() => render()); closeModal('modal-factory-reset'); closeModal('modal-settings'); localStorage.removeItem('zeralog_welcomed'); triggerToast('Apagado.'); setTimeout(checkWelcome, 500); } else { alert('Digite APAGAR'); } }
 
 // ================= PLATAFORMAS =================
 export function renderPlatformAdmin() {
