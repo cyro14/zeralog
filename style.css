@@ -2,7 +2,7 @@
 :root, html[data-theme="dark"] {
     --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-muted: #aaaaaa;
     --accent-finished: #4caf50; --accent-playing: #2196f3; --accent-add: #ff9800;
-    --danger: #f44336; --google-blue: #4285f4; --star-color: #ffd700;
+    --danger: #f44336; --google-blue: #4285f4; --star-color: #ffd700; --accent-live: #a77bff;
     --input-bg: #121212; --input-text: #ffffff; --border-color: #333;
 }
 /* Tema Claro */
@@ -352,6 +352,7 @@ body.compact-mode .gi-chips, body.compact-mode .gi-progress, body.compact-mode .
     .game-item .gi-chips { grid-area: chips; margin-top: 8px; align-self: start; }
     .game-item .gi-progress { grid-area: progress; margin-top: 12px; }
     .game-item .wish-note { grid-area: progress; margin-top: 10px; }
+    .game-item .gi-hours { grid-area: progress; margin-top: 12px; }
     .game-item .gi-status { grid-area: status; margin-top: 12px; align-self: center; }
     .game-item .gi-actions { grid-area: actions; flex-direction: row; gap: 0; margin-top: 8px; align-self: center; justify-self: end; }
     .game-item .gi-journal { grid-area: journal; margin-top: 10px; }
@@ -518,3 +519,31 @@ body.session-on { padding-top: calc(20px + 42px + env(safe-area-inset-top, 0px))
 .qm-meta { font-size: 0.8em; color: var(--text-muted); white-space: nowrap; }
 .qm-note, .qm-empty { color: var(--text-muted); font-size: 0.85em; }
 .qm-roll { align-self: stretch; padding: 9px 12px; font-size: 0.9em; }
+
+
+/* ===== Selos: emulado / dificuldade / contínuo ===== */
+.chip-emu { color: #26c6da; border-color: #26c6da; }
+.chip-diff-easy { color: #66bb6a; border-color: #66bb6a; }
+.chip-diff-normal { color: var(--text-muted); }
+.chip-diff-hard { color: #ffa726; border-color: #ffa726; }
+.chip-diff-extreme { color: #ef5350; border-color: #ef5350; }
+.chip-live { color: var(--accent-live); border-color: var(--accent-live); }
+.flag-box { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; }
+.flag-row { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; line-height: 1.35; }
+.flag-row input[type="checkbox"] { width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0; accent-color: var(--accent-live); }
+.flag-row small { display: block; color: var(--text-muted); font-size: 0.8em; margin-top: 2px; }
+#game-emu-fields { display: none; }
+#modal-game .flag-box input[type="text"] { width: 100%; box-sizing: border-box; }
+
+/* ===== Seção de Jogos Contínuos ===== */
+.category.continuous { border-left: 4px solid var(--accent-live); }
+.category.continuous .category-header h2 { color: var(--accent-live); }
+.category.continuous .cat-title-area { flex-wrap: wrap; gap: 8px; }
+.add-continuous-wrap { margin: 0 0 20px; }
+.add-continuous { width: 100%; background: transparent; border: 1px dashed var(--accent-live); color: var(--accent-live); border-radius: 12px; padding: 12px; font-weight: 600; }
+.add-continuous small { font-weight: 400; opacity: 0.8; }
+.gi-hours { font-size: 0.85em; color: var(--text-muted); }
+.gi-hours strong { font-size: 1.5em; color: var(--accent-live); margin-right: 4px; font-variant-numeric: tabular-nums; }
+.pill-btn.session-live { border-color: #f44336; color: #f44336; }
+.cont-grid { grid-template-columns: repeat(2, 1fr); margin-top: 12px; }
+.cont-item .gi-bar span { background: var(--accent-live); }
