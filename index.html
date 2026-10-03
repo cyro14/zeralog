@@ -132,6 +132,9 @@
             <canvas id="statusChart"></canvas>
         </div>
 
+        <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Jogos Contínuos</h3>
+        <div id="continuous-stats"></div>
+
         <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Franquias</h3>
         <div id="franchise-summary" class="franchise-summary"></div>
         <div id="franchise-stats"></div>
@@ -240,7 +243,8 @@
             <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Plataforma:</label>
             <select id="game-platform"></select>
 
-            <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Tempo Estimado:</label>
+            <div id="game-time-fields" class="modal-form">
+                <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Tempo Estimado:</label>
             <div style="display:flex; gap:10px;">
                 <input type="number" id="game-time-val" placeholder="Ex: 10" min="0" step="0.5" style="flex: 2;">
                 <select id="game-time-unit" style="flex: 1;">
@@ -248,10 +252,35 @@
                     <option value="m">Minutos</option>
                 </select>
             </div>
+            </div>
 
             <label for="game-franchise" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Franquia / coleção (opcional):</label>
             <input type="text" id="game-franchise" list="franchise-list" placeholder="Ex: Zelda, Dark Souls, Metroid" autocomplete="off">
             <datalist id="franchise-list"></datalist>
+
+            <div class="flag-box">
+                <label class="flag-row">
+                    <input type="checkbox" id="game-continuous" onchange="toggleModalFlags()">
+                    <span><strong>Jogo Contínuo</strong> (Live Service / Sandbox infinito)<small>Sem "Zerado" nem 100%: fica numa seção própria, só somando horas (Timer de Sessão) e Diário de Bordo.</small></span>
+                </label>
+                <label class="flag-row">
+                    <input type="checkbox" id="game-emulated" onchange="toggleModalFlags()">
+                    <span><strong>Emulado</strong></span>
+                </label>
+                <div id="game-emu-fields">
+                    <input type="text" id="game-orig-console" list="console-list" placeholder="Console original (ex: Super Nintendo)" autocomplete="off">
+                    <datalist id="console-list"></datalist>
+                </div>
+            </div>
+
+            <label for="game-difficulty" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Dificuldade:</label>
+            <select id="game-difficulty">
+                <option value="">Não definida</option>
+                <option value="easy">Fácil</option>
+                <option value="normal">Normal</option>
+                <option value="hard">Difícil</option>
+                <option value="extreme">Extremo</option>
+            </select>
 
             <details id="game-extra" class="game-extra">
                 <summary>Mais detalhes (gênero, lançamento, nota, descrição)</summary>
@@ -322,6 +351,16 @@
         </div>
     </dialog>
 
+    <dialog id="modal-journal">
+        <div class="modal-form">
+            <h3 style="margin-top: 0;">Entrada no Diário de Bordo</h3>
+            <p id="journal-game" style="margin: 0; font-weight: bold;"></p>
+            <input type="hidden" id="journal-game-id">
+            <textarea id="journal-entry-text" rows="4" placeholder="O que você fez? Conquistas, mods instalados, atualização de save..."></textarea>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-journal')">Cancelar</button><button onclick="saveJournalEntry()">Salvar entrada</button></div>
+        </div>
+    </dialog>
+
     <dialog id="modal-session">
         <div class="modal-form">
             <h3 style="margin-top: 0;">Fim da sessão</h3>
@@ -329,6 +368,7 @@
             <label for="session-minutes" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Minutos a somar (ajuste se fez pausas):</label>
             <input type="number" id="session-minutes" min="0" step="1" oninput="sessionPreview()">
             <small id="session-preview" style="color: var(--text-muted);"></small>
+            <textarea id="session-note" rows="2" placeholder="Anotar no diário (opcional): feitos, mods, saves..."></textarea>
             <div class="modal-actions session-actions">
                 <button class="btn-cancel" onclick="closeModal('modal-session')">Continuar jogando</button>
                 <button class="btn-cancel" onclick="sessionFinish(false)">Descartar</button>
