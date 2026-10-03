@@ -1,4 +1,8 @@
-import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels } from './store.js';
+import { icon, platformIcons } from './icons.js';
+import { getSession } from './session.js';
+import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
+import { searchGames, getGameDetails, coverToDataURL, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey } from './gameApi.js';
+import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
 
 let toastTimeout = null;
 export let chartInstance = null;
@@ -11,9 +15,10 @@ export let state = {
 };
 
 // ================= UTILITÁRIOS =================
-export function triggerToast(message) {
+export function triggerToast(message, withUndo = true) {
     const toast = document.getElementById('undo-toast'); 
     document.getElementById('undo-message').innerText = message;
+    toast.querySelector('.btn-undo').style.display = withUndo ? '' : 'none';
     toast.classList.add('show'); 
     clearTimeout(toastTimeout); 
     toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 6000);
@@ -51,65 +56,65 @@ export function switchTab(tabId) {
     else filterGames();
 }
 
-// Variável temporária para armazenar a capa puxada da API durante o cadastro
-export let fetchedGameCover = null;
+// ================= BUSCA AUTOMÁTICA (RAWG) =================
+let pendingCover = null;   // capa baixada, aguardando o "Salvar"
+let lastResults = [];
+
+function updateCoverPreview(src) {
+    const el = document.getElementById('game-cover-preview');
+    el.innerHTML = src ? `<img src="${esc(src)}" alt="Capa">` : '';
+    el.style.display = src ? 'block' : 'none';
+}
+
+function resetAutoFill() {
+    pendingCover = null;
+    lastResults = [];
+    document.getElementById('rawg-results').innerHTML = '';
+    ['game-description', 'game-genres', 'game-released', 'game-metacritic', 'game-hours-played', 'game-journal-notes']
+        .forEach(id => document.getElementById(id).value = '');
+    document.getElementById('game-extra').open = false;
+    updateCoverPreview(null);
+}
 
 export async function fetchGameFromRAWG() {
-    const titleInput = document.getElementById('game-title');
-    const query = titleInput.value.trim();
-    if (!query) {
-        alert('Digite o nome do jogo primeiro para buscar!');
-        return;
-    }
-    
-    triggerToast('Buscando na base de dados...');
-    
-    // Chave pública de testes da API da RAWG
-    const apiKey = '3b86001a1d824d5483d650117036d0b1';
-    
+    const query = document.getElementById('game-title').value.trim();
+    if (!query) { triggerToast('Digite o nome do jogo primeiro.'); return; }
+    const box = document.getElementById('rawg-results');
+    box.innerHTML = '<div class="rawg-msg">Buscando...</div>';
     try {
-        const response = await fetch(`https://api.rawg.io/api/games?search=${encodeURIComponent(query)}&key=${apiKey}&page_size=1`);
-        const data = await response.json();
-        
-        if (data.results && data.results.length > 0) {
-            const gameData = data.results[0];
-            
-            // Preenche com o nome oficial exato
-            titleInput.value = gameData.name;
-            
-            if (gameData.background_image) {
-                // Carrega a imagem da capa via proxy/canvas para evitar bloqueios de CORS ao gerar o card depois
-                convertImageUrlToDataURL(gameData.background_image, (base64Img) => {
-                    fetchedGameCover = base64Img;
-                    triggerToast(`Encontrado: ${gameData.name} + Capa carregada!`);
-                });
-            } else {
-                triggerToast(`Encontrado: ${gameData.name} (Sem capa disponível)`);
-            }
-        } else {
-            alert('Nenhum jogo encontrado com esse nome.');
-        }
+        lastResults = await searchGames(query);
+        if (!lastResults.length) { box.innerHTML = '<div class="rawg-msg">Nada encontrado. Preencha manualmente.</div>'; return; }
+        box.innerHTML = lastResults.map((g, i) => `
+            <button type="button" class="rawg-item" onclick="pickRawgResult(${i})">
+                ${g.image ? `<img src="${esc(resizeUrl(g.image, 200))}" loading="lazy" alt="">` : `<span class="rawg-noimg">${icon('gamepad', { size: '1.6em' })}</span>`}
+                <span><strong>${esc(g.title)}</strong><small>${g.released ? esc(g.released.slice(0, 4)) : '—'}${g.genres.length ? ' · ' + esc(g.genres.slice(0, 2).join(', ')) : ''}</small></span>
+            </button>`).join('');
     } catch (err) {
         console.error(err);
-        alert('Erro ao conectar com a API da RAWG.');
+        box.innerHTML = `<div class="rawg-msg rawg-err">${esc(describeError(err))} Você pode preencher manualmente.</div>`;
     }
 }
 
-// Auxiliar para converter URL da capa em Base64 seguro para o LocalStorage e Html2Canvas
-function convertImageUrlToDataURL(url, callback) {
-    const proxyUrl = "https://corsproxy.io/?s=" + encodeURIComponent(url);
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = function() {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        callback(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => callback(url);
-    img.src = proxyUrl;
+export async function pickRawgResult(i) {
+    const base = lastResults[i];
+    if (!base) return;
+    const box = document.getElementById('rawg-results');
+    box.innerHTML = '<div class="rawg-msg">Carregando dados...</div>';
+    let g = base;
+    try { g = { ...base, ...(await getGameDetails(base.rawgId)) }; } catch (e) { /* segue só com os dados da busca */ }
+
+    document.getElementById('game-title').value = g.title;
+    document.getElementById('game-description').value = g.description;
+    document.getElementById('game-genres').value = g.genres.join(', ');
+    document.getElementById('game-released').value = g.released;
+    document.getElementById('game-metacritic').value = g.metacritic ?? '';
+    if (g.playtime && !document.getElementById('game-time-val').value) {
+        document.getElementById('game-time-val').value = g.playtime;
+        document.getElementById('game-time-unit').value = 'h';
+    }
+    document.getElementById('game-extra').open = true;
+    if (g.image) { pendingCover = await coverToDataURL(g.image); updateCoverPreview(pendingCover); }
+    box.innerHTML = `<div class="rawg-msg rawg-ok">${icon('check')} Dados de <strong>${esc(g.title)}</strong> preenchidos. Revise e salve.</div>`;
 }
 
 // ================= RENDERIZAÇÃO E LISTAS =================
@@ -141,12 +146,12 @@ export function filterGames() {
     const term = document.getElementById('search-bar').value.toLowerCase();
     document.querySelectorAll('.category').forEach(cat => {
         let hasVisibleGames = false;
-        cat.querySelectorAll('.game-item').forEach(item => {
-            const titleMatch = item.querySelector('.game-title').innerText.toLowerCase().includes(term);
+        cat.querySelectorAll('.game-item, .tl-item').forEach(item => {
+            const titleMatch = item.querySelector('.game-title').innerText.toLowerCase().includes(term) || (item.dataset.franchise || '').includes(term);
             const platformMatch = state.currentPlatformFilter === 'All' || item.dataset.platform === state.currentPlatformFilter;
             const portableMatch = !state.filterPortableOnly || item.dataset.portable === 'true';
             
-            if (titleMatch && platformMatch && portableMatch) { item.style.display = 'flex'; hasVisibleGames = true; } 
+            if (titleMatch && platformMatch && portableMatch) { item.style.display = ''; hasVisibleGames = true; } 
             else { item.style.display = 'none'; }
         });
         if (term !== '' || state.currentPlatformFilter !== 'All' || state.filterPortableOnly) { 
@@ -218,31 +223,47 @@ export function render() {
 
     const filterContainer = document.getElementById('platform-chips-container');
     filterContainer.innerHTML = `<div class="filter-chip ${state.currentPlatformFilter === 'All' ? 'active' : ''}" onclick="setPlatformFilter('All', this)">Todas</div>`;
-    filterContainer.innerHTML += `<div class="filter-chip ${state.filterPortableOnly ? 'active' : ''}" onclick="togglePortableFilter()" id="filter-chip-portable" style="border-color: var(--accent-playing); ${state.filterPortableOnly ? '' : 'color: var(--accent-playing);'}">🎒 Portáteis</div>`;
+    filterContainer.innerHTML += `<div class="filter-chip ${state.filterPortableOnly ? 'active' : ''}" onclick="togglePortableFilter()" id="filter-chip-portable" style="border-color: var(--accent-playing); ${state.filterPortableOnly ? '' : 'color: var(--accent-playing);'}">Portáteis</div>`;
 
     appData.platforms.forEach(p => {
         filterContainer.innerHTML += `<div class="filter-chip ${state.currentPlatformFilter === p.name ? 'active' : ''}" onclick="setPlatformFilter('${p.name}', this)" style="display:inline-flex; align-items:center; gap:6px;">${p.icon} <span>${p.name}</span></div>`;
     });
 
-    const playingGames = getSortedGames(appData.games.filter(g => g.state === 'playing'), null, false);
+    const playingGames = getSortedGames(appData.games.filter(g => g.state === 'playing' && !g.continuous), null, false);
     const playingCatDiv = document.createElement('div');
     playingCatDiv.className = `category ${appData.collapsedCats.includes('playing-category') ? 'collapsed' : ''}`; playingCatDiv.id = 'playing-category';
     if(playingGames.length > 0) playingCatDiv.style.display = 'block';
-    playingCatDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('playing-category', event)"><div class="cat-title-area"><span class="chevron">▼</span><h2>🕹️ Jogando Atualmente</h2></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-playing"></ul></div>`;
+    playingCatDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('playing-category', event)"><div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>Jogando Atualmente</h2></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-playing"></ul></div>`;
     containerHome.appendChild(playingCatDiv);
     const listPlaying = playingCatDiv.querySelector('#list-playing'); playingGames.forEach(game => listPlaying.appendChild(createGameElement(game)));
 
+    // Seção de Jogos Contínuos (live service / sandbox): só horas e diário, sem "Zerado"
+    const contGames = appData.games.filter(g => g.continuous).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
+    if (contGames.length) {
+        const total = contGames.reduce((a, g) => a + hoursNum(g.hoursPlayed), 0);
+        const contDiv = document.createElement('div');
+        contDiv.className = `category continuous ${appData.collapsedCats.includes('continuous-category') ? 'collapsed' : ''}`; contDiv.id = 'continuous-category';
+        contDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('continuous-category', event)"><div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>Jogos Contínuos</h2><span class="chip chip-live">${fmtHours(total)} jogadas</span></div><div class="cat-actions"><button onclick="openGameModal('continuous')">+ Jogo</button></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-continuous"></ul></div>`;
+        containerHome.appendChild(contDiv);
+        const listCont = contDiv.querySelector('#list-continuous'); contGames.forEach(game => listCont.appendChild(createGameElement(game)));
+    } else {
+        const addDiv = document.createElement('div');
+        addDiv.className = 'add-continuous-wrap';
+        addDiv.innerHTML = `<button type="button" class="add-continuous" onclick="openGameModal('continuous')">+ Jogo Contínuo <small>(live service / sandbox infinito)</small></button>`;
+        containerHome.appendChild(addDiv);
+    }
+
     appData.categories.forEach(cat => {
-        const catGames = getSortedGames(appData.games.filter(g => g.catId === cat.id && g.state === null), null, false);
+        const catGames = getSortedGames(appData.games.filter(g => g.catId === cat.id && g.state === null && !g.continuous), null, false);
         const catDiv = document.createElement('div'); catDiv.className = `category ${appData.collapsedCats.includes(cat.id) ? 'collapsed' : ''}`; catDiv.id = cat.id;
         catDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${cat.id}', event)">
-                <div class="cat-title-area"><span class="chevron">▼</span><h2>${cat.name}</h2></div>
+                <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>${esc(cat.name)}</h2></div>
                 <div class="cat-actions">
-                    <button class="btn-icon" onclick="moveCategory('${cat.id}', -1)" title="Mover para Cima">⬆️</button>
-                    <button class="btn-icon" onclick="moveCategory('${cat.id}', 1)" title="Mover para Baixo">⬇️</button>
-                    <button class="btn-icon" onclick="openEditCatModal('${cat.id}')" title="Editar Categoria">✏️</button>
-                    <button class="btn-icon btn-delete" onclick="askDeleteCategory('${cat.id}')" title="Excluir Categoria">🗑️</button>
+                    <button class="btn-icon" onclick="moveCategory('${cat.id}', -1)" title="Mover para Cima">${ICONS.up}</button>
+                    <button class="btn-icon" onclick="moveCategory('${cat.id}', 1)" title="Mover para Baixo">${ICONS.down}</button>
+                    <button class="btn-icon" onclick="openEditCatModal('${cat.id}')" title="Editar Categoria">${ICONS.edit}</button>
+                    <button class="btn-icon btn-delete" onclick="askDeleteCategory('${cat.id}')" title="Excluir Categoria">${ICONS.trash}</button>
                     <button onclick="openGameModal('${cat.id}')">+ Jogo</button>
                 </div>
             </div>
@@ -252,6 +273,8 @@ export function render() {
         const listEl = catDiv.querySelector(`#list-${cat.id}`); catGames.forEach(game => listEl.appendChild(createGameElement(game)));
     });
 
+    renderWishlist();
+    renderQuickMatch();
     renderFinishedTab();
     filterGames();
     if(document.getElementById('tab-stats').classList.contains('active')) updateStatsAndCharts();
@@ -272,10 +295,16 @@ export function renderFinishedTab() {
         activeChip.innerText = sortLabels[appData.settings.finishedSort] + (appData.settings.finishedSortDir === 'asc' ? ' ↑' : ' ↓');
     }
 
+    const view = appData.settings.finishedView === 'timeline' ? 'timeline' : 'list';
+    document.getElementById('fin-view-list').classList.toggle('active', view === 'list');
+    document.getElementById('fin-view-timeline').classList.toggle('active', view === 'timeline');
+    document.getElementById('fin-sort-bar').style.display = view === 'list' ? '' : 'none';
+
     if (finishedGames.length === 0) {
         finishedContainer.innerHTML = `<div class="empty-state">Nenhum jogo finalizado ainda. Hora de focar no backlog!</div>`;
         return;
     }
+    if (view === 'timeline') { renderTimeline(finishedContainer, finishedGames); return; }
 
     const isDateSort = appData.settings.finishedSort === 'date';
     const years = {};
@@ -292,11 +321,11 @@ export function renderFinishedTab() {
         yearDiv.className = `category ${appData.collapsedCats.includes(yearId) ? 'collapsed' : ''}`;
         yearDiv.id = yearId;
         
-        let titleText = isDateSort ? `🏆 Concluídos em ${year}` : (appData.settings.finishedSort === 'rating' ? '🌟 Ordenados por Nota' : (appData.settings.finishedSort === 'time' ? '⏱️ Ordenados por Tempo' : '🎒 Ordenados por Portátil'));
+        let titleText = isDateSort ? `Concluídos em ${year}` : (appData.settings.finishedSort === 'rating' ? 'Ordenados por Nota' : (appData.settings.finishedSort === 'time' ? 'Ordenados por Tempo' : 'Ordenados por Portátil'));
         yearDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${yearId}', event)">
-                <div class="cat-title-area"><span class="chevron">▼</span><h2 style="color: var(--accent-finished)">${titleText}</h2></div>
-                <div class="cat-actions"><span style="font-size: 0.8em; color: var(--text-muted); font-weight: bold;">${years[year].length} jogos</span></div>
+                <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2 style="color: var(--accent-finished)">${titleText}</h2></div>
+                <div class="cat-actions"><span style="font-size: 0.8em; color: var(--text-muted); font-weight: bold;">${years[year].length} ${years[year].length === 1 ? 'jogo' : 'jogos'}</span></div>
             </div>
             <div class="game-list-wrapper"><ul class="game-list"></ul></div>
         `;
@@ -306,63 +335,142 @@ export function renderFinishedTab() {
     });
 }
 
+// Ícones de linha (SVG) para os botões
+const ICONS = Object.fromEntries(['edit', 'share', 'trash', 'up', 'down'].map(n => [n, icon(n, { size: '18px' })]));
+
+// Diário com mais que isso (ou muitas linhas) começa recolhido, com botão "Ver tudo"
+const JOURNAL_LIMIT = 140;
+
+export function toggleJournal(btn) {
+    const box = btn.closest('.gi-journal');
+    const collapsed = box.classList.toggle('collapsed');
+    btn.textContent = collapsed ? 'Ver tudo' : 'Recolher';
+    btn.setAttribute('aria-expanded', String(!collapsed));
+}
+
+const DIFF_LABELS = { easy: 'Fácil', normal: 'Normal', hard: 'Difícil', extreme: 'Extremo' };
+const CONSOLES = ['NES', 'Super Nintendo', 'Nintendo 64', 'GameCube', 'Wii', 'Game Boy', 'Game Boy Color', 'Game Boy Advance', 'Nintendo DS', 'Nintendo 3DS', 'Master System', 'Mega Drive', 'Saturn', 'Dreamcast', 'PlayStation', 'PlayStation 2', 'PlayStation Portable', 'Neo Geo', 'Arcade', 'Atari 2600', 'PC Engine'];
+
+// Selos extras (emulado, console original, dificuldade) usados em todos os cards
+export function flagChips(g) {
+    const out = [];
+    if (g.emulated) out.push(`<span class="chip chip-emu" title="Jogado em emulador">Emulado${g.originalConsole ? ' · ' + esc(g.originalConsole) : ''}</span>`);
+    if (g.difficulty && DIFF_LABELS[g.difficulty]) out.push(`<span class="chip chip-diff chip-diff-${esc(g.difficulty)}" title="Dificuldade">${DIFF_LABELS[g.difficulty]}</span>`);
+    return out;
+}
+const hoursNum = h => { const n = parseFloat(String(h || '0').replace(',', '.')); return isNaN(n) ? 0 : n; };
+const fmtHours = n => (Math.round(n * 10) / 10).toString().replace('.', ',') + 'h';
+
+const fmtTime = t => String(t).endsWith('m') ? `${String(t).slice(0, -1)} min` : String(t);
+
 export function createGameElement(game) {
-    const li = document.createElement('li'); 
-    li.className = `game-item`; li.dataset.platform = game.platform; li.dataset.portable = game.isPortable ? 'true' : 'false';
-    li.style.flexDirection = 'column'; li.style.alignItems = 'flex-start';
-    
-    const isPlaying = game.state === 'playing' ? 'checked' : ''; const isFinished = game.state === 'finished' ? 'checked' : '';
-    let imgContent = game.image ? `<img src="${game.image}" class="game-icon" style="width: 75px; height: 75px; min-width: 75px;" onclick="openImageModal('${game.id}')" title="Trocar Capa">` : `<div class="game-icon" style="width: 75px; height: 75px; min-width: 75px;" onclick="openImageModal('${game.id}')" title="Adicionar Capa">🎮</div>`;
-    const platObj = appData.platforms.find(p => p.name === game.platform) || { icon: '🎮', name: game.platform };
+    const li = document.createElement('li');
+    li.className = 'game-item';
+    li.dataset.platform = game.platform;
+    li.dataset.portable = game.isPortable ? 'true' : 'false';
+    li.dataset.franchise = (game.franchise || '').toLowerCase();
 
-    // Cálculo de quanto falta
-    let progressText = '';
+    const finished = game.state === 'finished';
+    const isPlaying = game.state === 'playing' ? 'checked' : '';
+    const isFinished = finished ? 'checked' : '';
+    const title = esc(game.title);
+
+    const cover = game.image
+        ? `<img src="${esc(game.image)}" alt="" class="gi-cover" onclick="openImageModal('${game.id}')" title="Trocar capa">`
+        : `<div class="gi-cover gi-cover-empty" onclick="openImageModal('${game.id}')" title="Adicionar capa">${esc((game.title.trim()[0] || '?').toUpperCase())}</div>`;
+
+    // Linha secundária: plataforma · ano · gênero · tempo estimado
+    const sub = [esc(game.platform)];
+    if (game.released) sub.push(esc(game.released.slice(0, 4)));
+    if (game.genres && game.genres.length) sub.push(esc(game.genres.slice(0, 2).join(', ')));
+    if (game.meta) sub.push(`${esc(fmtTime(game.meta))} p/ zerar`);
+
+    // Barra de progresso (só se houver tempo estimado e horas jogadas)
+    let progress = '';
     if (game.meta && game.hoursPlayed) {
-        let total = parseFloat(game.meta.replace(',', '.')) || 0;
-        if (game.meta.includes('m')) total /= 60;
-        let played = parseFloat(game.hoursPlayed) || 0;
-        let restante = total - played;
-        if (restante > 0) {
-            progressText = `<span>⏳ Faltam aprox. ${restante.toFixed(1)}h</span>`;
-        } else {
-            progressText = `<span>🎯 Meta atingida!</span>`;
+        let total = parseFloat(String(game.meta).replace(',', '.')) || 0;
+        if (String(game.meta).includes('m')) total /= 60;
+        const played = parseFloat(game.hoursPlayed) || 0;
+        if (total > 0) {
+            const pct = Math.min(100, Math.round(played / total * 100));
+            const left = total - played;
+            progress = `<div class="gi-progress"><div class="gi-bar"><span style="width:${pct}%"></span></div><small>${played}h de ${total % 1 ? total.toFixed(1) : total}h · ${left > 0 ? `faltam ~${left.toFixed(1)}h` : 'meta atingida'}</small></div>`;
         }
+    } else if (game.continuous) {
+        progress = `<div class="gi-hours"><strong>${fmtHours(hoursNum(game.hoursPlayed))}</strong> jogadas</div>`;
+    } else if (game.hoursPlayed) {
+        progress = `<div class="gi-progress"><small>${esc(game.hoursPlayed)}h jogadas</small></div>`;
     }
 
-    // Declaração única da variável metaDisplay
-    let metaDisplay = `<span style="display:flex; align-items:center; gap:4px; white-space:nowrap;">${platObj.icon} <span>${platObj.name}</span></span>`;
-    if (game.meta) metaDisplay += `<span>⏱️ Total: ${game.meta}</span>`;
-    if (game.hoursPlayed) metaDisplay += `<span>🎮 Jogado: ${game.hoursPlayed}h</span>`;
-    if (progressText) metaDisplay += progressText;
-    if (game.isPortable) metaDisplay += `<span style="color: #fff; background: var(--accent-playing); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em;">🎒 Portátil</span>`;
-    
-    if (game.state === 'finished') {
+    // Etiquetas
+    const chips = [];
+    if (game.continuous) chips.push('<span class="chip chip-live">Contínuo</span>');
+    if (game.franchise) chips.push(franchiseChip(game.franchise));
+    chips.push(...flagChips(game));
+    if (game.metacritic) chips.push(`<span class="chip score ${game.metacritic >= 75 ? 'good' : game.metacritic >= 50 ? 'mid' : 'bad'}" title="Nota Metacritic">Metacritic ${esc(game.metacritic)}</span>`);
+    if (game.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
+    if (finished) {
         const originCat = appData.categories.find(c => c.id === game.catId);
-        if (originCat) metaDisplay += `<span class="cat-tag-badge">📂 ${originCat.name}</span>`;
-        if (game.is100) metaDisplay += `<span style="color: var(--star-color); font-weight: bold; background: rgba(255, 215, 0, 0.1); padding: 2px 6px; border-radius: 4px;">💎 100%</span>`;
-        if (game.userRating) metaDisplay += `<span class="user-rating">🌟 ${game.userRating}/10</span>`;
-        if (game.dateFinished) metaDisplay += `<span class="date-finished">📅 ${game.dateFinished}</span>`;
+        if (originCat) chips.push(`<span class="chip">${esc(originCat.name)}</span>`);
+        if (game.is100) chips.push('<span class="chip chip-gold">100%</span>');
+        if (game.userRating) chips.push(`<span class="chip chip-gold">Nota ${esc(game.userRating)}/10</span>`);
+        if (game.dateFinished) chips.push(`<span class="chip">Zerado em ${esc(game.dateFinished)}</span>`);
     }
 
-    let editBtn = game.state === 'finished' ? `<button class="btn-icon" onclick="openCardGenerator('${game.id}')" title="Compartilhar Status">📤</button><button class="btn-icon" onclick="openEditFinishedModal('${game.id}')" title="Editar Conclusão">✏️</button>` : `<button class="btn-icon" onclick="openEditGameModal('${game.id}')" title="Editar Informações">✏️</button>`;
+    const sess = getSession();
+    const running = !!(sess && sess.gameId === game.id);
+    const playBtn = (game.state === 'playing' && !game.continuous)
+        ? (running
+            ? `<button type="button" class="icon-btn session-running" onclick="openEndSession()" title="Encerrar sessão" aria-label="Encerrar sessão">${icon('stop', { size: '18px' })}</button>`
+            : `<button type="button" class="icon-btn" onclick="startSession('${game.id}')" title="Iniciar sessão de jogo" aria-label="Iniciar sessão de jogo">${icon('play', { size: '18px' })}</button>`)
+        : '';
+    if (running) chips.unshift('<span class="chip chip-accent">Em sessão</span>');
+    const infoBtn = `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Dados do jogo (editar / buscar automático)" aria-label="Dados do jogo">${icon('info', { size: '18px' })}</button>`;
+    const wikiBtn = playBtn + `<button type="button" class="icon-btn" onclick="openWiki('${game.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>`;
+    const editBtn = wikiBtn + (finished
+        ? `<button type="button" class="icon-btn" onclick="openCardGenerator('${game.id}')" title="Compartilhar" aria-label="Compartilhar">${ICONS.share}</button>
+           ${infoBtn}
+           <button type="button" class="icon-btn" onclick="openEditFinishedModal('${game.id}')" title="Editar conclusão (nota, data, review)" aria-label="Editar conclusão">${ICONS.edit}</button>`
+        : `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>`);
 
-    // Bloco do Diário de Bordo se houver anotação
-    let journalDisplay = '';
-    if (game.journalNotes && game.state !== 'finished') {
-        journalDisplay = `<div style="font-size: 0.85em; color: var(--accent-add); margin-top: 6px; background: rgba(255,152,0,0.1); padding: 6px 10px; border-radius: 6px; border-left: 3px solid var(--accent-add); width: 100%; box-sizing: border-box;">📖 <strong>Diário:</strong> ${game.journalNotes}</div>`;
+    // Diário de bordo: recolhível quando for grande
+    let journal = '';
+    if (game.journalNotes && !finished) {
+        const notes = String(game.journalNotes);
+        const long = notes.length > JOURNAL_LIMIT || notes.split('\n').length > 3;
+        journal = `<div class="gi-journal${long ? ' collapsed' : ''}">
+            <div class="gi-journal-head"><span>Diário de bordo</span>${long ? '<button type="button" class="link-btn" aria-expanded="false" onclick="toggleJournal(this)">Ver tudo</button>' : ''}</div>
+            <div class="gi-journal-text">${esc(notes)}</div>
+        </div>`;
     }
+
+    const desc = game.description
+        ? `<details class="game-desc"><summary>Sobre o jogo</summary><p>${esc(game.description)}</p></details>` : '';
+
+    const statusRow = game.continuous
+        ? `<div class="gi-status">
+                ${running
+                    ? '<button type="button" class="pill-btn session-live" onclick="openEndSession()">Encerrar sessão</button>'
+                    : `<button type="button" class="pill-btn primary" onclick="startSession('${game.id}')">Iniciar sessão</button>`}
+                <button type="button" class="pill-btn" onclick="openJournalEntry('${game.id}')">Anotar no diário</button>
+            </div>`
+        : `<div class="gi-status">
+                <label class="pill pill-playing"><input type="checkbox" class="chk-playing" onchange="toggleState('${game.id}', 'playing')" ${isPlaying}><span>Jogando</span></label>
+                <label class="pill pill-finished"><input type="checkbox" class="chk-finished" onchange="toggleState('${game.id}', 'finished')" ${isFinished}><span>Zerado</span></label>
+            </div>`;
 
     li.innerHTML = `
-        <div class="game-title" style="width: 100%; text-align: left; margin-bottom: 8px; font-size: 1.15em; white-space: normal;">${game.title}</div>
-        <div style="display: flex; width: 100%; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 12px; flex-grow: 1;">
-                ${imgContent}
-                <div class="actions" style="margin-right: 10px; min-width: 80px;"><label><input type="checkbox" class="chk-playing" onchange="toggleState('${game.id}', 'playing')" ${isPlaying}> Jogando</label><label><input type="checkbox" class="chk-finished" onchange="toggleState('${game.id}', 'finished')" ${isFinished}> Final</label></div>
-                <div class="game-info" style="flex-grow: 1;"><div class="game-meta" style="margin-top: 0;">${metaDisplay}</div></div>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">${editBtn}<button class="btn-icon btn-delete" onclick="askDeleteGame('${game.id}')" title="Remover Jogo">🗑️</button></div>
+        ${cover}
+        <div class="gi-body">
+            <div class="game-title">${title}</div>
+            <div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div>
+            ${chips.length ? `<div class="gi-chips">${chips.join('')}</div>` : ''}
+            ${progress}
+            ${statusRow}
         </div>
-        ${journalDisplay}
+        <div class="gi-actions">${editBtn}<button type="button" class="icon-btn danger" onclick="askDeleteGame('${game.id}')" title="Remover" aria-label="Remover">${ICONS.trash}</button></div>
+        ${journal}
+        ${desc}
     `;
     return li;
 }
@@ -398,7 +506,8 @@ export function checkNewAchievements() {
 }
 
 export function updateStatsAndCharts() {
-    const filteredGames = appData.games.filter(g => state.currentPlatformFilter === 'All' || g.platform === state.currentPlatformFilter);
+    const regularGames = appData.games.filter(g => !g.continuous);
+    const filteredGames = regularGames.filter(g => state.currentPlatformFilter === 'All' || g.platform === state.currentPlatformFilter);
     const backlogGames = filteredGames.filter(g => g.state === null);
     const playingGames = filteredGames.filter(g => g.state === 'playing');
     const finishedGames = filteredGames.filter(g => g.state === 'finished');
@@ -446,23 +555,25 @@ export function updateStatsAndCharts() {
         });
     }
 
-    const allFinished = appData.games.filter(g => g.state === 'finished').length;
-    const all100 = appData.games.filter(g => g.is100).length;
+    const allFinished = regularGames.filter(g => g.state === 'finished').length;
+    const all100 = regularGames.filter(g => g.is100).length;
     document.getElementById('ach-1').classList.toggle('locked', allFinished < 1);
     document.getElementById('ach-5').classList.toggle('locked', allFinished < 5);
     document.getElementById('ach-10').classList.toggle('locked', allFinished < 10);
     document.getElementById('ach-perfectionist').classList.toggle('locked', all100 < 1);
     document.getElementById('ach-legend').classList.toggle('locked', all100 < 5);
     
-    const allCovers = appData.games.length > 0 && appData.games.every(g => g.image !== null);
+    const allCovers = regularGames.length > 0 && regularGames.every(g => g.image !== null);
     document.getElementById('ach-covers').classList.toggle('locked', !allCovers);
 
-    const platformsUsed = new Set(appData.games.map(g => g.platform)).size;
+    const platformsUsed = new Set(regularGames.map(g => g.platform)).size;
     document.getElementById('ach-platforms').classList.toggle('locked', platformsUsed < 3);
 
-    let totalHours = sumHours(appData.games);
+    let totalHours = sumHours(regularGames);
     document.getElementById('ach-marathon').classList.toggle('locked', totalHours < 100);
-    document.getElementById('ach-critic').classList.toggle('locked', appData.games.filter(g => g.userRating).length < 10);
+    document.getElementById('ach-critic').classList.toggle('locked', regularGames.filter(g => g.userRating).length < 10);
+    renderContinuousStats();
+    renderFranchiseStats();
 }
 
 // ================= CRUD JOGOS E CATEGORIAS =================
@@ -483,36 +594,97 @@ export function moveCategory(catId, direction) {
     }
 }
 
-export function openGameModal(catId) { 
-    document.getElementById('game-modal-title').innerText = 'Adicionar Jogo';
-    document.getElementById('edit-game-id').value = ''; 
-    document.getElementById('game-cat-id').value = catId; 
-    document.getElementById('game-title').value = ''; 
-    document.getElementById('game-time-val').value = ''; 
-    document.getElementById('game-is-portable-backlog').checked = false;
-    
-    const select = document.getElementById('game-platform');
-    select.innerHTML = '';
-    appData.platforms.forEach(p => {
-        select.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+const normKey = s => String(s).trim().toLowerCase();
+
+function franchiseNames() {
+    const map = new Map();
+    [...appData.games, ...(appData.wishlist || [])].forEach(g => {
+        const f = (g.franchise || '').trim();
+        if (f && !map.has(normKey(f))) map.set(normKey(f), f);
     });
-    document.getElementById('modal-game').showModal(); 
+    return [...map.values()].sort((a, b) => a.localeCompare(b));
 }
 
-export function openEditGameModal(gameId) {
-    const game = appData.games.find(g => g.id === gameId);
-    document.getElementById('game-modal-title').innerText = 'Editar Informações';
+const canonicalFranchise = raw => { const t = raw.trim(); return franchiseNames().find(f => normKey(f) === normKey(t)) || t; };
+
+// Prepara o modal compartilhado entre "jogo" (fila) e "desejo" (wishlist)
+function prepareGameModal(mode) {
+    const wish = mode === 'wish';
+    document.getElementById('game-mode').value = mode;
+    document.getElementById('game-play-fields').style.display = wish ? 'none' : '';
+    document.getElementById('game-wish-fields').style.display = wish ? '' : 'none';
+    document.getElementById('franchise-list').innerHTML = franchiseNames().map(f => `<option value="${esc(f)}"></option>`).join('');
+    document.getElementById('game-wish-cat').innerHTML = appData.categories.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    document.getElementById('game-platform').innerHTML = appData.platforms.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
+    document.getElementById('console-list').innerHTML = [...new Set([...CONSOLES, ...appData.platforms.map(p => p.name)])].map(c => `<option value="${esc(c)}"></option>`).join('');
+    document.getElementById('game-continuous').disabled = false;
+}
+
+export function toggleModalFlags() {
+    const cont = document.getElementById('game-continuous').checked;
+    document.getElementById('game-time-fields').style.display = cont ? 'none' : '';
+    document.getElementById('game-emu-fields').style.display = document.getElementById('game-emulated').checked ? 'block' : 'none';
+}
+
+function resetFlagFields() {
+    document.getElementById('game-continuous').checked = false;
+    document.getElementById('game-emulated').checked = false;
+    document.getElementById('game-orig-console').value = '';
+    document.getElementById('game-difficulty').value = '';
+}
+
+export function openGameModal(catId) {
+    const wish = catId === 'wishlist';
+    document.getElementById('game-modal-title').innerText = wish ? 'Adicionar à Wishlist' : (catId === 'continuous' ? 'Adicionar Jogo Contínuo' : 'Adicionar Jogo');
+    document.getElementById('edit-game-id').value = '';
+    document.getElementById('game-cat-id').value = catId;
+    document.getElementById('game-title').value = '';
+    document.getElementById('game-time-val').value = '';
+    document.getElementById('game-time-unit').value = 'h';
+    resetAutoFill();
+    document.getElementById('game-franchise').value = '';
+    document.getElementById('game-wish-note').value = '';
+    document.getElementById('game-is-portable-backlog').checked = false;
+    prepareGameModal(wish ? 'wish' : 'game');
+    resetFlagFields();
+    document.getElementById('game-continuous').checked = catId === 'continuous';
+    toggleModalFlags();
+    document.getElementById('modal-game').showModal();
+}
+
+export function openEditWishModal(id) { openEditGameModal(id, true); }
+
+export function openEditGameModal(gameId, isWish = false) {
+    const game = (isWish ? appData.wishlist : appData.games).find(g => g.id === gameId);
+    if (!game) return;
+    document.getElementById('game-modal-title').innerText = isWish ? 'Editar Desejo' : 'Editar Informações';
     document.getElementById('edit-game-id').value = gameId;
-    document.getElementById('game-cat-id').value = game.catId;
+    document.getElementById('game-cat-id').value = isWish ? 'wishlist' : game.catId;
     document.getElementById('game-title').value = game.title;
     document.getElementById('game-is-portable-backlog').checked = game.isPortable || false;
-    
-    const select = document.getElementById('game-platform');
-    select.innerHTML = '';
-    appData.platforms.forEach(p => {
-        const selected = p.name === game.platform ? 'selected' : '';
-        select.innerHTML += `<option value="${p.name}" ${selected}>${p.name}</option>`;
-    });
+    resetAutoFill();
+    prepareGameModal(isWish ? 'wish' : 'game');
+    document.getElementById('game-franchise').value = game.franchise || '';
+    resetFlagFields();
+    document.getElementById('game-continuous').checked = !!game.continuous;
+    document.getElementById('game-continuous').disabled = game.state === 'finished';   // zerado não vira contínuo
+    document.getElementById('game-emulated').checked = !!game.emulated;
+    document.getElementById('game-orig-console').value = game.originalConsole || '';
+    document.getElementById('game-difficulty').value = game.difficulty || '';
+    toggleModalFlags();
+    document.getElementById('game-hours-played').value = game.hoursPlayed || '';
+    document.getElementById('game-journal-notes').value = game.journalNotes || '';
+    document.getElementById('game-description').value = game.description || '';
+    document.getElementById('game-genres').value = (game.genres || []).join(', ');
+    document.getElementById('game-released').value = game.released || '';
+    document.getElementById('game-metacritic').value = game.metacritic ?? '';
+    document.getElementById('game-extra').open = !!(game.description || (game.genres && game.genres.length) || game.released || game.metacritic);
+    updateCoverPreview(game.image);
+    if (isWish) {
+        document.getElementById('game-wish-note').value = game.note || '';
+        if (game.catId) document.getElementById('game-wish-cat').value = game.catId;
+    }
+    document.getElementById('game-platform').value = game.platform;
 
     if (game.meta) {
         const unit = game.meta.includes('m') ? 'm' : 'h';
@@ -527,50 +699,344 @@ export function openEditGameModal(gameId) {
 }
 
 export function saveGame() {
-    const gameId = document.getElementById('edit-game-id').value;
-    const catId = document.getElementById('game-cat-id').value;
-    const title = document.getElementById('game-title').value;
-    const platform = document.getElementById('game-platform').value;
-    const timeVal = document.getElementById('game-time-val').value;
-    const timeUnit = document.getElementById('game-time-unit').value;
-    const hoursPlayed = document.getElementById('game-hours-played').value;
-    const journalNotes = document.getElementById('game-journal-notes').value;
-    const isPortable = document.getElementById('game-is-portable-backlog').checked;
-    
-    if(!title) return;
-    const meta = timeVal ? `${timeVal}${timeUnit}` : '';
+    const val = id => document.getElementById(id).value;
+    const gameId = val('edit-game-id');
+    const catId = val('game-cat-id');
+    const wish = val('game-mode') === 'wish';
+    const title = val('game-title').trim();
+    if (!title) return;
+
+    const continuous = document.getElementById('game-continuous').checked;
+    const emulated = document.getElementById('game-emulated').checked;
+    const timeVal = val('game-time-val');
+    const base = {
+        platform: val('game-platform'),
+        meta: (timeVal && !continuous) ? `${timeVal}${val('game-time-unit')}` : '',
+        isPortable: document.getElementById('game-is-portable-backlog').checked,
+        continuous,
+        emulated,
+        originalConsole: emulated ? val('game-orig-console').trim() : '',
+        difficulty: val('game-difficulty'),
+        description: val('game-description').trim(),
+        genres: val('game-genres').split(',').map(x => x.trim()).filter(Boolean),
+        released: val('game-released'),
+        metacritic: val('game-metacritic') === '' ? null : Number(val('game-metacritic')),
+        franchise: canonicalFranchise(val('game-franchise'))
+    };
+    if (continuous && gameId && !wish) {
+        const cur = appData.games.find(g => g.id === gameId);
+        if (cur && cur.state === 'finished') { triggerToast('Jogos zerados não podem virar contínuos.', false); return; }
+    }
     saveStateForUndo();
 
-    if (gameId) {
-        const game = appData.games.find(g => g.id === gameId);
-        if (game) { 
-            game.title = title; 
-            game.platform = platform; 
-            game.meta = meta; 
-            game.hoursPlayed = hoursPlayed;
-            game.journalNotes = journalNotes;
-            game.isPortable = isPortable; 
-            if (window.fetchedGameCover) {
-                game.image = window.fetchedGameCover;
-                window.fetchedGameCover = null;
-            }
+    if (wish) {
+        const extra = { ...base, catId: val('game-wish-cat') || (appData.categories[0] && appData.categories[0].id) || '', note: val('game-wish-note').trim() };
+        if (gameId) {
+            const item = appData.wishlist.find(g => g.id === gameId);
+            if (item) { Object.assign(item, extra, { title }); if (pendingCover) item.image = pendingCover; }
+        } else {
+            appData.wishlist.push({ id: 'w' + Date.now(), title, ...extra, image: pendingCover || null, addedAt: Date.now() });
         }
     } else {
-        appData.games.push({ 
-            id: 'g' + Date.now(), catId: catId, title: title, platform: platform, 
-            meta: meta, hoursPlayed: hoursPlayed, journalNotes: journalNotes, 
-            state: null, image: window.fetchedGameCover || null, userRating: null, dateFinished: null, 
-            is100: false, review: '', isPortable: isPortable 
-        });
-        window.fetchedGameCover = null;
+        const extra = { ...base, hoursPlayed: val('game-hours-played'), journalNotes: val('game-journal-notes') };
+        const existing = gameId ? appData.games.find(g => g.id === gameId) : null;
+        // Jogos contínuos vivem em "continuous"; ao desmarcar, voltam para a categoria de origem
+        let cat = existing ? existing.catId : catId;
+        let homeCatId = existing ? existing.homeCatId : undefined;
+        if (continuous) {
+            if (cat !== 'continuous') homeCatId = cat;
+            else if (!homeCatId && appData.categories[0]) homeCatId = appData.categories[0].id;
+            cat = 'continuous';
+        } else if (cat === 'continuous') {
+            const back = appData.categories.find(c => c.id === homeCatId) || appData.categories[0];
+            if (!back) { triggerToast('Crie uma categoria na aba Fila antes de desmarcar "Jogo Contínuo".', false); return; }
+            cat = back.id;
+        }
+        if (gameId) {
+            const game = existing;
+            if (game) {
+                Object.assign(game, extra, { title, catId: cat, homeCatId });
+                if (continuous && game.state !== 'finished') game.state = null;
+                if (pendingCover) game.image = pendingCover;
+            }
+        } else {
+            appData.games.push({
+                id: 'g' + Date.now(), catId: cat, homeCatId, title, ...extra,
+                state: null, image: pendingCover || null, userRating: null, dateFinished: null,
+                is100: false, review: ''
+            });
+        }
     }
-    closeModal('modal-game'); saveData(() => render()); triggerToast(gameId ? 'Informações atualizadas.' : 'Jogo adicionado com sucesso!');
+    pendingCover = null;
+    closeModal('modal-game'); saveData(() => render());
+    triggerToast(gameId ? 'Informações atualizadas.' : (wish ? 'Adicionado à wishlist.' : 'Jogo adicionado com sucesso!'));
+}
+
+// ================= WISHLIST =================
+const scoreChip = m => `<span class="chip score ${m >= 75 ? 'good' : m >= 50 ? 'mid' : 'bad'}" title="Nota Metacritic">Metacritic ${esc(m)}</span>`;
+const franchiseChip = name => `<span class="chip chip-franchise" data-f="${esc(name)}" onclick="filterByFranchise(this.dataset.f)" title="Ver jogos da franquia">${esc(name)}</span>`;
+
+export function createWishElement(w) {
+    const li = document.createElement('li');
+    li.className = 'game-item';
+    li.dataset.platform = w.platform;
+    li.dataset.portable = w.isPortable ? 'true' : 'false';
+    li.dataset.franchise = (w.franchise || '').toLowerCase();
+
+    const cover = w.image
+        ? `<img src="${esc(w.image)}" alt="" class="gi-cover" style="cursor:default">`
+        : `<div class="gi-cover gi-cover-empty" style="cursor:default">${esc((w.title.trim()[0] || '?').toUpperCase())}</div>`;
+    const sub = [esc(w.platform)];
+    if (w.released) sub.push(esc(w.released.slice(0, 4)));
+    if (w.genres && w.genres.length) sub.push(esc(w.genres.slice(0, 2).join(', ')));
+    if (w.meta) sub.push(`${esc(fmtTime(w.meta))} p/ zerar`);
+    const chips = [];
+    if (w.continuous) chips.push('<span class="chip chip-live">Contínuo</span>');
+    if (w.franchise) chips.push(franchiseChip(w.franchise));
+    chips.push(...flagChips(w));
+    if (w.metacritic) chips.push(scoreChip(w.metacritic));
+    if (w.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
+
+    li.innerHTML = `
+        ${cover}
+        <div class="gi-body">
+            <div class="game-title">${esc(w.title)}</div>
+            <div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div>
+            ${chips.length ? `<div class="gi-chips">${chips.join('')}</div>` : ''}
+            ${w.note ? `<div class="wish-note">${esc(w.note)}</div>` : ''}
+            <div class="gi-status">
+                <button type="button" class="pill-btn primary" onclick="wishToBacklog('${w.id}')">Para a fila</button>
+                <button type="button" class="pill-btn" onclick="wishToPlaying('${w.id}')">Jogar agora</button>
+            </div>
+        </div>
+        <div class="gi-actions">
+            <button type="button" class="icon-btn" onclick="openWiki('${w.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>
+            <button type="button" class="icon-btn" onclick="openEditWishModal('${w.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>
+            <button type="button" class="icon-btn danger" onclick="askDeleteWish('${w.id}')" title="Remover" aria-label="Remover">${ICONS.trash}</button>
+        </div>
+        ${w.description ? `<details class="game-desc"><summary>Sobre o jogo</summary><p>${esc(w.description)}</p></details>` : ''}
+    `;
+    return li;
+}
+
+export function renderWishlist() {
+    const box = document.getElementById('wish-list-container');
+    const items = [...(appData.wishlist || [])].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+    document.getElementById('count-wish').innerText = items.length;
+    box.innerHTML = '';
+    if (!items.length) { box.innerHTML = '<div class="empty-state">Sua wishlist está vazia. Adicione os jogos que pretende comprar ou baixar.</div>'; return; }
+    const cat = document.createElement('div');
+    cat.className = 'category';
+    cat.id = 'wishlist-category';
+    cat.innerHTML = '<div class="game-list-wrapper"><ul class="game-list"></ul></div>';
+    items.forEach(w => cat.querySelector('ul').appendChild(createWishElement(w)));
+    box.appendChild(cat);
+}
+
+// Move o desejo para a biblioteca sem redigitar nada (capa, dados e franquia vão junto)
+function moveWish(id, toPlaying) {
+    const idx = appData.wishlist.findIndex(w => w.id === id);
+    if (idx < 0) return;
+    const w = appData.wishlist[idx];
+    const cat = appData.categories.find(c => c.id === w.catId) || appData.categories[0];
+    if (!cat && !w.continuous) { triggerToast('Crie uma categoria na aba Fila antes de mover.'); return; }
+    saveStateForUndo();
+    const { note, addedAt, catId, ...rest } = w;
+    appData.games.push({
+        ...rest, id: 'g' + Date.now(), catId: w.continuous ? 'continuous' : cat.id, homeCatId: cat ? cat.id : undefined, hoursPlayed: '', journalNotes: '',
+        state: (toPlaying && !w.continuous) ? 'playing' : null, userRating: null, dateFinished: null, is100: false, review: ''
+    });
+    appData.wishlist.splice(idx, 1);
+    saveData(() => render());
+    triggerToast(w.continuous ? 'Movido para Jogos Contínuos.' : (toPlaying ? 'Movido para Jogando.' : `Movido para a fila (${cat.name}).`));
+}
+export const wishToBacklog = id => moveWish(id, false);
+export const wishToPlaying = id => moveWish(id, true);
+
+export function askDeleteWish(id) {
+    const w = appData.wishlist.find(x => x.id === id);
+    if (w && confirm(`Remover "${w.title}" da wishlist?`)) {
+        saveStateForUndo();
+        appData.wishlist = appData.wishlist.filter(x => x.id !== id);
+        saveData(() => render());
+        triggerToast('Excluído.');
+    }
+}
+
+// ================= LINHA DO TEMPO (ZERADOS) =================
+export function setFinishedView(view) { appData.settings.finishedView = view === 'timeline' ? 'timeline' : 'list'; saveData(() => render()); }
+export function setTimelineDir() { appData.settings.timelineDir = appData.settings.timelineDir === 'asc' ? 'desc' : 'asc'; saveData(() => render()); }
+
+function parseFinishedDate(str) {
+    if (!str) return null;
+    const s = String(str).trim();
+    let y, mo, d, m;
+    if ((m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/))) { d = +m[1]; mo = +m[2]; y = +m[3]; if (y < 100) y += 2000; }
+    else if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else return null;
+    const date = new Date(y, mo - 1, d);
+    return date.getMonth() === mo - 1 && date.getDate() === d ? date : null;
+}
+
+function renderTimeline(container, finishedGames) {
+    const dir = appData.settings.timelineDir === 'asc' ? 1 : -1;
+    const items = finishedGames.map((g, i) => ({ g, i, d: parseFinishedDate(g.dateFinished) }));
+    items.sort((a, b) => {
+        if (!a.d && !b.d) return a.i - b.i;
+        if (!a.d) return 1;
+        if (!b.d) return -1;
+        const diff = a.d - b.d;
+        if (diff) return diff * dir;
+        const fa = a.g.finishedAt || 0, fb = b.g.finishedAt || 0;
+        return fa !== fb ? (fa - fb) * dir : (a.i - b.i) * dir;
+    });
+
+    const groups = [];
+    items.forEach(it => {
+        const key = it.d ? `${it.d.getFullYear()}-${String(it.d.getMonth() + 1).padStart(2, '0')}` : 'none';
+        let grp = groups.find(g => g.key === key);
+        if (!grp) {
+            const label = it.d ? it.d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : 'Sem data';
+            grp = { key, label: label.charAt(0).toUpperCase() + label.slice(1), items: [] };
+            groups.push(grp);
+        }
+        grp.items.push(it);
+    });
+
+    const rated = finishedGames.filter(g => g.userRating).map(g => parseFloat(g.userRating)).filter(n => !isNaN(n));
+    const avg = rated.length ? (rated.reduce((a, b) => a + b, 0) / rated.length).toFixed(1) : null;
+    const n100 = finishedGames.filter(g => g.is100).length;
+    const summary = [`${finishedGames.length} ${finishedGames.length === 1 ? 'jogo' : 'jogos'}`, n100 ? `${n100} com 100%` : '', avg ? `nota média ${avg}` : ''].filter(Boolean).join(' · ');
+
+    const entry = ({ g, d }) => {
+        const cover = g.image
+            ? `<img src="${esc(g.image)}" alt="" class="gi-cover" onclick="openImageModal('${g.id}')" title="Trocar capa">`
+            : `<div class="gi-cover gi-cover-empty" onclick="openImageModal('${g.id}')" title="Adicionar capa">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`;
+        const chips = [];
+        if (g.franchise) chips.push(franchiseChip(g.franchise));
+        chips.push(...flagChips(g));
+        if (g.userRating) chips.push(`<span class="chip chip-gold">Nota ${esc(g.userRating)}/10</span>`);
+        if (g.is100) chips.push('<span class="chip chip-gold">100%</span>');
+        if (g.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
+        const sub = [esc(g.platform)];
+        if (g.meta) sub.push(esc(fmtTime(g.meta)));
+        const when = d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : esc(g.dateFinished || 'Sem data');
+        return `<li class="tl-item ${g.is100 ? 'is100' : ''}" data-platform="${esc(g.platform)}" data-portable="${g.isPortable ? 'true' : 'false'}" data-franchise="${esc((g.franchise || '').toLowerCase())}">
+            <span class="tl-dot"></span>
+            <div class="tl-date">${when}</div>
+            <div class="tl-card">
+                ${cover}
+                <div class="tl-body">
+                    <div class="game-title">${esc(g.title)}</div>
+                    <div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div>
+                    ${chips.length ? `<div class="gi-chips">${chips.join('')}</div>` : ''}
+                    ${g.review ? `<div class="tl-review">${esc(g.review)}</div>` : ''}
+                </div>
+                <div class="gi-actions">
+                    <button type="button" class="icon-btn" onclick="openCardGenerator('${g.id}')" title="Compartilhar" aria-label="Compartilhar">${ICONS.share}</button>
+                    <button type="button" class="icon-btn" onclick="openEditGameModal('${g.id}')" title="Dados do jogo (editar / buscar automático)" aria-label="Dados do jogo">${icon('info', { size: '18px' })}</button>
+                    <button type="button" class="icon-btn" onclick="openEditFinishedModal('${g.id}')" title="Editar conclusão (nota, data, review)" aria-label="Editar conclusão">${ICONS.edit}</button>
+                </div>
+            </div>
+        </li>`;
+    };
+
+    const wrap = document.createElement('div');
+    wrap.className = 'category';
+    wrap.id = 'finished-timeline';
+    wrap.innerHTML = `
+        <div class="tl-top">
+            <span class="tl-summary">${esc(summary)}</span>
+            <button type="button" class="wiki-tool" onclick="setTimelineDir()">${dir === -1 ? 'Mais recentes primeiro' : 'Mais antigos primeiro'}</button>
+        </div>
+        ${groups.map(grp => `<section class="tl-month"><h3 class="tl-month-title">${esc(grp.label)}<small>${grp.items.length} ${grp.items.length === 1 ? 'jogo' : 'jogos'}</small></h3><ol class="tl-list">${grp.items.map(entry).join('')}</ol></section>`).join('')}
+    `;
+    container.appendChild(wrap);
+}
+
+// ================= JOGOS CONTÍNUOS (HORAS ISOLADAS) =================
+export function renderContinuousStats() {
+    const box = document.getElementById('continuous-stats');
+    if (!box) return;
+    const list = appData.games
+        .filter(g => g.continuous && (state.currentPlatformFilter === 'All' || g.platform === state.currentPlatformFilter))
+        .map(g => ({ g, h: hoursNum(g.hoursPlayed) }))
+        .sort((a, b) => b.h - a.h);
+    if (!list.length) {
+        box.innerHTML = '<div class="franchise-summary">Marque um jogo como "Jogo Contínuo" (live service, sandbox, competitivo) para acompanhar as horas dele separadamente. Esse tempo não afeta Zerados, Fila nem conquistas.</div>';
+        return;
+    }
+    const total = list.reduce((a, x) => a + x.h, 0);
+    const max = Math.max(...list.map(x => x.h), 0.0001);
+    box.innerHTML = `
+        <div class="stats-grid cont-grid">
+            <div class="stat-box"><span class="stat-num" style="color: var(--accent-live);">${fmtHours(total)}</span><span class="stat-label">Horas em contínuos</span></div>
+            <div class="stat-box"><span class="stat-num" style="color: var(--accent-live);">${list.length}</span><span class="stat-label">${list.length === 1 ? 'Jogo' : 'Jogos'}</span></div>
+        </div>
+        <div class="franchise-summary">Tempo isolado: não entra em Zerados, Fila nem nas conquistas.</div>
+        ${list.map(({ g, h }) => `<div class="fr-item cont-item">
+            <div class="fr-head"><strong>${esc(g.title)}</strong><span>${fmtHours(h)} · ${total ? Math.round(h / total * 100) : 0}%</span></div>
+            <div class="gi-bar"><span style="width:${Math.round(h / max * 100)}%"></span></div>
+        </div>`).join('')}`;
+}
+
+// ================= FRANQUIAS =================
+export function getFranchiseStats() {
+    const map = new Map();
+    const touch = name => {
+        const k = normKey(name);
+        if (!map.has(k)) map.set(k, { name: name.trim(), total: 0, done: 0, playing: 0, wish: 0 });
+        return map.get(k);
+    };
+    appData.games.forEach(g => {
+        if (g.continuous || !g.franchise || !g.franchise.trim()) return;
+        const f = touch(g.franchise);
+        f.total++;
+        if (g.state === 'finished') f.done++;
+        if (g.state === 'playing') f.playing++;
+    });
+    (appData.wishlist || []).forEach(w => { if (w.franchise && w.franchise.trim()) touch(w.franchise).wish++; });
+    const pct = f => f.total ? f.done / f.total : 0;
+    return [...map.values()].sort((a, b) => pct(b) - pct(a) || b.total - a.total || a.name.localeCompare(b.name));
+}
+
+export function renderFranchiseStats() {
+    const stats = getFranchiseStats();
+    const sum = document.getElementById('franchise-summary');
+    const list = document.getElementById('franchise-stats');
+    if (!stats.length) {
+        sum.textContent = 'Defina a franquia dos jogos (ex.: Zelda, Metroid, Dark Souls) para acompanhar o progresso de cada coleção.';
+        list.innerHTML = '';
+        return;
+    }
+    const withGames = stats.filter(f => f.total > 0);
+    const totalAll = withGames.reduce((a, f) => a + f.total, 0);
+    const doneAll = withGames.reduce((a, f) => a + f.done, 0);
+    const complete = withGames.filter(f => f.done === f.total).length;
+    sum.innerHTML = `Progresso geral nas franquias: <strong>${totalAll ? Math.round(doneAll / totalAll * 100) : 0}%</strong> &nbsp;·&nbsp; Franquias completas: <strong>${complete} de ${withGames.length}</strong>`;
+    list.innerHTML = stats.map(f => {
+        const p = f.total ? Math.round(f.done / f.total * 100) : 0;
+        const full = f.total >= 2 && f.done === f.total;
+        const extra = [f.playing ? `${f.playing} jogando` : '', f.wish ? `+${f.wish} na wishlist` : ''].filter(Boolean).join(' · ');
+        return `<div class="fr-item ${full ? 'complete' : ''}" data-f="${esc(f.name)}" onclick="filterByFranchise(this.dataset.f)">
+            <div class="fr-head"><strong>${esc(f.name)}${full ? '<span class="fr-done">Completa</span>' : ''}</strong><span>${f.total ? `${f.done}/${f.total} · ${p}%` : 'só na wishlist'}</span></div>
+            <div class="gi-bar"><span style="width:${p}%"></span></div>
+            ${extra ? `<small>${esc(extra)}</small>` : ''}
+        </div>`;
+    }).join('');
+}
+
+export function filterByFranchise(name) {
+    document.getElementById('search-bar').value = name;
+    if (document.getElementById('tab-stats').classList.contains('active')) switchTab('home'); else filterGames();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function askDeleteGame(gameId) { const game = appData.games.find(g => g.id === gameId); if(confirm(`Remover "${game.title}"?`)) { saveStateForUndo(); appData.games = appData.games.filter(g => g.id !== gameId); saveData(() => render()); triggerToast('Excluído.'); } }
 
 export function toggleState(gameId, action) { 
     const game = appData.games.find(g => g.id === gameId); 
+    if (game && game.continuous) { triggerToast('Jogos contínuos não têm status de Jogando/Zerado: use a sessão de jogo.', false); render(); return; }
     if (action === 'playing') { 
         saveStateForUndo(); 
         game.state = game.state === 'playing' ? null : 'playing'; 
@@ -579,7 +1045,7 @@ export function toggleState(gameId, action) {
     } else if (action === 'finished') { 
         if (game.state === 'finished') { 
             saveStateForUndo(); 
-            game.state = null; game.userRating = null; game.dateFinished = null; game.is100 = false; 
+            game.state = null; game.userRating = null; game.dateFinished = null; game.finishedAt = null; game.is100 = false; 
             saveData(() => render()); 
             triggerToast('Removido dos Troféus.'); 
         } else { 
@@ -612,6 +1078,12 @@ export function openEditFinishedModal(gameId) {
     document.getElementById('modal-edit-finished').showModal(); 
 }
 
+export function openGameDataFromFinished() {
+    const id = document.getElementById('edit-fin-game-id').value;
+    closeModal('modal-edit-finished');
+    openEditGameModal(id);
+}
+
 export function cancelRating() { closeModal('modal-rating'); render(); }
 
 export function skipRating() { 
@@ -621,6 +1093,7 @@ export function skipRating() {
     if (game) { 
         game.state = 'finished'; 
         game.dateFinished = new Date().toLocaleDateString('pt-BR'); 
+        game.finishedAt = Date.now();
         game.isPortable = document.getElementById('game-is-portable').checked;
     } 
     closeModal('modal-rating'); saveData(() => render()); triggerToast('Zerado!'); 
@@ -636,7 +1109,7 @@ export function saveRating() {
     const game = appData.games.find(g => g.id === gameId); 
     saveStateForUndo(); 
     if (game) { 
-        game.state = 'finished'; game.userRating = rating; game.dateFinished = new Date().toLocaleDateString('pt-BR'); game.is100 = is100; game.review = review; game.isPortable = isPortable;
+        game.state = 'finished'; game.userRating = rating; game.dateFinished = new Date().toLocaleDateString('pt-BR'); game.finishedAt = Date.now(); game.is100 = is100; game.review = review; game.isPortable = isPortable;
     } 
     closeModal('modal-rating'); saveData(() => render()); checkNewAchievements(); triggerToast(is100 ? 'Mestre do Jogo! 100% concluído!' : 'Zerado com nota!'); 
 }
@@ -659,12 +1132,20 @@ export function saveFinishedEdit() {
 
 // ================= ROLETA E UTILITÁRIOS =================
 export function spinRoulette() {
-    const pool = appData.games.filter(g => g.state !== 'finished');
-    if(pool.length === 0) return alert('Seu backlog está vazio! Adicione mais jogos.');
+    const modal = document.getElementById('modal-roulette');
+    let pool = getMatches();
+    if (pool.length === 0) {
+        if (filtersActive()) return triggerToast('Nenhum jogo da fila combina com esses filtros.');
+        return alert('Seu backlog está vazio! Adicione mais jogos.');
+    }
+    const total = pool.length;
+    if (modal.open && pool.length > 1) pool = pool.filter(g => g.id !== state.currentRouletteId);   // "sortear outro"
     const winner = pool[Math.floor(Math.random() * pool.length)];
     state.currentRouletteId = winner.id;
     document.getElementById('roulette-game-name').innerText = winner.title;
-    document.getElementById('modal-roulette').showModal();
+    document.getElementById('roulette-pool-info').textContent = filtersActive() ? `Entre ${total} ${total === 1 ? 'jogo' : 'jogos'}: ${describeFilters()}` : `Entre ${total} ${total === 1 ? 'jogo' : 'jogos'} da sua fila`;
+    document.getElementById('roulette-reroll').style.display = total > 1 ? '' : 'none';
+    if (!modal.open) modal.showModal();
 }
 
 export function acceptRoulette() {
@@ -679,7 +1160,7 @@ export function quickSearch(site) {
     if(site === 'meta') window.open(`https://www.metacritic.com/search/${encodeURIComponent(title)}/`, '_blank');
 }
 
-export function openImageModal(gameId) { const game = appData.games.find(g => g.id === gameId); document.getElementById('edit-img-game-id').value = gameId; document.getElementById('edit-game-name').innerText = game.title; const previewEl = document.getElementById('image-preview'); if(game.image) previewEl.innerHTML = `<img src="${game.image}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; else previewEl.innerHTML = `🎮`; document.getElementById('modal-image').showModal(); }
+export function openImageModal(gameId) { const game = appData.games.find(g => g.id === gameId); document.getElementById('edit-img-game-id').value = gameId; document.getElementById('edit-game-name').innerText = game.title; const previewEl = document.getElementById('image-preview'); if(game.image) previewEl.innerHTML = `<img src="${game.image}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; else previewEl.innerHTML = icon('gamepad', { size: '3em' }); document.getElementById('modal-image').showModal(); }
 export function searchCoverOnGoogle() { const gameId = document.getElementById('edit-img-game-id').value; const game = appData.games.find(g => g.id === gameId); if (game) window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, '_blank'); }
 export function previewImageEdit(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { document.getElementById('image-preview').innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; }; reader.readAsDataURL(input.files[0]); } }
 export function saveEditedImage() { const gameId = document.getElementById('edit-img-game-id').value; const fileInput = document.getElementById('edit-game-icon'); const game = appData.games.find(g => g.id === gameId); if (fileInput.files && fileInput.files[0]) { const reader = new FileReader(); reader.onload = function(e) { saveStateForUndo(); game.image = e.target.result; fileInput.value = ''; closeModal('modal-image'); saveData(() => render()); triggerToast('Capa atualizada.'); }; reader.readAsDataURL(fileInput.files[0]); } else { closeModal('modal-image'); } }
@@ -696,7 +1177,7 @@ export function importBackup(event) {
             const imported = JSON.parse(e.target.result); 
             if (imported && imported.games) { 
                 saveStateForUndo(); 
-                setAppData(imported); 
+                setAppData(migrateData(imported)); 
                 if (!appData.settings) appData.settings = { sort: 'manual', compact: false, finishedSortDir: 'desc', homeSortDir: 'asc' }; 
                 if (!appData.settings.homeSortDir) appData.settings.homeSortDir = 'asc';
                 if (!appData.collapsedCats) appData.collapsedCats =[]; 
@@ -712,7 +1193,10 @@ export function importBackup(event) {
     reader.readAsText(file); 
 }
 
+export function saveRawgKey(value) { setRawgKey(value); triggerToast(value.trim() ? 'Chave da RAWG salva.' : 'Voltou para a chave padrão.'); }
+
 export function openSettings() { 
+    document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
     document.getElementById('theme-selector').value = localStorage.getItem('zeralog_theme') || 'dark'; 
     document.getElementById('compact-toggle').checked = appData.settings.compact; 
     cancelEditPlatform(); 
@@ -720,7 +1204,7 @@ export function openSettings() {
     document.getElementById('modal-settings').showModal(); 
 }
 export function openFactoryReset() { document.getElementById('reset-confirm-input').value = ''; document.getElementById('modal-factory-reset').showModal(); }
-export function confirmFactoryReset() { if (document.getElementById('reset-confirm-input').value === 'APAGAR') { saveStateForUndo(); setAppData({ settings: { sort: 'manual', compact: false, finishedSortDir: 'desc', homeSortDir: 'asc' }, collapsedCats:[], categories:[], platforms: defaultData.platforms, games:[], unlockedAchievements:[] }); saveData(() => render()); closeModal('modal-factory-reset'); closeModal('modal-settings'); localStorage.removeItem('zeralog_welcomed'); triggerToast('Apagado.'); setTimeout(checkWelcome, 500); } else { alert('Digite APAGAR'); } }
+export function confirmFactoryReset() { if (document.getElementById('reset-confirm-input').value === 'APAGAR') { saveStateForUndo(); setAppData({ settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc' }, collapsedCats:[], categories:[], platforms: defaultData.platforms, games:[], wikis:[], wishlist:[], unlockedAchievements:[] }); saveData(() => render()); closeModal('modal-factory-reset'); closeModal('modal-settings'); localStorage.removeItem('zeralog_welcomed'); triggerToast('Apagado.'); setTimeout(checkWelcome, 500); } else { alert('Digite APAGAR'); } }
 
 // ================= PLATAFORMAS =================
 export function renderPlatformAdmin() {
@@ -732,8 +1216,8 @@ export function renderPlatformAdmin() {
         item.innerHTML = `
             <span style="display:flex; align-items:center; gap:8px;">${p.icon} <span>${p.name}</span></span>
             <div style="display:flex; gap:5px;">
-                <button class="btn-icon" onclick="editPlatform(${index})" title="Editar">✏️</button>
-                <button class="btn-icon btn-delete" onclick="removePlatform(${index})" title="Remover">🗑️</button>
+                <button class="btn-icon" onclick="editPlatform(${index})" title="Editar">${ICONS.edit}</button>
+                <button class="btn-icon btn-delete" onclick="removePlatform(${index})" title="Remover">${ICONS.trash}</button>
             </div>
         `;
         list.appendChild(item);
@@ -742,9 +1226,9 @@ export function renderPlatformAdmin() {
 export function previewPlatformIcon(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { state.tempPlatformIcon = `<img src="${e.target.result}" style="width: 1.2em; height: 1.2em; vertical-align: middle; border-radius: 4px; object-fit: cover; flex-shrink: 0;">`; document.getElementById('new-platform-icon-preview').innerHTML = state.tempPlatformIcon; }; reader.readAsDataURL(input.files[0]); } }
 export function searchPlatformIconOnGoogle() { const name = document.getElementById('new-platform-name').value; const query = name ? `${name} logo icon transparent png` : 'video game console platform logo icon transparent png'; window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}&tbs=ic:trans`, '_blank'); }
 export function editPlatform(index) { state.editPlatformIndex = index; const p = appData.platforms[index]; document.getElementById('new-platform-name').value = p.name; state.tempPlatformIcon = p.icon; document.getElementById('new-platform-icon-preview').innerHTML = p.icon; document.getElementById('btn-save-platform').innerText = 'Salvar'; document.getElementById('btn-cancel-platform').style.display = 'inline-block'; }
-export function cancelEditPlatform() { state.editPlatformIndex = -1; document.getElementById('new-platform-name').value = ''; state.tempPlatformIcon = ''; document.getElementById('new-platform-icon-preview').innerHTML = '🎮'; document.getElementById('btn-save-platform').innerText = 'Add'; document.getElementById('btn-cancel-platform').style.display = 'none'; }
+export function cancelEditPlatform() { state.editPlatformIndex = -1; document.getElementById('new-platform-name').value = ''; state.tempPlatformIcon = ''; document.getElementById('new-platform-icon-preview').innerHTML = platformIcons.default; document.getElementById('btn-save-platform').innerText = 'Add'; document.getElementById('btn-cancel-platform').style.display = 'none'; }
 export function savePlatform() {
-    const icon = state.tempPlatformIcon || '🎮';
+    const icon = state.tempPlatformIcon || platformIcons.default;
     const name = document.getElementById('new-platform-name').value;
     if(!name) return;
     saveStateForUndo();

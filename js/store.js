@@ -1,19 +1,15 @@
-// Ícones e dados padrão
-export const defaultPlatformsIcons = {
-    'PC': '💻',
-    'Nintendo': '🍄',
-    'Playstation': '<span style="font-weight:900; color:#003791; font-family:sans-serif; letter-spacing:-1px;">PS</span>',
-    'Xbox': '<svg viewBox="0 0 100 100" style="width:1.2em; height:1.2em; min-width:1.2em; flex-shrink:0; vertical-align:middle;"><circle cx="50" cy="50" r="45" fill="#107C10"/><path d="M30 30 L70 70 M70 30 L30 70" stroke="#fff" stroke-width="12" stroke-linecap="round"/></svg>',
-    'Mobile': '📱'
-};
+import { platformIcons } from './icons.js';
 
-export const homeSortLabels = { 'manual': '🖐️ Manual', 'az': '🔤 A-Z', 'time': '⏱️ Tempo', 'portable': '🎒 Portátil' };
-export const sortLabels = { 'date': '📅 Data', 'rating': '🌟 Nota', 'time': '⏱️ Tempo', 'portable': '🎒 Portátil' };
+// Ícones e dados padrão
+export const defaultPlatformsIcons = platformIcons;
+
+export const homeSortLabels = { 'manual': 'Manual', 'az': 'A-Z', 'time': 'Tempo', 'portable': 'Portátil' };
+export const sortLabels = { 'date': 'Data', 'rating': 'Nota', 'time': 'Tempo', 'portable': 'Portátil' };
 
 export const defaultData = {
-    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc' }, 
+    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc' }, 
     collapsedCats: [], 
-    categories: [ { id: 'c1', name: '🃏 Cartas e Estratégia' }, { id: 'c2', name: '🍄 Plataforma 3D' } ],
+    categories: [ { id: 'c1', name: 'Cartas e Estratégia' }, { id: 'c2', name: 'Plataforma 3D' } ],
     platforms: [
         { name: 'PC', icon: defaultPlatformsIcons['PC'] },
         { name: 'Nintendo', icon: defaultPlatformsIcons['Nintendo'] },
@@ -22,6 +18,8 @@ export const defaultData = {
         { name: 'Mobile', icon: defaultPlatformsIcons['Mobile'] }
     ],
     games: [],
+    wikis: [],
+    wishlist: [],
     unlockedAchievements: [] 
 };
 
@@ -41,13 +39,27 @@ if (!appData.settings.sort) appData.settings.sort = 'manual';
 if (!appData.collapsedCats) appData.collapsedCats = [];
 if (!appData.platforms) appData.platforms = defaultData.platforms;
 if (!appData.unlockedAchievements) appData.unlockedAchievements = [];
+if (!appData.wikis) appData.wikis = [];
+if (!appData.wishlist) appData.wishlist = [];
+appData.settings = { finishedView: 'list', timelineDir: 'desc', ...appData.settings };
 
-appData.platforms.forEach(p => {
-    if (p.icon && p.icon.startsWith('<svg') && !p.icon.includes('circle cx="50"')) {
-        const defaultKey = Object.keys(defaultPlatformsIcons).find(k => k.toLowerCase() === p.name.toLowerCase());
-        if (defaultKey) p.icon = defaultPlatformsIcons[defaultKey];
-    }
-});
+// Troca emojis e ícones antigos pelos ícones SVG (mantém imagens personalizadas)
+export function migrateData(data) {
+    if (!data.wikis) data.wikis = [];
+    if (!data.wishlist) data.wishlist = [];
+    data.settings = { finishedView: 'list', timelineDir: 'desc', ...(data.settings || {}) };
+    (data.platforms || []).forEach(p => {
+        const cur = String(p.icon || '');
+        if (cur.startsWith('<img') || cur.includes('class="ic')) return;
+        const key = Object.keys(defaultPlatformsIcons).find(k => k !== 'default' && k.toLowerCase() === String(p.name).toLowerCase());
+        p.icon = key ? defaultPlatformsIcons[key] : defaultPlatformsIcons.default;
+    });
+    // Categorias padrão antigas tinham emoji no nome
+    const renamed = { '\u{1F0CF} Cartas e Estratégia': 'Cartas e Estratégia', '\u{1F344} Plataforma 3D': 'Plataforma 3D' };
+    (data.categories || []).forEach(c => { if (renamed[c.name]) c.name = renamed[c.name]; });
+    return data;
+}
+migrateData(appData);
 
 // A função saveData agora aceita um callback opcional para renderizar a UI sem gerar dependência circular
 export function saveData(triggerRenderCallback = null) { 

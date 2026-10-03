@@ -1,5 +1,10 @@
 import { appData, saveData, backupData, setAppData, defaultData } from './store.js';
 import { openCardGenerator, downloadCard } from './card.js';
+import { hydrateIcons } from './icons.js';
+import { initSession, startSession, openEndSession, sessionPreview, sessionFinish, openJournalEntry, saveJournalEntry } from './session.js';
+import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset } from './quickmatch.js';
+import { toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
+import { openWiki, wikiChangeSource, wikiSearch, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom } from './wiki.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleCompact, saveStateForUndo, undoAction, switchTab, 
@@ -10,7 +15,7 @@ import {
     openRatingModal, openEditFinishedModal, cancelRating, skipRating, saveRating, saveFinishedEdit,
     spinRoulette, acceptRoulette, quickSearch, openImageModal, searchCoverOnGoogle, previewImageEdit, saveEditedImage,
     openBackupModal, exportBackup, importBackup, openSettings, openFactoryReset, confirmFactoryReset,
-    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG
+    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey
 } from './ui.js';
 
 // Anexando ao escopo global para que o index.html possa ler os onlicks
@@ -67,10 +72,24 @@ window.cancelEditPlatform = cancelEditPlatform;
 window.savePlatform = savePlatform;
 window.removePlatform = removePlatform;
 window.fetchGameFromRAWG = fetchGameFromRAWG;
+window.pickRawgResult = pickRawgResult;
+window.toggleJournal = toggleJournal;
+window.saveRawgKey = saveRawgKey;
+window.openWiki = openWiki;
+window.wikiChangeSource = wikiChangeSource;
+window.wikiSearch = () => wikiSearch();
+window.wikiBack = wikiBack;
+window.wikiLinkGame = wikiLinkGame;
+window.wikiToggleAdd = wikiToggleAdd;
+window.wikiAddSource = wikiAddSource;
+window.wikiFindFandom = wikiFindFandom;
+Object.assign(window, { openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
 
 // Inicialização Principal
 document.addEventListener("DOMContentLoaded", () => {
     if(appData.settings.compact) document.body.classList.add('compact-mode');
+    hydrateIcons();
     render();
+    initSession({ render, toast: msg => triggerToast(msg, false), undo: saveStateForUndo });
     checkWelcome();
 });
