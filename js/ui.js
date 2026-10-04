@@ -2,8 +2,13 @@ import { icon, platformIcons } from './icons.js';
 import { getSession } from './session.js';
 import { detectNewAchievements, renderAchievements } from './achievements.js';
 import { renderGenreStats } from './genres.js';
+import { applyTheme, renderThemePicker } from './themes.js';
+import { phHtml, openIconPicker } from './phosphor.js';
+import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
-import { searchGames, getGameDetails, coverToDataURL, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey } from './gameApi.js';
+import { searchGames, getGameDetails, coverToDataURL, fileToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey } from './gameApi.js';
+import { openCoverPicker, getSgdbKey } from './covers.js';
+import { renderFranchiseStats } from './franchises.js';
 import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
 
 let toastTimeout = null;
@@ -29,7 +34,10 @@ export function triggerToast(message, withUndo = true) {
 export function checkWelcome() { if (!localStorage.getItem('zeralog_welcomed')) document.getElementById('modal-welcome').showModal(); }
 export function closeWelcome() { localStorage.setItem('zeralog_welcomed', 'true'); closeModal('modal-welcome'); }
 export function closeModal(id) { document.getElementById(id).close(); }
-export function changeTheme(theme) { document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('zeralog_theme', theme); }
+export function changeTheme(theme) {
+    applyTheme(theme);
+    if (document.getElementById('tab-stats').classList.contains('active')) updateStatsAndCharts();   // gráficos pegam as cores do tema
+}
 
 export function toggleCompact(val) { 
     appData.settings.compact = val; 
@@ -60,6 +68,7 @@ export function switchTab(tabId) {
 
 // ================= BUSCA AUTOMÁTICA (RAWG) =================
 let pendingCover = null;   // capa baixada, aguardando o "Salvar"
+let pendingRawgId = null;  // id da RAWG do jogo escolhido na busca automática
 let lastResults = [];
 
 function updateCoverPreview(src) {
@@ -70,6 +79,7 @@ function updateCoverPreview(src) {
 
 function resetAutoFill() {
     pendingCover = null;
+    pendingRawgId = null;
     lastResults = [];
     document.getElementById('rawg-results').innerHTML = '';
     ['game-description', 'game-genres', 'game-released', 'game-metacritic', 'game-hours-played', 'game-journal-notes']
@@ -97,18 +107,18 @@ export async function fetchGameFromRAWG() {
     }
 }
 
-export async function pickRawgResult(i) {
-    const base = lastResults[i];
-    if (!base) return;
+// Preenche o formulário com um jogo da RAWG (busca automática ou sugestão de franquia)
+export async function applyRawgGame(base) {
     const box = document.getElementById('rawg-results');
     box.innerHTML = '<div class="rawg-msg">Carregando dados...</div>';
     let g = base;
     try { g = { ...base, ...(await getGameDetails(base.rawgId)) }; } catch (e) { /* segue só com os dados da busca */ }
+    pendingRawgId = g.rawgId || null;
 
     document.getElementById('game-title').value = g.title;
-    document.getElementById('game-description').value = g.description;
-    document.getElementById('game-genres').value = g.genres.join(', ');
-    document.getElementById('game-released').value = g.released;
+    document.getElementById('game-description').value = g.description || '';
+    document.getElementById('game-genres').value = (g.genres || []).join(', ');
+    document.getElementById('game-released').value = g.released || '';
     document.getElementById('game-metacritic').value = g.metacritic ?? '';
     if (g.playtime && !document.getElementById('game-time-val').value) {
         document.getElementById('game-time-val').value = g.playtime;
@@ -117,6 +127,51 @@ export async function pickRawgResult(i) {
     document.getElementById('game-extra').open = true;
     if (g.image) { pendingCover = await coverToDataURL(g.image); updateCoverPreview(pendingCover); }
     box.innerHTML = `<div class="rawg-msg rawg-ok">${icon('check')} Dados de <strong>${esc(g.title)}</strong> preenchidos. Revise e salve.</div>`;
+}
+
+export async function pickRawgResult(i) {
+    const base = lastResults[i];
+    if (base) await applyRawgGame(base);
+}
+
+// Abre o cadastro (jogo ou desejo) já preenchido com uma sugestão de franquia
+export async function openAddFromSuggestion(kind, item, franchise) {
+    let catId = 'wishlist';
+    if (kind !== 'wish') {
+        const counts = {};
+        appData.games.filter(g => !g.continuous && g.franchise && normKey(g.franchise) === normKey(franchise)).forEach(g => { counts[g.catId] = (counts[g.catId] || 0) + 1; });
+        const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+        catId = best ? best[0] : (appData.categories[0] && appData.categories[0].id);
+        if (!catId) { triggerToast('Crie uma categoria na aba Fila antes de adicionar jogos.', false); return; }
+    }
+    openGameModal(catId);
+    document.getElementById('game-franchise').value = franchise;
+    await applyRawgGame(item);
+}
+
+// Buscador de capas verticais (Wikipédia, Steam, SteamGridDB...)
+export function coverPickFromGameModal() {
+    openCoverPicker({
+        title: document.getElementById('game-title').value.trim(),
+        rawgId: pendingRawgId,
+        onPick: src => { pendingCover = src; updateCoverPreview(src); }
+    });
+}
+export function coverPickFromImageModal() {
+    const id = document.getElementById('edit-img-game-id').value;
+    const game = appData.games.find(g => g.id === id);
+    if (!game) return;
+    openCoverPicker({
+        title: game.title,
+        rawgId: game.rawgId,
+        onPick: src => {
+            saveStateForUndo();
+            game.image = src;
+            closeModal('modal-image');
+            saveData(() => render());
+            triggerToast('Capa atualizada.');
+        }
+    });
 }
 
 // ================= RENDERIZAÇÃO E LISTAS =================
@@ -260,7 +315,7 @@ export function render() {
         const catDiv = document.createElement('div'); catDiv.className = `category ${appData.collapsedCats.includes(cat.id) ? 'collapsed' : ''}`; catDiv.id = cat.id;
         catDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${cat.id}', event)">
-                <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>${esc(cat.name)}</h2></div>
+                <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span>${cat.icon ? `<span class="cat-ico">${phHtml(cat.icon)}</span>` : ''}<h2>${esc(cat.name)}</h2></div>
                 <div class="cat-actions">
                     <button class="btn-icon" onclick="moveCategory('${cat.id}', -1)" title="Mover para Cima">${ICONS.up}</button>
                     <button class="btn-icon" onclick="moveCategory('${cat.id}', 1)" title="Mover para Baixo">${ICONS.down}</button>
@@ -394,7 +449,7 @@ export function createGameElement(game) {
         : `<div class="gi-cover gi-cover-empty" onclick="openImageModal('${game.id}')" title="Adicionar capa">${esc((game.title.trim()[0] || '?').toUpperCase())}</div>`;
 
     // Linha secundária: plataforma · ano · gênero · tempo estimado
-    const sub = [esc(game.platform)];
+    const sub = [platformLabel(game.platform)];
     if (game.released) sub.push(esc(game.released.slice(0, 4)));
     if (game.genres && game.genres.length) sub.push(esc(game.genres.slice(0, 2).join(', ')));
     if (game.meta) sub.push(`${esc(fmtTime(game.meta))} p/ zerar`);
@@ -513,7 +568,30 @@ export function checkNewAchievements() {
     fresh.forEach(a => notifyAchievement(a.name));
 }
 
+export function setStatsPane(p) {
+    appData.settings.statsPane = p;
+    saveData(null);
+    updateStatsAndCharts();
+}
+
+function applyStatsPane() {
+    const p = ['overview', 'genres', 'franchises', 'continuous', 'achievements'].includes(appData.settings.statsPane) ? appData.settings.statsPane : 'overview';
+    document.querySelectorAll('#stats-subnav button').forEach(b => { const on = b.dataset.pane === p; b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on)); });
+    document.querySelectorAll('.stats-pane').forEach(s => s.classList.toggle('active', s.dataset.pane === p));
+    return p;
+}
+
+export function updateStorageMeter() {
+    let bytes = 0;
+    try { bytes = new Blob([localStorage.getItem('myBacklogData') || '']).size; } catch (e) {}
+    const limit = 5 * 1024 * 1024;
+    const pct = Math.min(100, Math.round(bytes / limit * 100));
+    document.getElementById('storage-bar').style.width = pct + '%';
+    document.getElementById('storage-text').textContent = `${(bytes / 1048576).toFixed(2).replace('.', ',')} MB de ~5 MB (${pct}%). Se encher, faça backup e use capas menores.`;
+}
+
 export function updateStatsAndCharts() {
+    const pane = applyStatsPane();
     const regularGames = appData.games.filter(g => !g.continuous);
     const filteredGames = regularGames.filter(g => state.currentPlatformFilter === 'All' || g.platform === state.currentPlatformFilter);
     const backlogGames = filteredGames.filter(g => g.state === null);
@@ -547,32 +625,61 @@ export function updateStatsAndCharts() {
     document.getElementById('stat-hours-playing').innerText = sumHours(playingGames) + 'h';
     document.getElementById('stat-hours-finished').innerText = sumHours(finishedGames) + 'h';
 
-    if(typeof Chart !== 'undefined') {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    if (pane === 'overview' && typeof Chart !== 'undefined') {
         const ctx = document.getElementById('statusChart');
-        if(chartInstance) chartInstance.destroy();
-        
-        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim();
-        
+        const css = getComputedStyle(document.documentElement);
+        const textColor = css.getPropertyValue('--text-main').trim();
+        const col = n => css.getPropertyValue(n).trim();
+
         chartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels:['Backlog', 'Jogando', 'Finalizados'],
-                datasets:[{ data:[backlog, playing, finished], backgroundColor:['#ff9800', '#2196f3', '#4caf50'], borderWidth: 0 }]
+                datasets:[{ data:[backlog, playing, finished], backgroundColor:[col('--accent-add'), col('--accent-playing'), col('--accent-finished')], borderWidth: 0 }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: textColor } } } }
         });
     }
 
     renderAchievements();
-    renderGenreStats();
+    if (pane === 'genres') renderGenreStats();
     renderContinuousStats();
     renderFranchiseStats();
+    const contCount = appData.games.filter(g => g.continuous).length;
+    document.getElementById('sn-continuous').textContent = contCount || '';
 }
 
 // ================= CRUD JOGOS E CATEGORIAS =================
-export function openCatModal() { document.getElementById('cat-modal-title').innerText = 'Nova Categoria'; document.getElementById('edit-cat-id').value = ''; document.getElementById('cat-name').value = ''; document.getElementById('modal-cat').showModal(); }
-export function openEditCatModal(catId) { const cat = appData.categories.find(c => c.id === catId); document.getElementById('cat-modal-title').innerText = 'Editar Categoria'; document.getElementById('edit-cat-id').value = cat.id; document.getElementById('cat-name').value = cat.name; document.getElementById('modal-cat').showModal(); }
-export function saveCategory() { const name = document.getElementById('cat-name').value; const editId = document.getElementById('edit-cat-id').value; if(!name) return; saveStateForUndo(); if (editId) { const cat = appData.categories.find(c => c.id === editId); if(cat) cat.name = name; } else { appData.categories.push({ id: 'c' + Date.now(), name: name }); } closeModal('modal-cat'); saveData(() => render()); triggerToast(editId ? 'Categoria editada.' : 'Categoria criada.'); }
+let catIconDraft = null;
+function paintCatIcon() {
+    const el = document.getElementById('cat-icon-preview');
+    el.innerHTML = catIconDraft ? phHtml(catIconDraft) : '<span class="icon-none">Sem ícone</span>';
+    document.getElementById('cat-icon-clear').style.display = catIconDraft ? '' : 'none';
+}
+export function pickCategoryIcon() {
+    openIconPicker({ current: catIconDraft, onPick: ic => { catIconDraft = ic; paintCatIcon(); } });
+}
+export function clearCategoryIcon() { catIconDraft = null; paintCatIcon(); }
+export function openCatModal() { document.getElementById('cat-modal-title').innerText = 'Nova Categoria'; document.getElementById('edit-cat-id').value = ''; document.getElementById('cat-name').value = ''; catIconDraft = null; paintCatIcon(); document.getElementById('modal-cat').showModal(); }
+export function openEditCatModal(catId) { const cat = appData.categories.find(c => c.id === catId); document.getElementById('cat-modal-title').innerText = 'Editar Categoria'; document.getElementById('edit-cat-id').value = cat.id; document.getElementById('cat-name').value = cat.name; catIconDraft = cat.icon ? { ...cat.icon } : null; paintCatIcon(); document.getElementById('modal-cat').showModal(); }
+export function saveCategory() {
+    const name = document.getElementById('cat-name').value.trim();
+    const editId = document.getElementById('edit-cat-id').value;
+    if (!name) return;
+    saveStateForUndo();
+    if (editId) {
+        const cat = appData.categories.find(c => c.id === editId);
+        if (cat) { cat.name = name; if (catIconDraft) cat.icon = catIconDraft; else delete cat.icon; }
+    } else {
+        const cat = { id: 'c' + Date.now(), name };
+        if (catIconDraft) cat.icon = catIconDraft;
+        appData.categories.push(cat);
+    }
+    closeModal('modal-cat');
+    saveData(() => render());
+    triggerToast(editId ? 'Categoria atualizada.' : 'Categoria criada.');
+}
 export function askDeleteCategory(catId) { const cat = appData.categories.find(c => c.id === catId); const hasGames = appData.games.some(g => g.catId === catId); if(confirm(hasGames ? `Excluir APAGARÁ OS JOGOS nela. Continuar?` : `Excluir "${cat.name}"?`)) { saveStateForUndo(); appData.categories = appData.categories.filter(c => c.id !== catId); appData.games = appData.games.filter(g => g.catId !== catId); saveData(() => render()); triggerToast('Excluída.'); } }
 export function moveCategory(catId, direction) {
     const index = appData.categories.findIndex(c => c.id === catId);
@@ -721,9 +828,10 @@ export function saveGame() {
         if (cur && cur.state === 'finished') { triggerToast('Jogos zerados não podem virar contínuos.', false); return; }
     }
     saveStateForUndo();
+    const idPatch = pendingRawgId ? { rawgId: pendingRawgId } : {};
 
     if (wish) {
-        const extra = { ...base, catId: val('game-wish-cat') || (appData.categories[0] && appData.categories[0].id) || '', note: val('game-wish-note').trim() };
+        const extra = { ...base, ...idPatch, catId: val('game-wish-cat') || (appData.categories[0] && appData.categories[0].id) || '', note: val('game-wish-note').trim() };
         if (gameId) {
             const item = appData.wishlist.find(g => g.id === gameId);
             if (item) { Object.assign(item, extra, { title }); if (pendingCover) item.image = pendingCover; }
@@ -731,7 +839,7 @@ export function saveGame() {
             appData.wishlist.push({ id: 'w' + Date.now(), title, ...extra, image: pendingCover || null, addedAt: Date.now() });
         }
     } else {
-        const extra = { ...base, hoursPlayed: val('game-hours-played'), journalNotes: val('game-journal-notes') };
+        const extra = { ...base, ...idPatch, hoursPlayed: val('game-hours-played'), journalNotes: val('game-journal-notes') };
         const existing = gameId ? appData.games.find(g => g.id === gameId) : null;
         // Jogos contínuos vivem em "continuous"; ao desmarcar, voltam para a categoria de origem
         let cat = existing ? existing.catId : catId;
@@ -761,6 +869,7 @@ export function saveGame() {
         }
     }
     pendingCover = null;
+    pendingRawgId = null;
     closeModal('modal-game'); saveData(() => render());
     triggerToast(gameId ? 'Informações atualizadas.' : (wish ? 'Adicionado à wishlist.' : 'Jogo adicionado com sucesso!'));
 }
@@ -809,7 +918,7 @@ export function openShelfDetail(id) {
     const g = appData.games.find(x => x.id === id);
     if (!g) return;
     const finished = g.state === 'finished';
-    const sub = [esc(g.platform)];
+    const sub = [platformLabel(g.platform)];
     if (g.released) sub.push(esc(g.released.slice(0, 4)));
     if (g.genres && g.genres.length) sub.push(esc(g.genres.slice(0, 3).join(', ')));
     const chips = [];
@@ -866,7 +975,7 @@ export function createWishElement(w) {
     const cover = w.image
         ? `<img src="${esc(w.image)}" alt="" class="gi-cover" style="cursor:default">`
         : `<div class="gi-cover gi-cover-empty" style="cursor:default">${esc((w.title.trim()[0] || '?').toUpperCase())}</div>`;
-    const sub = [esc(w.platform)];
+    const sub = [platformLabel(w.platform)];
     if (w.released) sub.push(esc(w.released.slice(0, 4)));
     if (w.genres && w.genres.length) sub.push(esc(w.genres.slice(0, 2).join(', ')));
     if (w.meta) sub.push(`${esc(fmtTime(w.meta))} p/ zerar`);
@@ -1000,7 +1109,7 @@ function renderTimeline(container, finishedGames) {
         if (g.userRating) chips.push(`<span class="chip chip-gold">Nota ${esc(g.userRating)}/10</span>`);
         if (g.is100) chips.push('<span class="chip chip-gold">100%</span>');
         if (g.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
-        const sub = [esc(g.platform)];
+        const sub = [platformLabel(g.platform)];
         if (g.meta) sub.push(esc(fmtTime(g.meta)));
         const when = d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : esc(g.dateFinished || 'Sem data');
         return `<li class="tl-item ${g.is100 ? 'is100' : ''}" data-platform="${esc(g.platform)}" data-portable="${g.isPortable ? 'true' : 'false'}" data-franchise="${esc((g.franchise || '').toLowerCase())}" data-tags="${esc(tagsOf(g))}">
@@ -1062,52 +1171,7 @@ export function renderContinuousStats() {
         </div>`).join('')}`;
 }
 
-// ================= FRANQUIAS =================
-export function getFranchiseStats() {
-    const map = new Map();
-    const touch = name => {
-        const k = normKey(name);
-        if (!map.has(k)) map.set(k, { name: name.trim(), total: 0, done: 0, playing: 0, wish: 0 });
-        return map.get(k);
-    };
-    appData.games.forEach(g => {
-        if (g.continuous || !g.franchise || !g.franchise.trim()) return;
-        const f = touch(g.franchise);
-        f.total++;
-        if (g.state === 'finished') f.done++;
-        if (g.state === 'playing') f.playing++;
-    });
-    (appData.wishlist || []).forEach(w => { if (w.franchise && w.franchise.trim()) touch(w.franchise).wish++; });
-    const pct = f => f.total ? f.done / f.total : 0;
-    return [...map.values()].sort((a, b) => pct(b) - pct(a) || b.total - a.total || a.name.localeCompare(b.name));
-}
-
-export function renderFranchiseStats() {
-    const stats = getFranchiseStats();
-    const sum = document.getElementById('franchise-summary');
-    const list = document.getElementById('franchise-stats');
-    if (!stats.length) {
-        sum.textContent = 'Defina a franquia dos jogos (ex.: Zelda, Metroid, Dark Souls) para acompanhar o progresso de cada coleção.';
-        list.innerHTML = '';
-        return;
-    }
-    const withGames = stats.filter(f => f.total > 0);
-    const totalAll = withGames.reduce((a, f) => a + f.total, 0);
-    const doneAll = withGames.reduce((a, f) => a + f.done, 0);
-    const complete = withGames.filter(f => f.done === f.total).length;
-    sum.innerHTML = `Progresso geral nas franquias: <strong>${totalAll ? Math.round(doneAll / totalAll * 100) : 0}%</strong> &nbsp;·&nbsp; Franquias completas: <strong>${complete} de ${withGames.length}</strong>`;
-    list.innerHTML = stats.map(f => {
-        const p = f.total ? Math.round(f.done / f.total * 100) : 0;
-        const full = f.total >= 2 && f.done === f.total;
-        const extra = [f.playing ? `${f.playing} jogando` : '', f.wish ? `+${f.wish} na wishlist` : ''].filter(Boolean).join(' · ');
-        return `<div class="fr-item ${full ? 'complete' : ''}" data-f="${esc(f.name)}" onclick="filterByFranchise(this.dataset.f)">
-            <div class="fr-head"><strong>${esc(f.name)}${full ? '<span class="fr-done">Completa</span>' : ''}</strong><span>${f.total ? `${f.done}/${f.total} · ${p}%` : 'só na wishlist'}</span></div>
-            <div class="gi-bar"><span style="width:${p}%"></span></div>
-            ${extra ? `<small>${esc(extra)}</small>` : ''}
-        </div>`;
-    }).join('');
-}
-
+// ================= FRANQUIAS (lista e busca em franchises.js) =================
 export function filterByFranchise(name) {
     document.getElementById('search-bar').value = name;
     if (document.getElementById('tab-stats').classList.contains('active')) switchTab('home'); else filterGames();
@@ -1245,7 +1309,20 @@ export function quickSearch(site) {
 export function openImageModal(gameId) { const game = appData.games.find(g => g.id === gameId); document.getElementById('edit-img-game-id').value = gameId; document.getElementById('edit-game-name').innerText = game.title; const previewEl = document.getElementById('image-preview'); if(game.image) previewEl.innerHTML = `<img src="${game.image}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; else previewEl.innerHTML = icon('gamepad', { size: '3em' }); document.getElementById('modal-image').showModal(); }
 export function searchCoverOnGoogle() { const gameId = document.getElementById('edit-img-game-id').value; const game = appData.games.find(g => g.id === gameId); if (game) window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, '_blank'); }
 export function previewImageEdit(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { document.getElementById('image-preview').innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; }; reader.readAsDataURL(input.files[0]); } }
-export function saveEditedImage() { const gameId = document.getElementById('edit-img-game-id').value; const fileInput = document.getElementById('edit-game-icon'); const game = appData.games.find(g => g.id === gameId); if (fileInput.files && fileInput.files[0]) { const reader = new FileReader(); reader.onload = function(e) { saveStateForUndo(); game.image = e.target.result; fileInput.value = ''; closeModal('modal-image'); saveData(() => render()); triggerToast('Capa atualizada.'); }; reader.readAsDataURL(fileInput.files[0]); } else { closeModal('modal-image'); } }
+export async function saveEditedImage() {
+    const gameId = document.getElementById('edit-img-game-id').value;
+    const fileInput = document.getElementById('edit-game-icon');
+    const game = appData.games.find(g => g.id === gameId);
+    if (fileInput.files && fileInput.files[0] && game) {
+        const data = await fileToSmallJpeg(fileInput.files[0]);
+        saveStateForUndo();
+        game.image = data;
+        fileInput.value = '';
+        closeModal('modal-image');
+        saveData(() => render());
+        triggerToast('Capa atualizada.');
+    } else { closeModal('modal-image'); }
+}
 
 // ================= SETTINGS E DADOS =================
 export function openBackupModal() { document.getElementById('modal-backup-info').showModal(); }
@@ -1279,7 +1356,10 @@ export function saveRawgKey(value) { setRawgKey(value); triggerToast(value.trim(
 
 export function openSettings() { 
     document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
-    document.getElementById('theme-selector').value = localStorage.getItem('zeralog_theme') || 'dark'; 
+    renderThemePicker();
+    paintPlatformDisplay();
+    updateStorageMeter();
+    document.getElementById('sgdb-key-input').value = getSgdbKey();
     document.getElementById('compact-toggle').checked = appData.settings.compact; 
     cancelEditPlatform(); 
     renderPlatformAdmin();
@@ -1306,6 +1386,22 @@ export function renderPlatformAdmin() {
     });
 }
 export function previewPlatformIcon(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { state.tempPlatformIcon = `<img src="${e.target.result}" style="width: 1.2em; height: 1.2em; vertical-align: middle; border-radius: 4px; object-fit: cover; flex-shrink: 0;">`; document.getElementById('new-platform-icon-preview').innerHTML = state.tempPlatformIcon; }; reader.readAsDataURL(input.files[0]); } }
+export function pickPlatformIcon() {
+    openIconPicker({ current: null, onPick: ic => {
+        state.tempPlatformIcon = phHtml(ic);
+        document.getElementById('new-platform-icon-preview').innerHTML = state.tempPlatformIcon;
+    } });
+}
+export function setPlatformDisplay(mode) {
+    appData.settings.platformDisplay = mode === 'name' ? 'name' : 'icon';
+    saveData(() => render());
+    paintPlatformDisplay();
+}
+export function paintPlatformDisplay() {
+    const m = appData.settings.platformDisplay === 'name' ? 'name' : 'icon';
+    document.getElementById('plat-disp-icon').classList.toggle('active', m === 'icon');
+    document.getElementById('plat-disp-name').classList.toggle('active', m === 'name');
+}
 export function searchPlatformIconOnGoogle() { const name = document.getElementById('new-platform-name').value; const query = name ? `${name} logo icon transparent png` : 'video game console platform logo icon transparent png'; window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}&tbs=ic:trans`, '_blank'); }
 export function editPlatform(index) { state.editPlatformIndex = index; const p = appData.platforms[index]; document.getElementById('new-platform-name').value = p.name; state.tempPlatformIcon = p.icon; document.getElementById('new-platform-icon-preview').innerHTML = p.icon; document.getElementById('btn-save-platform').innerText = 'Salvar'; document.getElementById('btn-cancel-platform').style.display = 'inline-block'; }
 export function cancelEditPlatform() { state.editPlatformIndex = -1; document.getElementById('new-platform-name').value = ''; state.tempPlatformIcon = ''; document.getElementById('new-platform-icon-preview').innerHTML = platformIcons.default; document.getElementById('btn-save-platform').innerText = 'Add'; document.getElementById('btn-cancel-platform').style.display = 'none'; }

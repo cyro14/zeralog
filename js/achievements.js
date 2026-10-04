@@ -95,4 +95,6 @@ export function renderAchievements() {
     }).join('');
     const label = document.getElementById('ach-progress');
     if (label) label.textContent = `${done}/${ACHIEVEMENTS.length}`;
+    const sn = document.getElementById('sn-ach');
+    if (sn) sn.textContent = `${done}/${ACHIEVEMENTS.length}`;
 }

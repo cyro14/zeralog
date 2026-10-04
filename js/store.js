@@ -7,7 +7,7 @@ export const homeSortLabels = { 'manual': 'Manual', 'az': 'A-Z', 'time': 'Tempo'
 export const sortLabels = { 'date': 'Data', 'rating': 'Nota', 'time': 'Tempo', 'portable': 'Portátil' };
 
 export const defaultData = {
-    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc', homeView: 'list' }, 
+    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc', homeView: 'list', platformDisplay: 'icon' }, 
     collapsedCats: [], 
     categories: [ { id: 'c1', name: 'Cartas e Estratégia' }, { id: 'c2', name: 'Plataforma 3D' } ],
     platforms: [
@@ -54,7 +54,7 @@ export function migrateData(data) {
     data.settings = { finishedView: 'list', timelineDir: 'desc', ...(data.settings || {}) };
     (data.platforms || []).forEach(p => {
         const cur = String(p.icon || '');
-        if (cur.startsWith('<img') || cur.includes('class="ic')) return;
+        if (cur.startsWith('<img') || cur.includes('class="ic') || cur.includes('class="ph-ico')) return;
         const key = Object.keys(defaultPlatformsIcons).find(k => k !== 'default' && k.toLowerCase() === String(p.name).toLowerCase());
         p.icon = key ? defaultPlatformsIcons[key] : defaultPlatformsIcons.default;
     });
