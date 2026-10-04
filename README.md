@@ -33,7 +33,7 @@
 - **Sem cadastro e sem backend.** Tudo fica salvo no `localStorage` do seu navegador. Você é dono dos dados e pode exportá-los a qualquer momento em um arquivo `.json`.
 - **Feito para o celular.** Layout pensado para telas verticais, com ajustes para paisagem e desktop. Instalável como PWA.
 - **Automático quando você quer, manual quando precisa.** Digitou o nome do jogo? O app busca capa, gêneros, data de lançamento, nota do Metacritic, descrição e tempo médio. Prefere preencher na mão? Todos os campos continuam editáveis.
-- **Mais que uma lista.** Wishlist, Timer de Sessão, diário de bordo, linha do tempo, prateleira de cartuchos, franquias, gráficos de gênero e conquistas.
+- **Mais que uma lista.** Wishlist, Timer de Sessão, diário de bordo, linha do tempo, prateleira de cartuchos, franquias com busca de novos jogos, gráficos de gênero, buscador de capas verticais, 12 temas e conquistas.
 
 ## Galeria
 
@@ -55,6 +55,18 @@ Capturas geradas com dados de exemplo (as capas são ilustrações de teste).
 |:---:|:---:|:---:|
 | ![Contínuos](docs/screenshots/10-continuos.jpg) | ![Wiki](docs/screenshots/11-wiki.jpg) | ![Cadastro automático](docs/screenshots/12-adicionar-automatico.jpg) |
 
+| Estatísticas em submenus | Franquia em sanfona | Adicionar da franquia |
+|:---:|:---:|:---:|
+| ![Submenus](docs/screenshots/14-estatisticas-submenus.jpg) | ![Sanfona](docs/screenshots/15-franquia-sanfona.jpg) | ![Adicionar da franquia](docs/screenshots/16-franquia-adicionar.jpg) |
+
+| Buscador de capas | Temas | Tema Oceano |
+|:---:|:---:|:---:|
+| ![Capas](docs/screenshots/17-buscador-de-capas.jpg) | ![Temas](docs/screenshots/18-temas.jpg) | ![Oceano](docs/screenshots/19-tema-oceano.jpg) |
+
+| Tema Papel | Tema Game Boy |
+|:---:|:---:|
+| ![Papel](docs/screenshots/20-tema-papel.jpg) | ![Game Boy](docs/screenshots/21-tema-gameboy.jpg) |
+
 Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 
 ---
@@ -63,15 +75,15 @@ Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 
 ### 1. Fila e organização
 
-- **Categorias personalizadas.** Crie, renomeie, reordene (setas) e exclua categorias (ex.: "RPGs", "Aventura"). Cada categoria pode ser recolhida.
+- **Categorias personalizadas.** Crie, renomeie, reordene (setas) e exclua categorias (ex.: "RPGs", "Aventura"). Cada categoria pode ser recolhida e ganhar um **ícone da biblioteca [Phosphor](https://phosphoricons.com)** (veja [Ícones](#14-ícones-phosphor-e-plataformas-como-ícone)).
 - **Jogando Atualmente.** Os jogos marcados como "Jogando" sobem para uma seção destacada no topo.
-- **Plataformas editáveis.** PC, Nintendo, Playstation, Xbox e Mobile vêm de fábrica, com ícones em SVG. Adicione outras, renomeie ou troque o ícone por uma imagem sua (há atalho para buscar o logo no Google).
+- **Plataformas editáveis.** PC, Nintendo, Playstation, Xbox e Mobile vêm de fábrica, com ícones em SVG. Adicione outras, renomeie e troque o ícone por um **Phosphor**, por uma imagem sua ou por um logo achado no Google. Nos cards, a plataforma aparece como **ícone** (em vez do nome), com opção de voltar ao nome em Configurações.
 - **Filtros e busca.**
   - Barra de busca por título, franquia, **emulado**, **console original**, **dificuldade** e **contínuo** (ex.: digite `emulado`, `super nintendo` ou `dificil`; funciona sem acento).
   - Chips de plataforma e filtro **Portáteis** ("Ideal para portáteis").
 - **Ordenação da fila:** Manual, A-Z, Tempo e Portátil (crescente/decrescente).
 - **Modo compacto** (Configurações): lista densa, sem capas.
-- **Temas:** Escuro, Claro, Rosa Pastel e Drácula (Neon).
+- **12 temas** com seletor visual em Configurações: Escuro, Preto Total (AMOLED), Claro, Papel (sépia), Oceano, Floresta, Pôr do Sol, Nord, Drácula, Rosa Pastel, Game Boy e Alto Contraste. Cada tema tem contraste revisado e ajusta os controles nativos do navegador (listas, datas, barras de rolagem).
 - **Desfazer.** Ações de edição e exclusão aparecem com um aviso "Desfazer".
 
 ### 2. Cadastro de jogos (automático ou manual)
@@ -79,7 +91,8 @@ Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 - **Busca automática (botão 🌐 Auto).** Digite o nome, toque em **Auto** e escolha o jogo certo entre até 6 resultados. O app preenche **capa**, **descrição**, **gêneros** (traduzidos para PT), **data de lançamento**, **nota Metacritic** e **tempo médio** (via RAWG).
 - **Tudo editável.** Revise antes de salvar. Os campos extras ficam em "Mais detalhes".
 - **Atalhos úteis:** buscar o tempo no **HowLongToBeat**, a nota no **Metacritic** e a capa no Google.
-- **Capa leve.** A imagem é reduzida e salva em JPEG pequeno para não estourar o limite do `localStorage`.
+- **Capa leve.** A imagem é reduzida (lado maior de 420 px) e salva em JPEG pequeno para não estourar o limite do `localStorage`. Em Configurações há um **medidor de armazenamento**.
+- **Buscador de capas verticais.** O botão **Buscar capa vertical** (no cadastro) e **Buscar capas automaticamente** (ao tocar na capa de um jogo) mostram candidatas de várias fontes e você escolhe a que preferir: **Wikipédia (EN/PT)** (capa do artigo), **Steam** (capa 600×900, achada pelo link da loja que a RAWG informa), **SteamGridDB** (capas da comunidade para qualquer plataforma; precisa de chave gratuita em Configurações) e **RAWG** (artes horizontais). Capas verticais deixam a prateleira bem mais bonita. Fotos enviadas por você também são reduzidas.
 - **Campos do jogo:** plataforma, tempo estimado (horas ou minutos), franquia, horas jogadas, diário de bordo, "Ideal para portáteis".
 - **Editar também os zerados.** Jogos concluídos têm o botão **ⓘ Dados do jogo** (editar e buscar automaticamente) e o botão de **editar conclusão** (nota, data, 100%, review).
 
@@ -153,12 +166,22 @@ Cada jogo tem um botão de **lupa** que abre a wiki dele numa janela do próprio
 - **Localizar no texto (Ctrl+F).** Botão de lupa ou **Ctrl+F**: destaca todas as ocorrências (sem diferenciar maiúsculas ou acentos), mostra "3/12", navega com **Enter / Shift+Enter** e **Esc** fecha só a busca.
 - O conteúdo é buscado pela API e **sanitizado** (sem scripts, estilos ou eventos embutidos), por isso funciona mesmo em sites que bloqueiam iframe.
 
-### 12. Estatísticas
+### 12. Estatísticas (em submenus)
 
-- **Painéis gerais:** zerados, jogando, fila, 100%, horas estimadas e gráfico de distribuição.
-- **Gêneros e distribuição.** Gráfico de pizza/rosca (Chart.js) com a proporção dos gêneros, legenda com contagem e %, bases **Jogados**, **Só zerados** (com filtro por **ano**) ou **Biblioteca inteira**. Sem Chart.js (offline), o app desenha uma pizza em SVG equivalente.
-- **Franquias.** Agrupe jogos por franquia/coleção (Zelda, Metroid, Dark Souls...) e veja **barra e % de conclusão por franquia**, progresso geral e quantas estão completas. Clicar numa franquia filtra a lista.
-- **Jogos Contínuos.** Horas isoladas por jogo (veja acima).
+A aba **Status** é dividida em submenus, e a escolha fica salva:
+
+- **Visão geral:** zerados, jogando, fila, 100%, horas estimadas, nota média e gráfico de distribuição.
+- **Gêneros:** gráfico de pizza/rosca (Chart.js) com a proporção dos gêneros, legenda com contagem e %, bases **Jogados**, **Só zerados** (com filtro por **ano**) ou **Biblioteca inteira**. Sem Chart.js (offline), o app desenha uma pizza equivalente em SVG.
+- **Franquias:** veja abaixo.
+- **Contínuos:** horas isoladas por jogo (seção 9).
+- **Conquistas:** grade com todas as conquistas e o progresso (ex.: 12/21).
+
+**Franquias.** Agrupe jogos por franquia/coleção (Zelda, Metroid, Dark Souls...) e veja barra e % de conclusão por franquia, progresso geral e quantas estão completas.
+
+- **Toque em uma franquia** para abrir a lista dos jogos dela (capa, plataforma, status e nota; inclui os da wishlist). Uma franquia aberta por vez.
+- **Procurar mais jogos:** busca jogos da mesma série na RAWG (usa `game-series` quando você já tem jogos da franquia adicionados pela busca automática, mais uma busca pelo nome), escondendo os que você já tem.
+- **Toque em um resultado** para abrir o cadastro já preenchido (título, capa, gêneros, data, nota, descrição e franquia), na categoria que você mais usa para essa franquia. O botão **+ Desejo** manda direto para a wishlist.
+- **Ver na lista** filtra a Fila pela franquia. Jogos contínuos não entram na conta.
 
 ### 13. Conquistas
 
@@ -187,6 +210,13 @@ Cada jogo tem um botão de **lupa** que abre a wiki dele numa janela do próprio
 
 Ao atualizar o app, conquistas que você já cumpria são registradas em silêncio, sem uma enxurrada de avisos.
 
+### 14. Ícones Phosphor e plataformas como ícone
+
+- **Categorias com ícone.** Ao criar ou editar uma categoria, toque em **Escolher ícone (Phosphor)**: busque por qualquer nome em inglês (`sword`, `ghost`, `game-controller`...) entre todos os ícones da biblioteca ou use as sugestões para jogos, e escolha o estilo (Regular, Negrito, Preenchido, Duotone, Leve ou Fino). O ícone aparece no cabeçalho da categoria.
+- **Plataformas com ícone Phosphor.** Em Configurações → Editar Plataformas, o botão de formas abre o mesmo seletor.
+- **Plataforma como ícone nos cards.** Fila, zerados, linha do tempo, wishlist, franquias e detalhes mostram o **ícone da plataforma** (com o nome como dica). Em Configurações → **Plataforma nos cards** dá para alternar entre **Ícone** e **Nome**.
+- Os ícones Phosphor (licença MIT) são carregados da CDN do jsDelivr sob demanda; só o nome e o estilo ficam salvos. Sem internet na primeira vez, o ícone não aparece (o nome continua visível).
+
 ---
 
 ## Guia rápido de uso
@@ -201,7 +231,7 @@ Ao atualizar o app, conquistas que você já cumpria são registradas em silênc
 
 ## Dados, backup e privacidade
 
-- **Onde ficam os dados:** no `localStorage` do navegador (chave `myBacklogData`), mais a sessão em andamento (`zeralog_session`) e, se você configurar, a chave da RAWG (`zeralog_rawg_key`).
+- **Onde ficam os dados:** no `localStorage` do navegador (chave `myBacklogData`), mais a sessão em andamento (`zeralog_session`), o tema (`zeralog_theme`) e, se você configurar, as chaves da RAWG (`zeralog_rawg_key`) e do SteamGridDB (`zeralog_sgdb_key`).
 - **Backup:** o ícone de **disquete** abre o painel para **Baixar Backup (.json)** e **Restaurar Backup**. Faça backup antes de limpar os dados do navegador ou trocar de aparelho. Backups antigos são migrados automaticamente.
 - **Sem rastreamento.** O app não tem conta, analytics nem servidor próprio. Os dados só saem do aparelho quando você usa as buscas externas descritas abaixo.
 - **Redefinição geral** (em Configurações) apaga tudo; use com cuidado.
@@ -212,9 +242,15 @@ Ao atualizar o app, conquistas que você já cumpria são registradas em silênc
 |---|---|---|
 | [RAWG](https://rawg.io/apidocs) | Busca automática de dados e capas | Nome digitado e a chave de API |
 | APIs MediaWiki (Wikipédia, Yugipedia, Bulbapedia, Fandom e outras que você adicionar) | Leitor de wikis | Termos de busca e títulos de páginas |
+| [Wikipédia](https://www.mediawiki.org/wiki/Extension:PageImages) (`pageimages`) | Candidatas no buscador de capas | Nome do jogo |
+| CDN da Steam | Capa vertical 600×900 de jogos de PC | Nada (baixa a imagem) |
+| [SteamGridDB](https://www.steamgriddb.com/api/v2) (opcional) | Capas da comunidade para qualquer plataforma | Nome do jogo e a sua chave |
+| [Phosphor Icons](https://phosphoricons.com) via jsDelivr | Ícones de categorias e plataformas | Nada (baixa CSS e fonte) |
 | [Chart.js](https://www.chartjs.org/) (CDN) | Gráficos | Nada (carrega o script) |
 | [html2canvas](https://html2canvas.hertzen.com/) (CDN) | Imagem do cartão de compartilhamento | Nada (carrega o script) |
 | corsproxy.io (último recurso) | Baixar uma capa quando o site de origem bloqueia o acesso direto | URL da imagem |
+
+**Chave do SteamGridDB (opcional).** Crie grátis em steamgriddb.com (Preferências → API) e cole em **Configurações → Chave SteamGridDB**. Ela é enviada apenas ao SteamGridDB e fica só no seu navegador (`zeralog_sgdb_key`). Se o navegador bloquear a chamada direta, o buscador avisa e continua com as outras fontes.
 
 **Chave da RAWG.** O app traz uma chave padrão, que pode atingir o limite de uso. Se a busca automática falhar, crie uma chave gratuita em <https://rawg.io/apidocs> e cole em **Configurações → Chave da API RAWG**. O app mostra mensagens claras: chave recusada, limite atingido ou sem conexão.
 
@@ -235,6 +271,11 @@ zeralog/
     ├── session.js      # Timer de Sessão e entradas de diário
     ├── quickmatch.js   # filtros de humor e roleta
     ├── genres.js       # gráfico de gêneros (Chart.js + alternativa em SVG)
+    ├── franchises.js   # franquias em sanfona e busca de mais jogos da série
+    ├── covers.js       # buscador de capas verticais (Wikipédia, Steam, SteamGridDB, RAWG)
+    ├── themes.js       # lista de temas e seletor visual
+    ├── phosphor.js     # seletor de ícones Phosphor (categorias e plataformas)
+    ├── platforms.js    # plataforma como ícone ou nome nos cards
     ├── achievements.js # conquistas
     ├── card.js         # cartão de compartilhamento
     └── icons.js        # ícones SVG
@@ -261,11 +302,11 @@ Resumo do que é salvo (o objeto completo vai no backup `.json`):
 
 ```jsonc
 {
-  "settings": { "sort": "manual", "compact": false, "finishedView": "list", "homeView": "list" },
-  "categories": [{ "id": "c1", "name": "RPGs" }],
+  "settings": { "sort": "manual", "compact": false, "finishedView": "list", "homeView": "list", "statsPane": "overview", "platformDisplay": "icon" },
+  "categories": [{ "id": "c1", "name": "RPGs", "icon": { "name": "sword", "weight": "bold" } }],
   "platforms":  [{ "name": "PC", "icon": "<svg…>" }],
   "games": [{
-    "id": "g…", "catId": "c1", "title": "Hollow Knight", "platform": "PC",
+    "id": "g…", "catId": "c1", "title": "Hollow Knight", "platform": "PC", "rawgId": 1234,
     "state": null,                       // null (fila) | "playing" | "finished"
     "meta": "30h", "hoursPlayed": "12.5", "journalNotes": "[03/10/2026] …",
     "image": "data:image/jpeg;base64,…", "genres": ["Ação"], "released": "2017-02-24",
@@ -285,7 +326,9 @@ Resumo do que é salvo (o objeto completo vai no backup `.json`):
 ## Limitações conhecidas
 
 - **Tempo "para zerar":** a RAWG só fornece a **média de horas dos usuários dela**, não o tempo do HowLongToBeat (que não tem API pública). Por isso há o atalho para consultar o HLTB e ajustar manualmente.
-- **Capas:** a RAWG não tem box art; a imagem costuma ser uma arte horizontal do jogo, recortada ao centro na prateleira.
+- **Capas:** a RAWG não tem box art (só artes horizontais). Para capas verticais use o buscador: a Wikipédia e a Steam funcionam sem chave, mas a Steam só cobre jogos de PC, e a Wikipédia depende de o artigo ter capa. A cobertura completa vem do SteamGridDB (com chave). As capas são imagens com direitos dos respectivos donos, guardadas apenas no seu navegador para uso pessoal.
+- **SteamGridDB:** não foi possível confirmar se o navegador libera chamadas diretas com a chave; se bloquear, o buscador avisa e segue com as outras fontes.
+- **Ícones Phosphor:** dependem da CDN na primeira carga; offline eles ficam ocultos.
 - **Descrição:** vem em inglês.
 - **Wikis:** funciona com wikis **MediaWiki** (Wikipédia, Fandom, Yugipedia, Bulbapedia...). Sites de outro tipo (ex.: Fextralife) não são suportados. O visual é um leitor simples, sem o tema original, e infoboxes complexas podem ficar básicas. A descoberta automática do Fandom tenta os endereços mais prováveis a partir do nome do jogo ou da franquia; se não achar, use **Outra wiki**.
 - **Armazenamento:** o `localStorage` tem limite (~5 MB). As capas são reduzidas, mas bibliotecas muito grandes podem chegar perto do limite; faça backups.
