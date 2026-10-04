@@ -255,6 +255,22 @@ export function render() {
         containerHome.appendChild(addDiv);
     }
 
+    // Seção de Jogos Contínuos (live service / sandbox): só horas e diário, sem "Zerado"
+    const contGames = appData.games.filter(g => g.continuous).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
+    if (contGames.length) {
+        const total = contGames.reduce((a, g) => a + hoursNum(g.hoursPlayed), 0);
+        const contDiv = document.createElement('div');
+        contDiv.className = `category continuous ${appData.collapsedCats.includes('continuous-category') ? 'collapsed' : ''}`; contDiv.id = 'continuous-category';
+        contDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('continuous-category', event)"><div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>Jogos Contínuos</h2><span class="chip chip-live">${fmtHours(total)} jogadas</span></div><div class="cat-actions"><button onclick="openGameModal('continuous')">+ Jogo</button></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-continuous"></ul></div>`;
+        containerHome.appendChild(contDiv);
+        const listCont = contDiv.querySelector('#list-continuous'); contGames.forEach(game => listCont.appendChild(createGameElement(game)));
+    } else {
+        const addDiv = document.createElement('div');
+        addDiv.className = 'add-continuous-wrap';
+        addDiv.innerHTML = `<button type="button" class="add-continuous" onclick="openGameModal('continuous')">+ Jogo Contínuo <small>(live service / sandbox infinito)</small></button>`;
+        containerHome.appendChild(addDiv);
+    }
+
     appData.categories.forEach(cat => {
         const catGames = getSortedGames(appData.games.filter(g => g.catId === cat.id && g.state === null && !g.continuous), null, false);
         const catDiv = document.createElement('div'); catDiv.className = `category ${appData.collapsedCats.includes(cat.id) ? 'collapsed' : ''}`; catDiv.id = cat.id;
