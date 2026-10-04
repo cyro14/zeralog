@@ -100,6 +100,9 @@ export function sessionFinish(add) {
         const min = Math.max(0, parseInt($('session-minutes').value, 10) || 0);
         const before = parseFloat(String(g.hoursPlayed || '0').replace(',', '.')) || 0;
         hooks.undo();
+        const c = appData.counters || (appData.counters = { sessions: 0, sessionMinutes: 0, wishMoved: 0 });
+        c.sessions = (c.sessions || 0) + 1;
+        c.sessionMinutes = (c.sessionMinutes || 0) + min;
         g.hoursPlayed = String(Math.round((before + min / 60) * 100) / 100);
         if (prependJournal(g, $('session-note').value)) msgNote = ' Anotação salva no diário.';
         saveData();

@@ -272,6 +272,8 @@ function renderPage(page) {
     $('wiki-results').innerHTML = '';
     setStatus('');
     $('wiki-scroll').scrollTop = 0;
+    FIND.marks = []; FIND.idx = -1;
+    if ($('wiki-find').classList.contains('open') && $('wiki-find-input').value.trim()) runFind();
 }
 
 async function loadPage(title, { push = true } = {}) {
@@ -313,6 +315,7 @@ export async function openWiki(gameId) {
     $('wiki-results').innerHTML = '';
     $('wiki-body').innerHTML = '';
     $('wiki-add').classList.remove('open');
+    wikiFindClose(true);
     const dlg = $('modal-wiki');
     if (!dlg.open) dlg.showModal();
 
@@ -460,6 +463,94 @@ function renderCustomList() {
     box.innerHTML = list.map(s => `<span class="wiki-chip">${esc(s.name)}<button type="button" data-remove="${esc(s.id)}" aria-label="Remover ${esc(s.name)}">×</button></span>`).join('');
 }
 
+// ================= LOCALIZAR NO TEXTO (tipo Ctrl+F) =================
+const FIND = { marks: [], idx: -1, timer: null };
+// Dobra maiúsculas e acentos mantendo o mesmo comprimento, para os índices baterem com o texto original
+const foldCh = c => { const b = c.normalize('NFD')[0] || c; const l = b.toLowerCase(); return l.length === 1 ? l : b; };
+const fold = s => { let out = ''; for (let i = 0; i < s.length; i++) out += foldCh(s[i]); return out; };
+const FIND_LIMIT = 1000;
+
+function clearMarks() {
+    const body = $('wiki-body');
+    body.querySelectorAll('mark.wk-hit').forEach(m => m.replaceWith(document.createTextNode(m.textContent)));
+    body.normalize();
+    FIND.marks = []; FIND.idx = -1;
+}
+
+function updateFindCount() {
+    const n = FIND.marks.length;
+    const has = $('wiki-find-input').value.trim().length > 0;
+    $('wiki-find-count').textContent = n ? `${FIND.idx + 1}/${n}${n >= FIND_LIMIT ? '+' : ''}` : (has ? 'Nada' : '0/0');
+}
+
+function goToMark(i) {
+    if (!FIND.marks.length) return;
+    if (FIND.marks[FIND.idx]) FIND.marks[FIND.idx].classList.remove('current');
+    FIND.idx = (i + FIND.marks.length) % FIND.marks.length;
+    const m = FIND.marks[FIND.idx];
+    m.classList.add('current');
+    m.scrollIntoView({ block: 'center' });
+    updateFindCount();
+}
+
+function runFind() {
+    clearMarks();
+    const q = fold($('wiki-find-input').value.trim());
+    if (!q) { updateFindCount(); return; }
+    const walker = document.createTreeWalker($('wiki-body'), NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    let total = 0;
+    for (const node of nodes) {
+        if (total >= FIND_LIMIT) break;
+        const text = node.nodeValue;
+        if (!text.trim()) continue;
+        const f = fold(text), ranges = [];
+        let from = 0;
+        while (total + ranges.length < FIND_LIMIT) {
+            const i = f.indexOf(q, from);
+            if (i < 0) break;
+            ranges.push([i, i + q.length]);
+            from = i + q.length;
+        }
+        if (!ranges.length) continue;
+        const frag = document.createDocumentFragment();
+        let last = 0;
+        ranges.forEach(([a, b]) => {
+            if (a > last) frag.appendChild(document.createTextNode(text.slice(last, a)));
+            const m = document.createElement('mark');
+            m.className = 'wk-hit';
+            m.textContent = text.slice(a, b);
+            frag.appendChild(m);
+            FIND.marks.push(m);
+            last = b;
+        });
+        if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+        node.replaceWith(frag);
+        total += ranges.length;
+    }
+    FIND.idx = 0;
+    if (FIND.marks.length) goToMark(0); else updateFindCount();
+}
+
+export function wikiFindToggle() {
+    const bar = $('wiki-find');
+    if (bar.classList.contains('open')) { $('wiki-find-input').focus(); $('wiki-find-input').select(); return; }
+    bar.classList.add('open');
+    $('wiki-find-input').focus();
+    $('wiki-find-input').select();
+    if ($('wiki-find-input').value.trim()) runFind();
+}
+
+export function wikiFindStep(dir) { if (FIND.marks.length) goToMark(FIND.idx + dir); }
+
+export function wikiFindClose(reset = false) {
+    $('wiki-find').classList.remove('open');
+    clearMarks();
+    if (reset) $('wiki-find-input').value = '';
+    updateFindCount();
+}
+
 // ================= EVENTOS =================
 function init() {
     $('wiki-body').addEventListener('click', e => {
@@ -479,6 +570,14 @@ function init() {
     $('wiki-custom-list').addEventListener('click', e => {
         const b = e.target.closest('[data-remove]');
         if (b) wikiRemoveSource(b.dataset.remove);
+    });
+    $('wiki-find-input').addEventListener('input', () => { clearTimeout(FIND.timer); FIND.timer = setTimeout(runFind, 120); });
+    $('wiki-find-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); wikiFindStep(e.shiftKey ? -1 : 1); }
+        else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); wikiFindClose(); }   // Esc fecha só a busca, não a wiki
+    });
+    document.addEventListener('keydown', e => {
+        if ($('modal-wiki').open && (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'f') { e.preventDefault(); wikiFindToggle(); }
     });
     $('wiki-add-url').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); wikiAddSource(); } });
 }

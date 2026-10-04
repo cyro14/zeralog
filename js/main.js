@@ -2,9 +2,10 @@ import { appData, saveData, backupData, setAppData, defaultData } from './store.
 import { openCardGenerator, downloadCard } from './card.js';
 import { hydrateIcons } from './icons.js';
 import { initSession, startSession, openEndSession, sessionPreview, sessionFinish, openJournalEntry, saveJournalEntry } from './session.js';
-import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset } from './quickmatch.js';
-import { toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
-import { openWiki, wikiChangeSource, wikiSearch, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom } from './wiki.js';
+import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetDiff, qmToggleEmulated } from './quickmatch.js';
+import { genreSetBase, genreSetYear } from './genres.js';
+import { setHomeView, shelfDo, openShelfDetail, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
+import { openWiki, wikiChangeSource, wikiSearch, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleCompact, saveStateForUndo, undoAction, switchTab, 
@@ -83,7 +84,10 @@ window.wikiLinkGame = wikiLinkGame;
 window.wikiToggleAdd = wikiToggleAdd;
 window.wikiAddSource = wikiAddSource;
 window.wikiFindFandom = wikiFindFandom;
-Object.assign(window, { openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
+window.wikiFindToggle = wikiFindToggle;
+window.wikiFindStep = wikiFindStep;
+window.wikiFindClose = () => wikiFindClose();
+Object.assign(window, { qmSetDiff, qmToggleEmulated, genreSetBase, genreSetYear, setHomeView, shelfDo, openShelfDetail, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
 
 // Inicialização Principal
 document.addEventListener("DOMContentLoaded", () => {

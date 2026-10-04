@@ -2,7 +2,8 @@
 import { appData } from './store.js';
 import { esc } from './gameApi.js';
 
-const F = { time: null, genre: null, portable: false };
+const F = { time: null, genre: null, portable: false, diff: null, emulated: false };
+const DIFF = { easy: 'Fácil', normal: 'Normal', hard: 'Difícil', extreme: 'Extremo' };
 const TIME = {
     fast: ['Rápido (< 5h)', h => h < 5],
     mid: ['Médio (5–20h)', h => h >= 5 && h < 20],
@@ -28,7 +29,7 @@ function hasGenre(g, genre) {
     return false;
 }
 
-export const filtersActive = () => !!(F.time || F.genre || F.portable);
+export const filtersActive = () => !!(F.time || F.genre || F.portable || F.diff || F.emulated);
 
 export function getMatches() {
     return appData.games.filter(g => g.state === null && !g.continuous).filter(g => {
@@ -38,6 +39,8 @@ export function getMatches() {
             if (h === null || !TIME[F.time][1](h)) return false;
         }
         if (F.genre && !hasGenre(g, F.genre)) return false;
+        if (F.diff && g.difficulty !== F.diff) return false;
+        if (F.emulated && !g.emulated) return false;
         return true;
     });
 }
@@ -47,6 +50,8 @@ export function describeFilters() {
     if (F.time) parts.push(TIME[F.time][0]);
     if (F.genre) parts.push(F.genre);
     if (F.portable) parts.push('ideal para portátil');
+    if (F.diff) parts.push(`dificuldade ${DIFF[F.diff].toLowerCase()}`);
+    if (F.emulated) parts.push('emulado');
     return parts.join(' + ');
 }
 
@@ -76,9 +81,13 @@ export function renderQuickMatch() {
         <div class="qm-group"><span class="qm-label">Duração</span><div class="qm-chips">
             ${Object.entries(TIME).map(([k, [label]]) => chip(label, F.time === k, `qmSetTime('${k}')`)).join('')}
         </div></div>
+        <div class="qm-group"><span class="qm-label">Dificuldade</span><div class="qm-chips">
+            ${Object.entries(DIFF).map(([k, label]) => chip(label, F.diff === k, `qmSetDiff('${k}')`)).join('')}
+        </div></div>
         <div class="qm-group"><span class="qm-label">Estilo</span><div class="qm-chips">
             ${chip('RPG', F.genre && norm(F.genre) === 'rpg', "qmSetGenre('RPG', true)")}
             ${chip('Ideal para portátil', F.portable, 'qmTogglePortable()')}
+            ${chip('Emulado', F.emulated, 'qmToggleEmulated()')}
             <select class="qm-select" onchange="qmSetGenre(this.value)" aria-label="Gênero">
                 <option value="">Qualquer gênero</option>
                 ${genres.map(x => `<option value="${esc(x)}" ${F.genre && norm(F.genre) === norm(x) ? 'selected' : ''}>${esc(x)}</option>`).join('')}
@@ -97,4 +106,6 @@ export function qmSetGenre(v, toggle = false) {
     renderQuickMatch();
 }
 export function qmTogglePortable() { F.portable = !F.portable; renderQuickMatch(); }
-export function qmReset() { F.time = null; F.genre = null; F.portable = false; renderQuickMatch(); }
+export function qmSetDiff(k) { F.diff = F.diff === k ? null : k; renderQuickMatch(); }
+export function qmToggleEmulated() { F.emulated = !F.emulated; renderQuickMatch(); }
+export function qmReset() { F.time = null; F.genre = null; F.portable = false; F.diff = null; F.emulated = false; renderQuickMatch(); }

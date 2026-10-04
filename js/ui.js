@@ -1,5 +1,7 @@
 import { icon, platformIcons } from './icons.js';
 import { getSession } from './session.js';
+import { detectNewAchievements, renderAchievements } from './achievements.js';
+import { renderGenreStats } from './genres.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
 import { searchGames, getGameDetails, coverToDataURL, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey } from './gameApi.js';
 import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
@@ -146,8 +148,8 @@ export function filterGames() {
     const term = document.getElementById('search-bar').value.toLowerCase();
     document.querySelectorAll('.category').forEach(cat => {
         let hasVisibleGames = false;
-        cat.querySelectorAll('.game-item, .tl-item').forEach(item => {
-            const titleMatch = item.querySelector('.game-title').innerText.toLowerCase().includes(term) || (item.dataset.franchise || '').includes(term);
+        cat.querySelectorAll('.game-item, .tl-item, .shelf-item').forEach(item => {
+            const titleMatch = item.querySelector('.game-title').innerText.toLowerCase().includes(term) || (item.dataset.franchise || '').includes(term) || (item.dataset.tags || '').includes(term);
             const platformMatch = state.currentPlatformFilter === 'All' || item.dataset.platform === state.currentPlatformFilter;
             const portableMatch = !state.filterPortableOnly || item.dataset.portable === 'true';
             
@@ -157,7 +159,7 @@ export function filterGames() {
         if (term !== '' || state.currentPlatformFilter !== 'All' || state.filterPortableOnly) { 
             cat.style.display = hasVisibleGames ? 'block' : 'none'; 
         } else { 
-            if (cat.id === 'playing-category') cat.style.display = cat.querySelectorAll('.game-item').length > 0 ? 'block' : 'none'; 
+            if (cat.id === 'playing-category') cat.style.display = cat.querySelectorAll('.game-item, .shelf-item').length > 0 ? 'block' : 'none'; 
             else cat.style.display = 'block'; 
         }
     });
@@ -235,7 +237,7 @@ export function render() {
     if(playingGames.length > 0) playingCatDiv.style.display = 'block';
     playingCatDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('playing-category', event)"><div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>Jogando Atualmente</h2></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-playing"></ul></div>`;
     containerHome.appendChild(playingCatDiv);
-    const listPlaying = playingCatDiv.querySelector('#list-playing'); playingGames.forEach(game => listPlaying.appendChild(createGameElement(game)));
+    const listPlaying = playingCatDiv.querySelector('#list-playing'); fillList(listPlaying, playingGames);
 
     // Seção de Jogos Contínuos (live service / sandbox): só horas e diário, sem "Zerado"
     const contGames = appData.games.filter(g => g.continuous).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
@@ -245,7 +247,7 @@ export function render() {
         contDiv.className = `category continuous ${appData.collapsedCats.includes('continuous-category') ? 'collapsed' : ''}`; contDiv.id = 'continuous-category';
         contDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('continuous-category', event)"><div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>Jogos Contínuos</h2><span class="chip chip-live">${fmtHours(total)} jogadas</span></div><div class="cat-actions"><button onclick="openGameModal('continuous')">+ Jogo</button></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-continuous"></ul></div>`;
         containerHome.appendChild(contDiv);
-        const listCont = contDiv.querySelector('#list-continuous'); contGames.forEach(game => listCont.appendChild(createGameElement(game)));
+        const listCont = contDiv.querySelector('#list-continuous'); fillList(listCont, contGames);
     } else {
         const addDiv = document.createElement('div');
         addDiv.className = 'add-continuous-wrap';
@@ -270,13 +272,15 @@ export function render() {
             <div class="game-list-wrapper"><ul class="game-list" id="list-${cat.id}"></ul></div>
         `;
         containerHome.appendChild(catDiv);
-        const listEl = catDiv.querySelector(`#list-${cat.id}`); catGames.forEach(game => listEl.appendChild(createGameElement(game)));
+        const listEl = catDiv.querySelector(`#list-${cat.id}`); fillList(listEl, catGames);
     });
 
     renderWishlist();
     renderQuickMatch();
+    renderViewToggles();
     renderFinishedTab();
     filterGames();
+    checkNewAchievements();
     if(document.getElementById('tab-stats').classList.contains('active')) updateStatsAndCharts();
 }
 
@@ -295,10 +299,9 @@ export function renderFinishedTab() {
         activeChip.innerText = sortLabels[appData.settings.finishedSort] + (appData.settings.finishedSortDir === 'asc' ? ' ↑' : ' ↓');
     }
 
-    const view = appData.settings.finishedView === 'timeline' ? 'timeline' : 'list';
-    document.getElementById('fin-view-list').classList.toggle('active', view === 'list');
-    document.getElementById('fin-view-timeline').classList.toggle('active', view === 'timeline');
-    document.getElementById('fin-sort-bar').style.display = view === 'list' ? '' : 'none';
+    const view = ['timeline', 'shelf'].includes(appData.settings.finishedView) ? appData.settings.finishedView : 'list';
+    ['list', 'timeline', 'shelf'].forEach(v => document.getElementById(`fin-view-${v}`).classList.toggle('active', view === v));
+    document.getElementById('fin-sort-bar').style.display = view === 'timeline' ? 'none' : '';
 
     if (finishedGames.length === 0) {
         finishedContainer.innerHTML = `<div class="empty-state">Nenhum jogo finalizado ainda. Hora de focar no backlog!</div>`;
@@ -330,7 +333,7 @@ export function renderFinishedTab() {
             <div class="game-list-wrapper"><ul class="game-list"></ul></div>
         `;
         const listEl = yearDiv.querySelector('ul');
-        years[year].forEach(game => listEl.appendChild(createGameElement(game)));
+        fillList(listEl, years[year], view === 'shelf');
         finishedContainer.appendChild(yearDiv);
     });
 }
@@ -352,6 +355,16 @@ const DIFF_LABELS = { easy: 'Fácil', normal: 'Normal', hard: 'Difícil', extrem
 const CONSOLES = ['NES', 'Super Nintendo', 'Nintendo 64', 'GameCube', 'Wii', 'Game Boy', 'Game Boy Color', 'Game Boy Advance', 'Nintendo DS', 'Nintendo 3DS', 'Master System', 'Mega Drive', 'Saturn', 'Dreamcast', 'PlayStation', 'PlayStation 2', 'PlayStation Portable', 'Neo Geo', 'Arcade', 'Atari 2600', 'PC Engine'];
 
 // Selos extras (emulado, console original, dificuldade) usados em todos os cards
+// Texto pesquisável (sem acento e com acento) para a barra de busca
+export function tagsOf(g) {
+    const parts = [];
+    if (g.emulated) parts.push('emulado', g.originalConsole || '');
+    if (g.difficulty && DIFF_LABELS[g.difficulty]) parts.push(DIFF_LABELS[g.difficulty], 'dificuldade');
+    if (g.continuous) parts.push('contínuo', 'continuo', 'live service', 'sandbox');
+    const t = parts.join(' ').toLowerCase();
+    return t + ' ' + t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 export function flagChips(g) {
     const out = [];
     if (g.emulated) out.push(`<span class="chip chip-emu" title="Jogado em emulador">Emulado${g.originalConsole ? ' · ' + esc(g.originalConsole) : ''}</span>`);
@@ -369,6 +382,7 @@ export function createGameElement(game) {
     li.dataset.platform = game.platform;
     li.dataset.portable = game.isPortable ? 'true' : 'false';
     li.dataset.franchise = (game.franchise || '').toLowerCase();
+    li.dataset.tags = tagsOf(game);
 
     const finished = game.state === 'finished';
     const isPlaying = game.state === 'playing' ? 'checked' : '';
@@ -476,33 +490,27 @@ export function createGameElement(game) {
 }
 
 // ================= STATS E CONQUISTAS =================
+let achQueue = [], achBusy = false;
 export function notifyAchievement(name) {
+    achQueue.push(name);
+    if (!achBusy) nextAchievement();
+}
+function nextAchievement() {
+    const name = achQueue.shift();
     const el = document.getElementById('achievement-notif');
+    if (!name) { achBusy = false; return; }
+    achBusy = true;
     document.getElementById('ach-notif-name').innerText = name;
     el.classList.add('show');
-    setTimeout(() => { el.classList.remove('show'); }, 4000);
+    setTimeout(() => { el.classList.remove('show'); setTimeout(nextAchievement, 450); }, 3500);
 }
 
 export function checkNewAchievements() {
-    const finishedGames = appData.games.filter(g => g.state === 'finished');
-    const count = finishedGames.length;
-    const count100 = finishedGames.filter(g => g.is100).length;
-    
-    const checks =[
-        { id: 'ach-1', condition: count >= 1, name: 'Primeiro Passo' },
-        { id: 'ach-5', condition: count >= 5, name: 'Embalado' },
-        { id: 'ach-10', condition: count >= 10, name: 'Mestre do Backlog' },
-        { id: 'ach-perfectionist', condition: count100 >= 1, name: 'Perfeccionista' },
-        { id: 'ach-legend', condition: count100 >= 5, name: 'Lendário' }
-    ];
-
-    checks.forEach(ach => {
-        if (ach.condition && !appData.unlockedAchievements.includes(ach.id)) {
-            appData.unlockedAchievements.push(ach.id);
-            notifyAchievement(ach.name);
-            saveData(null); 
-        }
-    });
+    const wasSeeded = appData.achSeeded;
+    const before = (appData.unlockedAchievements || []).length;
+    const fresh = detectNewAchievements();
+    if (!wasSeeded || appData.unlockedAchievements.length !== before) saveData(null);
+    fresh.forEach(a => notifyAchievement(a.name));
 }
 
 export function updateStatsAndCharts() {
@@ -555,23 +563,8 @@ export function updateStatsAndCharts() {
         });
     }
 
-    const allFinished = regularGames.filter(g => g.state === 'finished').length;
-    const all100 = regularGames.filter(g => g.is100).length;
-    document.getElementById('ach-1').classList.toggle('locked', allFinished < 1);
-    document.getElementById('ach-5').classList.toggle('locked', allFinished < 5);
-    document.getElementById('ach-10').classList.toggle('locked', allFinished < 10);
-    document.getElementById('ach-perfectionist').classList.toggle('locked', all100 < 1);
-    document.getElementById('ach-legend').classList.toggle('locked', all100 < 5);
-    
-    const allCovers = regularGames.length > 0 && regularGames.every(g => g.image !== null);
-    document.getElementById('ach-covers').classList.toggle('locked', !allCovers);
-
-    const platformsUsed = new Set(regularGames.map(g => g.platform)).size;
-    document.getElementById('ach-platforms').classList.toggle('locked', platformsUsed < 3);
-
-    let totalHours = sumHours(regularGames);
-    document.getElementById('ach-marathon').classList.toggle('locked', totalHours < 100);
-    document.getElementById('ach-critic').classList.toggle('locked', regularGames.filter(g => g.userRating).length < 10);
+    renderAchievements();
+    renderGenreStats();
     renderContinuousStats();
     renderFranchiseStats();
 }
@@ -772,6 +765,92 @@ export function saveGame() {
     triggerToast(gameId ? 'Informações atualizadas.' : (wish ? 'Adicionado à wishlist.' : 'Jogo adicionado com sucesso!'));
 }
 
+// ================= PRATELEIRA (SHELF VIEW) =================
+export function fillList(listEl, games, shelf = appData.settings.homeView === 'shelf') {
+    listEl.classList.toggle('shelf', !!shelf);
+    games.forEach(g => listEl.appendChild(shelf ? createShelfItem(g) : createGameElement(g)));
+}
+
+export function renderViewToggles() {
+    const v = appData.settings.homeView === 'shelf' ? 'shelf' : 'list';
+    document.getElementById('home-view-list').classList.toggle('active', v === 'list');
+    document.getElementById('home-view-shelf').classList.toggle('active', v === 'shelf');
+}
+
+export function createShelfItem(g) {
+    const li = document.createElement('li');
+    const sess = getSession();
+    const live = !!(sess && sess.gameId === g.id);
+    li.className = `shelf-item${g.is100 ? ' is100' : ''}`;
+    li.dataset.platform = g.platform;
+    li.dataset.portable = g.isPortable ? 'true' : 'false';
+    li.dataset.franchise = (g.franchise || '').toLowerCase();
+    li.dataset.tags = tagsOf(g);
+    li.tabIndex = 0;
+    li.setAttribute('role', 'button');
+    li.setAttribute('aria-label', g.title);
+    li.title = g.title;
+    li.onclick = () => openShelfDetail(g.id);
+    li.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openShelfDetail(g.id); } };
+    const badges = [];
+    if (g.is100) badges.push(`<span class="shelf-badge gold">${icon('star', { size: '10px' })}100%</span>`);
+    if (g.state === 'finished' && g.userRating) badges.push(`<span class="shelf-badge">${esc(g.userRating)}</span>`);
+    li.innerHTML = `
+        <div class="cart">
+            <div class="cart-label">${g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : `<span class="cart-empty">${esc(g.title)}</span>`}</div>
+            ${badges.length ? `<div class="shelf-badges">${badges.join('')}</div>` : ''}
+            ${live ? '<span class="shelf-live" title="Em sessão"></span>' : (g.state === 'playing' ? '<span class="shelf-playing" title="Jogando"></span>' : '')}
+        </div>
+        <span class="game-title sr-only">${esc(g.title)}</span>`;
+    return li;
+}
+
+export function openShelfDetail(id) {
+    const g = appData.games.find(x => x.id === id);
+    if (!g) return;
+    const finished = g.state === 'finished';
+    const sub = [esc(g.platform)];
+    if (g.released) sub.push(esc(g.released.slice(0, 4)));
+    if (g.genres && g.genres.length) sub.push(esc(g.genres.slice(0, 3).join(', ')));
+    const chips = [];
+    if (g.continuous) chips.push('<span class="chip chip-live">Contínuo</span>');
+    if (finished) chips.push('<span class="chip" style="color:var(--accent-finished);border-color:var(--accent-finished)">Zerado</span>');
+    else if (g.state === 'playing') chips.push('<span class="chip chip-accent">Jogando</span>');
+    if (g.franchise) chips.push(`<span class="chip chip-franchise">${esc(g.franchise)}</span>`);
+    chips.push(...flagChips(g));
+    if (g.metacritic) chips.push(scoreChip(g.metacritic));
+    if (g.is100) chips.push('<span class="chip chip-gold">100%</span>');
+    if (finished && g.userRating) chips.push(`<span class="chip chip-gold">Nota ${esc(g.userRating)}/10</span>`);
+    const facts = [];
+    if (finished && g.dateFinished) facts.push(`Zerado em <strong>${esc(g.dateFinished)}</strong>`);
+    if (g.meta) facts.push(`Tempo estimado <strong>${esc(fmtTime(g.meta))}</strong>`);
+    if (g.hoursPlayed) facts.push(`Jogadas <strong>${esc(fmtHours(hoursNum(g.hoursPlayed)))}</strong>`);
+    const text = finished && g.review ? g.review : g.journalNotes;
+    const btn = (label, fn, primary) => `<button type="button" class="pill-btn ${primary ? 'primary' : ''}" onclick="shelfDo('${fn}', '${g.id}')">${label}</button>`;
+    const actions = [];
+    if (g.continuous || g.state === 'playing') actions.push(btn('Iniciar sessão', 'startSession', true));
+    if (!finished && !g.continuous && g.state !== 'playing') actions.push(btn('Jogar agora', 'playNow', true));
+    if (finished) actions.push(btn('Compartilhar', 'openCardGenerator', true));
+    actions.push(btn('Wiki', 'openWiki'), btn('Dados do jogo', 'openEditGameModal'));
+    if (finished) actions.push(btn('Editar conclusão', 'openEditFinishedModal'));
+    document.getElementById('shelf-detail-body').innerHTML = `
+        <div class="sd-top">
+            ${g.image ? `<img class="sd-cover" src="${esc(g.image)}" alt="">` : `<div class="sd-cover sd-empty">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
+            <div class="sd-info"><h3>${esc(g.title)}</h3><div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div><div class="gi-chips">${chips.join('')}</div></div>
+        </div>
+        ${facts.length ? `<div class="sd-facts">${facts.join('<span class="dot">·</span>')}</div>` : ''}
+        ${text ? `<div class="sd-text">${esc(text)}</div>` : ''}
+        <div class="sd-actions">${actions.join('')}</div>`;
+    const dlg = document.getElementById('modal-shelf');
+    if (!dlg.open) dlg.showModal();
+}
+
+export function shelfDo(fn, id) {
+    closeModal('modal-shelf');
+    if (fn === 'playNow') { toggleState(id, 'playing'); return; }
+    if (typeof window[fn] === 'function') window[fn](id);
+}
+
 // ================= WISHLIST =================
 const scoreChip = m => `<span class="chip score ${m >= 75 ? 'good' : m >= 50 ? 'mid' : 'bad'}" title="Nota Metacritic">Metacritic ${esc(m)}</span>`;
 const franchiseChip = name => `<span class="chip chip-franchise" data-f="${esc(name)}" onclick="filterByFranchise(this.dataset.f)" title="Ver jogos da franquia">${esc(name)}</span>`;
@@ -782,6 +861,7 @@ export function createWishElement(w) {
     li.dataset.platform = w.platform;
     li.dataset.portable = w.isPortable ? 'true' : 'false';
     li.dataset.franchise = (w.franchise || '').toLowerCase();
+    li.dataset.tags = tagsOf(w);
 
     const cover = w.image
         ? `<img src="${esc(w.image)}" alt="" class="gi-cover" style="cursor:default">`
@@ -847,6 +927,7 @@ function moveWish(id, toPlaying) {
         state: (toPlaying && !w.continuous) ? 'playing' : null, userRating: null, dateFinished: null, is100: false, review: ''
     });
     appData.wishlist.splice(idx, 1);
+    appData.counters.wishMoved = (appData.counters.wishMoved || 0) + 1;
     saveData(() => render());
     triggerToast(w.continuous ? 'Movido para Jogos Contínuos.' : (toPlaying ? 'Movido para Jogando.' : `Movido para a fila (${cat.name}).`));
 }
@@ -864,7 +945,8 @@ export function askDeleteWish(id) {
 }
 
 // ================= LINHA DO TEMPO (ZERADOS) =================
-export function setFinishedView(view) { appData.settings.finishedView = view === 'timeline' ? 'timeline' : 'list'; saveData(() => render()); }
+export function setFinishedView(view) { appData.settings.finishedView = ['timeline', 'shelf'].includes(view) ? view : 'list'; saveData(() => render()); }
+export function setHomeView(view) { appData.settings.homeView = view === 'shelf' ? 'shelf' : 'list'; saveData(() => render()); }
 export function setTimelineDir() { appData.settings.timelineDir = appData.settings.timelineDir === 'asc' ? 'desc' : 'asc'; saveData(() => render()); }
 
 function parseFinishedDate(str) {
@@ -921,7 +1003,7 @@ function renderTimeline(container, finishedGames) {
         const sub = [esc(g.platform)];
         if (g.meta) sub.push(esc(fmtTime(g.meta)));
         const when = d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : esc(g.dateFinished || 'Sem data');
-        return `<li class="tl-item ${g.is100 ? 'is100' : ''}" data-platform="${esc(g.platform)}" data-portable="${g.isPortable ? 'true' : 'false'}" data-franchise="${esc((g.franchise || '').toLowerCase())}">
+        return `<li class="tl-item ${g.is100 ? 'is100' : ''}" data-platform="${esc(g.platform)}" data-portable="${g.isPortable ? 'true' : 'false'}" data-franchise="${esc((g.franchise || '').toLowerCase())}" data-tags="${esc(tagsOf(g))}">
             <span class="tl-dot"></span>
             <div class="tl-date">${when}</div>
             <div class="tl-card">
@@ -1204,7 +1286,7 @@ export function openSettings() {
     document.getElementById('modal-settings').showModal(); 
 }
 export function openFactoryReset() { document.getElementById('reset-confirm-input').value = ''; document.getElementById('modal-factory-reset').showModal(); }
-export function confirmFactoryReset() { if (document.getElementById('reset-confirm-input').value === 'APAGAR') { saveStateForUndo(); setAppData({ settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc' }, collapsedCats:[], categories:[], platforms: defaultData.platforms, games:[], wikis:[], wishlist:[], unlockedAchievements:[] }); saveData(() => render()); closeModal('modal-factory-reset'); closeModal('modal-settings'); localStorage.removeItem('zeralog_welcomed'); triggerToast('Apagado.'); setTimeout(checkWelcome, 500); } else { alert('Digite APAGAR'); } }
+export function confirmFactoryReset() { if (document.getElementById('reset-confirm-input').value === 'APAGAR') { saveStateForUndo(); setAppData({ settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc' }, collapsedCats:[], categories:[], platforms: defaultData.platforms, games:[], wikis:[], wishlist:[], counters: { sessions: 0, sessionMinutes: 0, wishMoved: 0 }, achSeeded: true, unlockedAchievements:[] }); saveData(() => render()); closeModal('modal-factory-reset'); closeModal('modal-settings'); localStorage.removeItem('zeralog_welcomed'); triggerToast('Apagado.'); setTimeout(checkWelcome, 500); } else { alert('Digite APAGAR'); } }
 
 // ================= PLATAFORMAS =================
 export function renderPlatformAdmin() {
