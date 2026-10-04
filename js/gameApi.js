@@ -1,6 +1,6 @@
 // Busca automática de dados de jogos via RAWG (https://rawg.io/apidocs).
-
-const DEFAULT_KEY = 'ae08037aa9fb40a48b12090819cedb07';
+// Dica: crie sua própria chave gratuita lá e troque abaixo.
+const DEFAULT_KEY = '3b86001a1d824d5483d650117036d0b1';
 const KEY_STORAGE = 'zeralog_rawg_key';
 
 // A chave pode ser trocada em Configurações, sem mexer no código
@@ -33,6 +33,7 @@ function normalize(g) {
         metacritic: g.metacritic || null,
         playtime: g.playtime || 0,                        // média de horas dos usuários da RAWG
         image: g.background_image || null,
+        imageExtra: g.background_image_additional || null,
         description: (g.description_raw || '').trim()
     };
 }
@@ -56,9 +57,21 @@ export function describeError(err) {
     return 'Não consegui falar com a RAWG. Verifique a internet ou se algum bloqueador de anúncios está barrando api.rawg.io.';
 }
 
-export async function searchGames(query) {
-    const data = await rawg('/games', { search: query, page_size: 6 });
+export async function searchGames(query, pageSize = 6) {
+    const data = await rawg('/games', { search: query, page_size: pageSize });
     return (data.results || []).map(normalize);
+}
+
+// Jogos da mesma série/franquia (RAWG /games/{id}/game-series)
+export async function getGameSeries(id) {
+    const data = await rawg(`/games/${id}/game-series`, { page_size: 20 });
+    return (data.results || []).map(normalize);
+}
+
+// Lojas que vendem o jogo (usado para achar o ID da Steam e a capa vertical)
+export async function getGameStores(id) {
+    const data = await rawg(`/games/${id}/stores`);
+    return data.results || [];
 }
 
 // A busca não traz a descrição; ela vem do endpoint de detalhes
@@ -66,9 +79,9 @@ export async function getGameDetails(id) {
     return normalize(await rawg(`/games/${id}`));
 }
 
-async function blobToSmallJpeg(blob, maxW = 400) {
+export async function blobToSmallJpeg(blob, maxSide = 420) {
     const bmp = await createImageBitmap(blob);
-    const scale = Math.min(1, maxW / bmp.width);
+    const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));   // serve para capa vertical e horizontal
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(bmp.width * scale);
     canvas.height = Math.round(bmp.height * scale);
@@ -78,7 +91,7 @@ async function blobToSmallJpeg(blob, maxW = 400) {
 
 // Baixa a capa e guarda como base64 pequeno (o localStorage tem ~5MB de limite)
 export async function coverToDataURL(url) {
-    const tries = [resizeUrl(url, 420), url, 'https://corsproxy.io/?url=' + encodeURIComponent(url)];
+    const tries = [url.includes('/media/games/') ? resizeUrl(url, 420) : url, url, 'https://corsproxy.io/?url=' + encodeURIComponent(url)];
     for (const u of tries) {
         try {
             const res = await fetch(u);
@@ -86,4 +99,10 @@ export async function coverToDataURL(url) {
         } catch (e) { /* tenta a próxima opção */ }
     }
     return url; // último recurso: guarda o link (aparece na lista, mas pode falhar no card de compartilhar)
+}
+
+// Fotos enviadas pelo usuário também são reduzidas (evita estourar o localStorage)
+export async function fileToSmallJpeg(file) {
+    try { return await blobToSmallJpeg(file); }
+    catch (e) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); }); }
 }
