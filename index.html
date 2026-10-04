@@ -79,6 +79,11 @@
             <div id="qm-body" class="qm-body"></div>
         </details>
         
+        <div class="view-toggle" role="group" aria-label="Modo de exibição da fila">
+            <button type="button" id="home-view-list" onclick="setHomeView('list')">Cards</button>
+            <button type="button" id="home-view-shelf" onclick="setHomeView('shelf')">Prateleira</button>
+        </div>
+
         <div class="sort-bar" id="home-sort-bar">
             <div class="sort-chip active" id="sort-home-manual" onclick="setHomeSort('manual')">Manual</div>
             <div class="sort-chip" id="sort-home-az" onclick="setHomeSort('az')">A-Z</div>
@@ -104,6 +109,7 @@
         <div class="view-toggle" role="group" aria-label="Modo de exibição">
             <button type="button" id="fin-view-list" onclick="setFinishedView('list')">Lista</button>
             <button type="button" id="fin-view-timeline" onclick="setFinishedView('timeline')">Linha do tempo</button>
+            <button type="button" id="fin-view-shelf" onclick="setFinishedView('shelf')">Prateleira</button>
         </div>
         <div class="sort-bar" id="fin-sort-bar">
             <div class="sort-chip" id="sort-fin-date" onclick="setFinishedSort('date')">Data</div>
@@ -132,6 +138,9 @@
             <canvas id="statusChart"></canvas>
         </div>
 
+        <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Gêneros</h3>
+        <div id="genre-stats"></div>
+
         <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Jogos Contínuos</h3>
         <div id="continuous-stats"></div>
 
@@ -139,17 +148,8 @@
         <div id="franchise-summary" class="franchise-summary"></div>
         <div id="franchise-stats"></div>
 
-        <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Suas Conquistas</h3>
-        <div class="achievements-grid">
-            <div class="badge locked" id="ach-1"><span class="badge-icon" data-icon="flag" data-size="1em"></span><div class="badge-title">Primeiro Passo</div><div class="badge-desc">Zerou seu primeiro jogo!</div></div>
-            <div class="badge locked" id="ach-5"><span class="badge-icon" data-icon="flame" data-size="1em"></span><div class="badge-title">Embalado</div><div class="badge-desc">Zerou 5 jogos.</div></div>
-            <div class="badge locked" id="ach-10"><span class="badge-icon" data-icon="crown" data-size="1em"></span><div class="badge-title">Mestre do Backlog</div><div class="badge-desc">Zerou 10 jogos no total.</div></div>
-            <div class="badge locked" id="ach-covers"><span class="badge-icon" data-icon="image" data-size="1em"></span><div class="badge-title">Colecionador</div><div class="badge-desc">Todos os jogos possuem capa.</div></div>
-            <div class="badge locked" id="ach-platforms"><span class="badge-icon" data-icon="layers" data-size="1em"></span><div class="badge-title">Multipotencial</div><div class="badge-desc">Jogos em 3+ plataformas.</div></div>
-            <div class="badge locked" id="ach-marathon"><span class="badge-icon" data-icon="activity" data-size="1em"></span><div class="badge-title">Maratonista</div><div class="badge-desc">100h+ de jogos na lista.</div></div>
-            <div class="badge locked" id="ach-critic"><span class="badge-icon" data-icon="pen" data-size="1em"></span><div class="badge-title">Crítico de Arte</div><div class="badge-desc">Avaliou 10 jogos zerados.</div></div>
-            <div class="badge locked" id="ach-perfectionist"><span class="badge-icon" data-icon="gem" data-size="1em"></span><div class="badge-title">Perfeccionista</div><div class="badge-desc">Fez 100% em 1 jogo.</div></div>
-            <div class="badge locked" id="ach-legend"><span class="badge-icon" data-icon="award" data-size="1em"></span><div class="badge-title">Lendário</div><div class="badge-desc">Fez 100% em 5 jogos.</div></div>
+        <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Suas Conquistas <small id="ach-progress" style="color: var(--text-muted); font-weight: 600; font-size: 0.6em; margin-left: 6px;"></small></h3>
+        <div class="achievements-grid" id="achievements-grid">
         </div>
     </div>
 
@@ -315,6 +315,11 @@
         </div>
     </dialog>
 
+    <dialog id="modal-shelf" class="shelf-dialog">
+        <div id="shelf-detail-body"></div>
+        <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-shelf')">Fechar</button></div>
+    </dialog>
+
     <dialog id="modal-wiki" class="wiki-dialog">
         <div class="wiki-head">
             <div class="wiki-head-top">
@@ -332,8 +337,16 @@
                 <button type="button" class="wiki-tool" id="wiki-back" onclick="wikiBack()" disabled><span data-icon="back" data-size="1em"></span>Voltar</button>
                 <button type="button" class="wiki-tool" id="wiki-link-btn" onclick="wikiLinkGame()" disabled><span data-icon="link" data-size="1em"></span><span id="wiki-link-label">Vincular a este jogo</span></button>
                 <a class="wiki-tool disabled" id="wiki-open-ext" target="_blank" rel="noopener noreferrer"><span data-icon="external" data-size="1em"></span>Abrir no navegador</a>
+                <button type="button" class="wiki-tool" onclick="wikiFindToggle()"><span data-icon="search" data-size="1em"></span>Localizar no texto</button>
                 <button type="button" class="wiki-tool" onclick="wikiFindFandom()"><span data-icon="search" data-size="1em"></span>Achar no Fandom</button>
                 <button type="button" class="wiki-tool" onclick="wikiToggleAdd()"><span data-icon="plus" data-size="1em"></span>Outra wiki</button>
+            </div>
+            <div id="wiki-find" class="wiki-find">
+                <input type="text" id="wiki-find-input" placeholder="Localizar nesta página (Ctrl+F)" autocomplete="off" enterkeyhint="search">
+                <span id="wiki-find-count" class="wiki-find-count">0/0</span>
+                <button type="button" class="icon-btn" onclick="wikiFindStep(-1)" aria-label="Resultado anterior"><span data-icon="chevup"></span></button>
+                <button type="button" class="icon-btn" onclick="wikiFindStep(1)" aria-label="Próximo resultado"><span data-icon="chevron"></span></button>
+                <button type="button" class="icon-btn" onclick="wikiFindClose()" aria-label="Fechar busca"><span data-icon="x"></span></button>
             </div>
             <div id="wiki-add" class="wiki-add">
                 <div class="wiki-add-row">

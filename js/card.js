@@ -1,4 +1,5 @@
 import { appData } from './store.js';
+import { icon, platformIcons } from './icons.js';
 
 export function getAverageRGB(imgSrc, callback) {
     const img = new Image();
@@ -28,6 +29,7 @@ export function openCardGenerator(gameId) {
     if(!game) return;
 
     const wrapper = document.getElementById('export-card-wrapper');
+    const fg = getComputedStyle(wrapper).color;   // cor explícita: SVG rasterizado pelo html2canvas não herda currentColor
     wrapper.style.setProperty('--dynamic-color', 'var(--accent-finished)');
     wrapper.style.setProperty('--dynamic-text', 'white');
 
@@ -59,17 +61,20 @@ export function openCardGenerator(gameId) {
     }
 
     document.getElementById('card-title').innerText = game.title;
-    const platObj = appData.platforms.find(p => p.name === game.platform) || { icon: '🎮', name: game.platform };
-    document.getElementById('card-platform').innerHTML = `<span style="display:flex; align-items:center; gap:6px;">${platObj.icon} <span>${platObj.name}</span></span>`;
+    const platObj = appData.platforms.find(p => p.name === game.platform) || { icon: platformIcons.default, name: game.platform };
+    const platIcon = String(platObj.icon).replace(/currentColor/g, fg).replace(/1\.15em/g, '18px');
+    const platEl = document.getElementById('card-platform');
+    platEl.innerHTML = `<span style="display:flex; align-items:center; gap:6px;">${platIcon} <span class="card-plat-name"></span></span>`;
+    platEl.querySelector('.card-plat-name').textContent = platObj.name;
     
     const cat = appData.categories.find(c => c.id === game.catId);
-    document.getElementById('card-cat').innerHTML = cat ? `📂 ${cat.name}` : '';
+    document.getElementById('card-cat').textContent = cat ? cat.name : '';
 
-    let ratingText = game.userRating ? `🌟 ${game.userRating}/10` : '✔️ Zerado';
-    if (game.is100) ratingText += ' 💎 100%';
+    let ratingText = game.userRating ? `${game.userRating}/10` : 'Zerado';
+    if (game.is100) ratingText += ' · 100%';
     document.getElementById('card-rating-badge').innerText = ratingText;
 
-    const portableBadge = game.isPortable ? '<div style="margin-top: 10px; color: var(--accent-playing); font-weight: bold; font-size: 0.95em;">🎒 Selo Anywhere Gamer: Ideal para Portáteis</div>' : '';
+    const portableBadge = game.isPortable ? '<div style="margin-top: 10px; color: var(--accent-playing); font-weight: bold; font-size: 0.95em;">Selo Anywhere Gamer: Ideal para Portáteis</div>' : '';
     document.getElementById('card-date').innerHTML = (game.dateFinished ? `Finalizado em: ${game.dateFinished}` : '') + portableBadge;
 
     const reviewEl = document.getElementById('card-review');
@@ -80,7 +85,7 @@ export function openCardGenerator(gameId) {
         reviewEl.style.display = 'none';
     }
 
-    document.getElementById('card-img-preview').innerHTML = game.image ? `<img src="${game.image}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">` : `🎮`;
+    document.getElementById('card-img-preview').innerHTML = game.image ? `<img src="${game.image}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">` : icon('gamepad', { size: '48px', color: fg });
     document.getElementById('modal-card-generator').showModal();
 }
 
