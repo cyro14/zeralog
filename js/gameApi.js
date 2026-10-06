@@ -1,6 +1,6 @@
 // Busca automática de dados de jogos via RAWG (https://rawg.io/apidocs).
 // Dica: crie sua própria chave gratuita lá e troque abaixo.
-const DEFAULT_KEY = 'ae08037aa9fb40a48b12090819cedb07';
+const DEFAULT_KEY = '3b86001a1d824d5483d650117036d0b1';
 const KEY_STORAGE = 'zeralog_rawg_key';
 
 // A chave pode ser trocada em Configurações, sem mexer no código
@@ -89,17 +89,42 @@ export async function blobToSmallJpeg(blob, maxSide = 420) {
     return canvas.toDataURL('image/jpeg', 0.82);
 }
 
-// Baixa a capa e guarda como base64 pequeno (o localStorage tem ~5MB de limite)
-export async function coverToDataURL(url) {
-    const tries = [url.includes('/media/games/') ? resizeUrl(url, 420) : url, url, 'https://corsproxy.io/?url=' + encodeURIComponent(url)];
+// Baixa uma imagem como Blob (direto; se o site bloquear, tenta por um proxy CORS). Retorna null se falhar.
+export async function fetchImageBlob(url) {
+    if (String(url).startsWith('data:')) { try { return await (await fetch(url)).blob(); } catch (e) { return null; } }
+    const tries = [url, 'https://corsproxy.io/?url=' + encodeURIComponent(url)];
     for (const u of tries) {
         try {
             const res = await fetch(u);
-            if (res.ok) return await blobToSmallJpeg(await res.blob());
+            if (!res.ok) continue;
+            const blob = await res.blob();
+            if (blob.size > 200 && (!blob.type || blob.type.startsWith('image/'))) return blob;
         } catch (e) { /* tenta a próxima opção */ }
+    }
+    return null;
+}
+
+// Baixa a capa e guarda como base64 pequeno (o localStorage tem ~5MB de limite)
+export async function coverToDataURL(url) {
+    const first = url.includes('/media/games/') ? resizeUrl(url, 420) : url;
+    for (const u of [first, url]) {
+        const blob = await fetchImageBlob(u);
+        if (blob) { try { return await blobToSmallJpeg(blob); } catch (e) { /* tenta a próxima */ } }
     }
     return url; // último recurso: guarda o link (aparece na lista, mas pode falhar no card de compartilhar)
 }
+
+// Largura e altura de uma imagem (Blob ou URL de dados)
+export async function imageSize(src) {
+    try {
+        const blob = typeof src === 'string' ? await (await fetch(src)).blob() : src;
+        const bmp = await createImageBitmap(blob);
+        const out = { w: bmp.width, h: bmp.height };
+        bmp.close && bmp.close();
+        return out;
+    } catch (e) { return null; }
+}
+export const isVerticalSize = s => !!s && s.h >= s.w * 1.1;
 
 // Fotos enviadas pelo usuário também são reduzidas (evita estourar o localStorage)
 export async function fileToSmallJpeg(file) {
