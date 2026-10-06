@@ -1,13 +1,14 @@
 import { icon, platformIcons } from './icons.js';
-import { getSession } from './session.js';
+import { getSession, paintNotifySettings } from './session.js';
 import { detectNewAchievements, renderAchievements } from './achievements.js';
 import { renderGenreStats } from './genres.js';
 import { applyTheme, renderThemePicker } from './themes.js';
 import { phHtml, openIconPicker } from './phosphor.js';
 import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
-import { searchGames, getGameDetails, coverToDataURL, fileToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey } from './gameApi.js';
-import { openCoverPicker, getSgdbKey } from './covers.js';
+import { searchGames, getGameDetails, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey } from './gameApi.js';
+import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade } from './covers.js';
+import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
 import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
 
@@ -71,10 +72,14 @@ let pendingCover = null;   // capa baixada, aguardando o "Salvar"
 let pendingRawgId = null;  // id da RAWG do jogo escolhido na busca automática
 let lastResults = [];
 
+let currentCoverSrc = null;   // capa exibida no cadastro (nova ou já salva)
 function updateCoverPreview(src) {
+    currentCoverSrc = src || null;
     const el = document.getElementById('game-cover-preview');
     el.innerHTML = src ? `<img src="${esc(src)}" alt="Capa">` : '';
     el.style.display = src ? 'block' : 'none';
+    document.getElementById('cv-crop-btn').style.display = src ? '' : 'none';
+    document.getElementById('cv-remove-btn').style.display = src ? '' : 'none';
 }
 
 function resetAutoFill() {
@@ -125,8 +130,18 @@ export async function applyRawgGame(base) {
         document.getElementById('game-time-unit').value = 'h';
     }
     document.getElementById('game-extra').open = true;
-    if (g.image) { pendingCover = await coverToDataURL(g.image); updateCoverPreview(pendingCover); }
-    box.innerHTML = `<div class="rawg-msg rawg-ok">${icon('check')} Dados de <strong>${esc(g.title)}</strong> preenchidos. Revise e salve.</div>`;
+    // Sempre tenta a capa vertical (Steam, Wikipédia); se não achar, usa a arte horizontal da RAWG
+    box.innerHTML = '<div class="rawg-msg">Buscando a capa vertical...</div>';
+    let coverNote = '';
+    let auto = null;
+    try { auto = await autoVerticalCover(g.title, g.rawgId); } catch (e) { /* segue sem */ }
+    if (auto) { pendingCover = auto.data; updateCoverPreview(pendingCover); coverNote = ` Capa vertical: ${auto.source}.`; }
+    else if (g.image) {
+        pendingCover = await coverToDataURL(g.image);
+        updateCoverPreview(pendingCover);
+        coverNote = ' Só achei arte horizontal: toque em <strong>Recortar</strong> para ajustar à capa vertical.';
+    }
+    box.innerHTML = `<div class="rawg-msg rawg-ok">${icon('check')} Dados de <strong>${esc(g.title)}</strong> preenchidos.${coverNote} Revise e salve.</div>`;
 }
 
 export async function pickRawgResult(i) {
@@ -157,6 +172,12 @@ export function coverPickFromGameModal() {
         onPick: src => { pendingCover = src; updateCoverPreview(src); }
     });
 }
+export function coverCropFromGameModal() {
+    if (!currentCoverSrc) return;
+    openCropper({ src: currentCoverSrc, onDone: data => { pendingCover = data; updateCoverPreview(data); } });
+}
+export function coverRemoveFromGameModal() { pendingCover = ''; updateCoverPreview(null); }
+
 export function coverPickFromImageModal() {
     const id = document.getElementById('edit-img-game-id').value;
     const game = appData.games.find(g => g.id === id);
@@ -490,7 +511,7 @@ export function createGameElement(game) {
     const running = !!(sess && sess.gameId === game.id);
     const playBtn = (game.state === 'playing' && !game.continuous)
         ? (running
-            ? `<button type="button" class="icon-btn session-running" onclick="openEndSession()" title="Encerrar sessão" aria-label="Encerrar sessão">${icon('stop', { size: '18px' })}</button>`
+            ? `<button type="button" class="icon-btn session-running" onclick="openEndSession()" title="Finalizar sessão" aria-label="Finalizar sessão">${icon('stop', { size: '18px' })}</button>`
             : `<button type="button" class="icon-btn" onclick="startSession('${game.id}')" title="Iniciar sessão de jogo" aria-label="Iniciar sessão de jogo">${icon('play', { size: '18px' })}</button>`)
         : '';
     if (running) chips.unshift('<span class="chip chip-accent">Em sessão</span>');
@@ -519,7 +540,7 @@ export function createGameElement(game) {
     const statusRow = game.continuous
         ? `<div class="gi-status">
                 ${running
-                    ? '<button type="button" class="pill-btn session-live" onclick="openEndSession()">Encerrar sessão</button>'
+                    ? '<button type="button" class="pill-btn session-live" onclick="openEndSession()">Finalizar sessão</button>'
                     : `<button type="button" class="pill-btn primary" onclick="startSession('${game.id}')">Iniciar sessão</button>`}
                 <button type="button" class="pill-btn" onclick="openJournalEntry('${game.id}')">Anotar no diário</button>
             </div>`
@@ -834,7 +855,7 @@ export function saveGame() {
         const extra = { ...base, ...idPatch, catId: val('game-wish-cat') || (appData.categories[0] && appData.categories[0].id) || '', note: val('game-wish-note').trim() };
         if (gameId) {
             const item = appData.wishlist.find(g => g.id === gameId);
-            if (item) { Object.assign(item, extra, { title }); if (pendingCover) item.image = pendingCover; }
+            if (item) { Object.assign(item, extra, { title }); if (pendingCover !== null) item.image = pendingCover || null; }
         } else {
             appData.wishlist.push({ id: 'w' + Date.now(), title, ...extra, image: pendingCover || null, addedAt: Date.now() });
         }
@@ -858,7 +879,7 @@ export function saveGame() {
             if (game) {
                 Object.assign(game, extra, { title, catId: cat, homeCatId });
                 if (continuous && game.state !== 'finished') game.state = null;
-                if (pendingCover) game.image = pendingCover;
+                if (pendingCover !== null) game.image = pendingCover || null;
             }
         } else {
             appData.games.push({
@@ -1306,22 +1327,70 @@ export function quickSearch(site) {
     if(site === 'meta') window.open(`https://www.metacritic.com/search/${encodeURIComponent(title)}/`, '_blank');
 }
 
-export function openImageModal(gameId) { const game = appData.games.find(g => g.id === gameId); document.getElementById('edit-img-game-id').value = gameId; document.getElementById('edit-game-name').innerText = game.title; const previewEl = document.getElementById('image-preview'); if(game.image) previewEl.innerHTML = `<img src="${game.image}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; else previewEl.innerHTML = icon('gamepad', { size: '3em' }); document.getElementById('modal-image').showModal(); }
+let editImageSrc = null, editImageDirty = false;
+function paintEditImage(src) {
+    const el = document.getElementById('image-preview');
+    el.innerHTML = src ? `<img src="${esc(src)}" style="max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 8px;">` : icon('gamepad', { size: '3em' });
+}
+export function openImageModal(gameId) {
+    const game = appData.games.find(g => g.id === gameId);
+    if (!game) return;
+    document.getElementById('edit-img-game-id').value = gameId;
+    document.getElementById('edit-game-name').innerText = game.title;
+    editImageSrc = game.image || null; editImageDirty = false;
+    document.getElementById('edit-game-icon').value = '';
+    paintEditImage(editImageSrc);
+    document.getElementById('modal-image').showModal();
+}
 export function searchCoverOnGoogle() { const gameId = document.getElementById('edit-img-game-id').value; const game = appData.games.find(g => g.id === gameId); if (game) window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, '_blank'); }
-export function previewImageEdit(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { document.getElementById('image-preview').innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; }; reader.readAsDataURL(input.files[0]); } }
+export function previewImageEdit(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => { editImageSrc = e.target.result; editImageDirty = true; paintEditImage(editImageSrc); };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+export function cropEditImage() {
+    if (!editImageSrc) { triggerToast('Escolha uma foto ou busque uma capa primeiro.', false); return; }
+    openCropper({ src: editImageSrc, onDone: data => { editImageSrc = data; editImageDirty = true; paintEditImage(data); } });
+}
 export async function saveEditedImage() {
     const gameId = document.getElementById('edit-img-game-id').value;
-    const fileInput = document.getElementById('edit-game-icon');
     const game = appData.games.find(g => g.id === gameId);
-    if (fileInput.files && fileInput.files[0] && game) {
-        const data = await fileToSmallJpeg(fileInput.files[0]);
+    if (editImageDirty && editImageSrc && game) {
+        const data = await blobToSmallJpeg(await (await fetch(editImageSrc)).blob()).catch(() => editImageSrc);
         saveStateForUndo();
         game.image = data;
-        fileInput.value = '';
         closeModal('modal-image');
         saveData(() => render());
         triggerToast('Capa atualizada.');
     } else { closeModal('modal-image'); }
+}
+
+let coverBatchRunning = false;
+export async function upgradeCovers() {
+    const btn = document.getElementById('cover-upgrade-btn');
+    const status = document.getElementById('cover-upgrade-status');
+    if (coverBatchRunning) { stopCoverUpgrade(); btn.textContent = 'Parando...'; return; }
+    const items = [...appData.games, ...(appData.wishlist || [])];
+    if (!items.length) { status.textContent = 'Nenhum jogo na biblioteca.'; return; }
+    coverBatchRunning = true;
+    btn.textContent = 'Parar';
+    saveStateForUndo();
+    let changed = 0;
+    const res = await upgradeAllCovers({
+        games: items,
+        onProgress: p => { status.textContent = p.finished ? '' : `Procurando... ${p.done}/${p.total}${p.title ? ' · ' + p.title : ''} (${p.updated} atualizadas)`; },
+        onGame: (g, r) => { g.image = r.data; if (!g.rawgId && r.rawgId) g.rawgId = r.rawgId; changed++; if (changed % 5 === 0) saveData(null); }
+    });
+    coverBatchRunning = false;
+    btn.textContent = 'Buscar capas verticais da biblioteca';
+    saveData(() => render());
+    updateStorageMeter();
+    status.textContent = res.total === 0
+        ? 'Todas as capas já estão na vertical.'
+        : `${res.updated} de ${res.total} capas atualizadas${res.stopped ? ' (interrompido)' : ''}. As demais não têm capa vertical disponível: use Recortar. Dá para desfazer.`;
+    triggerToast(`${res.updated} capas verticais atualizadas.`);
 }
 
 // ================= SETTINGS E DADOS =================
@@ -1359,7 +1428,7 @@ export function openSettings() {
     renderThemePicker();
     paintPlatformDisplay();
     updateStorageMeter();
-    document.getElementById('sgdb-key-input').value = getSgdbKey();
+    paintNotifySettings();
     document.getElementById('compact-toggle').checked = appData.settings.compact; 
     cancelEditPlatform(); 
     renderPlatformAdmin();

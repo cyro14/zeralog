@@ -3,11 +3,12 @@ import { openCardGenerator, downloadCard } from './card.js';
 import { hydrateIcons } from './icons.js';
 import { applyTheme, currentTheme } from './themes.js';
 import { iconSearch, iconWeightChange, iconMore, ensureForData } from './phosphor.js';
-import { initSession, startSession, openEndSession, sessionPreview, sessionFinish, openJournalEntry, saveJournalEntry } from './session.js';
+import { initSession, startSession, openEndSession, sessionPreview, sessionFinish, openJournalEntry, saveJournalEntry, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission } from './session.js';
 import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetDiff, qmToggleEmulated } from './quickmatch.js';
 import { genreSetBase, genreSetYear } from './genres.js';
-import { coversSearch, saveSgdbKey } from './covers.js';
-import { pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, setHomeView, shelfDo, openShelfDetail, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
+import { coversSearch } from './covers.js';
+import { cropApply, cropCancel, cropReset, cropFit } from './crop.js';
+import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, setHomeView, shelfDo, openShelfDetail, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
 import { openWiki, wikiChangeSource, wikiSearch, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
@@ -90,7 +91,7 @@ window.wikiFindFandom = wikiFindFandom;
 window.wikiFindToggle = wikiFindToggle;
 window.wikiFindStep = wikiFindStep;
 window.wikiFindClose = () => wikiFindClose();
-Object.assign(window, { pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, iconSearch, iconWeightChange, iconMore, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, coversSearch, saveSgdbKey, qmSetDiff, qmToggleEmulated, genreSetBase, genreSetYear, setHomeView, shelfDo, openShelfDetail, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
+Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, cropApply, cropCancel, cropReset, cropFit, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, iconSearch, iconWeightChange, iconMore, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, coversSearch, qmSetDiff, qmToggleEmulated, genreSetBase, genreSetYear, setHomeView, shelfDo, openShelfDetail, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
 
 // Inicialização Principal
 document.addEventListener("DOMContentLoaded", () => {
@@ -101,4 +102,5 @@ document.addEventListener("DOMContentLoaded", () => {
     render();
     initSession({ render, toast: msg => triggerToast(msg, false), undo: saveStateForUndo });
     checkWelcome();
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 });
