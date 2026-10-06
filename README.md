@@ -33,7 +33,7 @@
 - **Sem cadastro e sem backend.** Tudo fica salvo no `localStorage` do seu navegador. Você é dono dos dados e pode exportá-los a qualquer momento em um arquivo `.json`.
 - **Feito para o celular.** Layout pensado para telas verticais, com ajustes para paisagem e desktop. Instalável como PWA.
 - **Automático quando você quer, manual quando precisa.** Digitou o nome do jogo? O app busca capa, gêneros, data de lançamento, nota do Metacritic, descrição e tempo médio. Prefere preencher na mão? Todos os campos continuam editáveis.
-- **Mais que uma lista.** Wishlist, Timer de Sessão, diário de bordo, linha do tempo, prateleira de cartuchos, franquias com busca de novos jogos, gráficos de gênero, buscador de capas verticais, 12 temas e conquistas.
+- **Mais que uma lista.** Wishlist, Timer de Sessão com pausa e notificação na barra do celular, diário de bordo, linha do tempo, prateleira de cartuchos, franquias com busca de novos jogos, gráficos de gênero, capas verticais automáticas com recorte, 12 temas e conquistas.
 
 ## Galeria
 
@@ -67,6 +67,10 @@ Capturas geradas com dados de exemplo (as capas são ilustrações de teste).
 |:---:|:---:|
 | ![Papel](docs/screenshots/20-tema-papel.jpg) | ![Game Boy](docs/screenshots/21-tema-gameboy.jpg) |
 
+| Recorte de capa | Imagem inteira | Sessão pausada | Configurações |
+|:---:|:---:|:---:|:---:|
+| ![Recorte](docs/screenshots/22-recorte-capa.jpg) | ![Imagem inteira](docs/screenshots/23-recorte-imagem-inteira.jpg) | ![Sessão pausada](docs/screenshots/24-sessao-pausada.jpg) | ![Configurações](docs/screenshots/25-configuracoes-sessao-capas.jpg) |
+
 Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 
 ---
@@ -92,7 +96,10 @@ Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 - **Tudo editável.** Revise antes de salvar. Os campos extras ficam em "Mais detalhes".
 - **Atalhos úteis:** buscar o tempo no **HowLongToBeat**, a nota no **Metacritic** e a capa no Google.
 - **Capa leve.** A imagem é reduzida (lado maior de 420 px) e salva em JPEG pequeno para não estourar o limite do `localStorage`. Em Configurações há um **medidor de armazenamento**.
-- **Buscador de capas verticais.** O botão **Buscar capa vertical** (no cadastro) e **Buscar capas automaticamente** (ao tocar na capa de um jogo) mostram candidatas de várias fontes e você escolhe a que preferir: **Wikipédia (EN/PT)** (capa do artigo), **Steam** (capa 600×900, achada pelo link da loja que a RAWG informa), **SteamGridDB** (capas da comunidade para qualquer plataforma; precisa de chave gratuita em Configurações) e **RAWG** (artes horizontais). Capas verticais deixam a prateleira bem mais bonita. Fotos enviadas por você também são reduzidas.
+- **Capa vertical sempre que possível.** Ao usar a busca automática (🌐 Auto), o app procura sozinho a **capa vertical**: primeiro a da **Steam** (600×900, achada pelo link da loja que a RAWG informa) e depois a da **Wikipédia** (capa do artigo). Só se não achar nenhuma é que usa a arte horizontal da RAWG, e então avisa para você recortar. Não precisa de chave nem de conta além da RAWG.
+- **Recortar a capa.** O botão **Recortar** (no cadastro, e em **Recortar a capa** ao tocar na capa de um jogo) abre um recorte 2:3: arraste para posicionar, use o controle (ou a pinça/roda do mouse) para ampliar, **Preencher** para cobrir tudo ou **Imagem inteira** para encaixar a arte horizontal toda sobre um fundo desfocado.
+- **Trocar capa.** O buscador mostra as candidatas (Wikipédia, Steam e artes da RAWG) e você escolhe; as horizontais abrem direto o recorte. Fotos enviadas por você também podem ser recortadas.
+- **Capas da biblioteca inteira.** Em Configurações → **Capas verticais**, o botão **Buscar capas verticais da biblioteca** troca as capas horizontais ou ausentes por verticais, jogo a jogo, com progresso, opção de parar e **Desfazer**.
 - **Campos do jogo:** plataforma, tempo estimado (horas ou minutos), franquia, horas jogadas, diário de bordo, "Ideal para portáteis".
 - **Editar também os zerados.** Jogos concluídos têm o botão **ⓘ Dados do jogo** (editar e buscar automaticamente) e o botão de **editar conclusão** (nota, data, 100%, review).
 
@@ -124,11 +131,17 @@ Alterne **Cards ↔ Prateleira** na Fila e **Lista ↔ Linha do tempo ↔ Pratel
 - Aba própria para os jogos que você ainda quer comprar ou baixar, com o mesmo cadastro (inclusive busca automática), **observação** (preço, loja, link) e **categoria de destino**.
 - **Para a fila** e **Jogar agora** movem o jogo com um clique, levando capa, dados e franquia, sem redigitar nada.
 
-### 7. Timer de Sessão (modo imersivo)
+### 7. Timer de Sessão (modo imersivo) e notificação
 
-- Jogos em "Jogando" têm um botão ▶. Ao tocar, uma **barra discreta fixa no topo** mostra o jogo e o cronômetro em tempo real.
-- O horário de início fica salvo: o tempo continua correto mesmo se você **fechar a aba ou recarregar**.
-- Ao **Encerrar**, você ajusta os minutos (se fez pausas), vê a prévia "3,5h → 4,5h" e escolhe **Somar às horas**, **Descartar** ou **Continuar jogando**. Também pode **anotar no diário** na hora.
+- Jogos em "Jogando" têm um botão ▶. Ao tocar, uma **barra discreta fixa no topo** mostra o jogo, o cronômetro em tempo real e os botões **Pausar/Retomar** e **Finalizar**.
+- **Pausa de verdade:** o tempo parado não conta, e a barra fica âmbar enquanto pausada.
+- **Na barra de notificações do celular.** Ao iniciar a primeira sessão o app pede permissão para notificar. Com ela, aparece uma notificação ("Hades · Em sessão", com o tempo jogado) com os botões **Pausar/Retomar** e **Finalizar**:
+  - **Pausar/Retomar** funcionam direto na notificação, **mesmo com o app fechado**;
+  - **Finalizar** abre o app já na tela de fim de sessão, onde você confirma os minutos;
+  - o tempo na notificação é atualizado a cada minuto enquanto o app está ativo (o horário de início aparece sempre).
+  - Em Configurações dá para ligar/desligar (**Sessão na barra de notificações**) e ver se a permissão está liberada.
+- O estado da sessão fica salvo no navegador (e no IndexedDB, que o service worker `sw.js` lê): o tempo continua correto mesmo se você **fechar a aba ou recarregar**.
+- Ao **Finalizar**, você ajusta os minutos, vê a prévia "3,5h → 4,5h" e escolhe **Somar às horas**, **Descartar** ou **Continuar jogando**. Também pode **anotar no diário** na hora.
 - Uma sessão por vez.
 
 ### 8. Diário de Bordo
@@ -231,7 +244,7 @@ Ao atualizar o app, conquistas que você já cumpria são registradas em silênc
 
 ## Dados, backup e privacidade
 
-- **Onde ficam os dados:** no `localStorage` do navegador (chave `myBacklogData`), mais a sessão em andamento (`zeralog_session`), o tema (`zeralog_theme`) e, se você configurar, as chaves da RAWG (`zeralog_rawg_key`) e do SteamGridDB (`zeralog_sgdb_key`).
+- **Onde ficam os dados:** no `localStorage` do navegador (chave `myBacklogData`), mais a sessão em andamento (`zeralog_session`), o tema (`zeralog_theme`) e, se você configurar, a chave da RAWG (`zeralog_rawg_key`). O IndexedDB guarda só uma cópia da sessão em andamento para as notificações.
 - **Backup:** o ícone de **disquete** abre o painel para **Baixar Backup (.json)** e **Restaurar Backup**. Faça backup antes de limpar os dados do navegador ou trocar de aparelho. Backups antigos são migrados automaticamente.
 - **Sem rastreamento.** O app não tem conta, analytics nem servidor próprio. Os dados só saem do aparelho quando você usa as buscas externas descritas abaixo.
 - **Redefinição geral** (em Configurações) apaga tudo; use com cuidado.
@@ -244,13 +257,12 @@ Ao atualizar o app, conquistas que você já cumpria são registradas em silênc
 | APIs MediaWiki (Wikipédia, Yugipedia, Bulbapedia, Fandom e outras que você adicionar) | Leitor de wikis | Termos de busca e títulos de páginas |
 | [Wikipédia](https://www.mediawiki.org/wiki/Extension:PageImages) (`pageimages`) | Candidatas no buscador de capas | Nome do jogo |
 | CDN da Steam | Capa vertical 600×900 de jogos de PC | Nada (baixa a imagem) |
-| [SteamGridDB](https://www.steamgriddb.com/api/v2) (opcional) | Capas da comunidade para qualquer plataforma | Nome do jogo e a sua chave |
 | [Phosphor Icons](https://phosphoricons.com) via jsDelivr | Ícones de categorias e plataformas | Nada (baixa CSS e fonte) |
 | [Chart.js](https://www.chartjs.org/) (CDN) | Gráficos | Nada (carrega o script) |
 | [html2canvas](https://html2canvas.hertzen.com/) (CDN) | Imagem do cartão de compartilhamento | Nada (carrega o script) |
 | corsproxy.io (último recurso) | Baixar uma capa quando o site de origem bloqueia o acesso direto | URL da imagem |
 
-**Chave do SteamGridDB (opcional).** Crie grátis em steamgriddb.com (Preferências → API) e cole em **Configurações → Chave SteamGridDB**. Ela é enviada apenas ao SteamGridDB e fica só no seu navegador (`zeralog_sgdb_key`). Se o navegador bloquear a chamada direta, o buscador avisa e continua com as outras fontes.
+**Capas verticais sem chave extra.** Steam e Wikipédia são consultadas direto do navegador; a Steam só cobre jogos de PC e a Wikipédia depende de o artigo ter capa. Para os demais, use **Recortar** na arte horizontal.
 
 **Chave da RAWG.** O app traz uma chave padrão, que pode atingir o limite de uso. Se a busca automática falhar, crie uma chave gratuita em <https://rawg.io/apidocs> e cole em **Configurações → Chave da API RAWG**. O app mostra mensagens claras: chave recusada, limite atingido ou sem conexão.
 
@@ -261,6 +273,8 @@ zeralog/
 ├── index.html          # estrutura da página e diálogos
 ├── style.css           # estilos (temas, cards, prateleira, wiki, etc.)
 ├── manifest.json       # configuração do PWA
+├── sw.js               # service worker (notificação da sessão com Pausar/Finalizar)
+├── icons/              # ícones do app e da notificação
 ├── docs/screenshots/   # imagens usadas neste README
 └── js/
     ├── main.js         # ponto de entrada: liga os módulos e expõe as funções ao HTML
@@ -272,7 +286,8 @@ zeralog/
     ├── quickmatch.js   # filtros de humor e roleta
     ├── genres.js       # gráfico de gêneros (Chart.js + alternativa em SVG)
     ├── franchises.js   # franquias em sanfona e busca de mais jogos da série
-    ├── covers.js       # buscador de capas verticais (Wikipédia, Steam, SteamGridDB, RAWG)
+    ├── covers.js       # capas verticais (Steam e Wikipédia automáticas, buscador manual, lote)
+    ├── crop.js         # recorte de capa 2:3 (arrastar, zoom, imagem inteira)
     ├── themes.js       # lista de temas e seletor visual
     ├── phosphor.js     # seletor de ícones Phosphor (categorias e plataformas)
     ├── platforms.js    # plataforma como ícone ou nome nos cards
@@ -281,7 +296,7 @@ zeralog/
     └── icons.js        # ícones SVG
 ```
 
-> `js/app.js` e `js/sw.js` são resquícios de versões anteriores e não são carregados pelo `index.html` atual.
+> `js/app.js` e `js/sw.js` são resquícios de versões anteriores e não são carregados. O service worker em uso é o **`sw.js` da raiz** (notificações da sessão; ele não faz cache de arquivos).
 
 ## Rodando localmente
 
@@ -326,14 +341,14 @@ Resumo do que é salvo (o objeto completo vai no backup `.json`):
 ## Limitações conhecidas
 
 - **Tempo "para zerar":** a RAWG só fornece a **média de horas dos usuários dela**, não o tempo do HowLongToBeat (que não tem API pública). Por isso há o atalho para consultar o HLTB e ajustar manualmente.
-- **Capas:** a RAWG não tem box art (só artes horizontais). Para capas verticais use o buscador: a Wikipédia e a Steam funcionam sem chave, mas a Steam só cobre jogos de PC, e a Wikipédia depende de o artigo ter capa. A cobertura completa vem do SteamGridDB (com chave). As capas são imagens com direitos dos respectivos donos, guardadas apenas no seu navegador para uso pessoal.
-- **SteamGridDB:** não foi possível confirmar se o navegador libera chamadas diretas com a chave; se bloquear, o buscador avisa e segue com as outras fontes.
+- **Capas:** a RAWG não tem box art (só artes horizontais). Para capas verticais o app usa a Steam (só jogos de PC) e a Wikipédia (depende de o artigo ter capa). Consoles sem capa na Wikipédia ficam com a arte horizontal, que você recorta. As capas são imagens com direitos dos respectivos donos, guardadas apenas no seu navegador para uso pessoal.
+- **Notificação da sessão:** depende do navegador e da permissão. No Android (Chrome e navegadores baseados nele), funciona com o botão Pausar/Finalizar; no iPhone só em apps instalados na tela de início (iOS 16.4+). A notificação pode ser dispensada deslizando (a web não permite fixá-la), e o texto do tempo só atualiza com o app ativo; o horário de início fica sempre correto.
 - **Ícones Phosphor:** dependem da CDN na primeira carga; offline eles ficam ocultos.
 - **Descrição:** vem em inglês.
 - **Wikis:** funciona com wikis **MediaWiki** (Wikipédia, Fandom, Yugipedia, Bulbapedia...). Sites de outro tipo (ex.: Fextralife) não são suportados. O visual é um leitor simples, sem o tema original, e infoboxes complexas podem ficar básicas. A descoberta automática do Fandom tenta os endereços mais prováveis a partir do nome do jogo ou da franquia; se não achar, use **Outra wiki**.
 - **Armazenamento:** o `localStorage` tem limite (~5 MB). As capas são reduzidas, mas bibliotecas muito grandes podem chegar perto do limite; faça backups.
 - **Sem sincronização entre aparelhos.** Use o backup `.json` para levar seus dados de um lugar para outro.
-- **Timer de Sessão:** uma sessão por vez e sem botão de pausa (ajuste os minutos ao encerrar).
+- **Timer de Sessão:** uma sessão por vez.
 - **Conquistas baseadas em contadores** (Hora de Jogar, Dedicação Total, Desejo Realizado) contam a partir da versão em que foram criadas.
 
 ## Perguntas frequentes
@@ -345,6 +360,10 @@ Resumo do que é salvo (o objeto completo vai no backup `.json`):
 **Um jogo contínuo pode ser zerado?** Não, por definição. Se ele passou a ter um fim para você, desmarque "Jogo Contínuo" (se ele ainda não estiver zerado) e use o fluxo normal.
 
 **Por que um jogo não aparece na roleta?** A roleta e o Quick Match consideram só jogos da fila. Jogos em "Jogando", zerados e contínuos ficam de fora.
+
+**A notificação da sessão não aparece.** Toque em **Permitir notificações** em Configurações (ou libere nas configurações do site no navegador) e mantenha **Sessão na barra de notificações** ligada. No iPhone, instale o app na tela de início.
+
+**O app não puxou a capa vertical.** Nem todo jogo tem capa vertical na Steam ou na Wikipédia. Toque em **Recortar** e ajuste a arte horizontal, ou use **Trocar capa**.
 
 **Como mudar a wiki de um jogo?** Abra a lupa do jogo, escolha outra wiki no seletor, pesquise e toque em **Vincular a este jogo**.
 
