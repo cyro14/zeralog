@@ -18,19 +18,20 @@
 3. [Funcionalidades](#funcionalidades)
 4. [Guia rápido de uso](#guia-rápido-de-uso)
 5. [Dados, backup e privacidade](#dados-backup-e-privacidade)
-6. [Serviços externos usados](#serviços-externos-usados)
-7. [Estrutura do projeto](#estrutura-do-projeto)
-8. [Rodando localmente](#rodando-localmente)
-9. [Modelo de dados](#modelo-de-dados)
-10. [Limitações conhecidas](#limitações-conhecidas)
-11. [Perguntas frequentes](#perguntas-frequentes)
-12. [Créditos](#créditos)
+6. [Banco de dados](#banco-de-dados)
+7. [Serviços externos usados](#serviços-externos-usados)
+8. [Estrutura do projeto](#estrutura-do-projeto)
+9. [Rodando localmente](#rodando-localmente)
+10. [Modelo de dados](#modelo-de-dados)
+11. [Limitações conhecidas](#limitações-conhecidas)
+12. [Perguntas frequentes](#perguntas-frequentes)
+13. [Créditos](#créditos)
 
 ---
 
 ## Visão geral
 
-- **Sem cadastro e sem backend.** Tudo fica salvo no `localStorage` do seu navegador. Você é dono dos dados e pode exportá-los a qualquer momento em um arquivo `.json`.
+- **Sem cadastro e sem servidor.** Tudo fica salvo no **IndexedDB** do seu navegador (banco local, com espaço para milhares de capas). Você é dono dos dados e pode exportá-los a qualquer momento em um arquivo `.json`.
 - **Feito para o celular.** Layout pensado para telas verticais, com ajustes para paisagem e desktop. Instalável como PWA.
 - **Automático quando você quer, manual quando precisa.** Digitou o nome do jogo? O app busca capa, gêneros, data de lançamento, nota do Metacritic, descrição e tempo médio. Prefere preencher na mão? Todos os campos continuam editáveis.
 - **Mais que uma lista.** Wishlist, Timer de Sessão com pausa e notificação na barra do celular, diário de bordo, linha do tempo, prateleira de cartuchos, franquias com busca de novos jogos, gráficos de gênero, capas verticais automáticas com recorte, 12 temas e conquistas.
@@ -95,7 +96,7 @@ Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 - **Busca automática (botão 🌐 Auto).** Digite o nome, toque em **Auto** e escolha o jogo certo entre até 6 resultados. O app preenche **capa**, **descrição**, **gêneros** (traduzidos para PT), **data de lançamento**, **nota Metacritic** e **tempo médio** (via RAWG).
 - **Tudo editável.** Revise antes de salvar. Os campos extras ficam em "Mais detalhes".
 - **Atalhos úteis:** buscar o tempo no **HowLongToBeat**, a nota no **Metacritic** e a capa no Google.
-- **Capa leve.** A imagem é reduzida (lado maior de 420 px) e salva em JPEG pequeno para não estourar o limite do `localStorage`. Em Configurações há um **medidor de armazenamento**.
+- **Capa leve.** A imagem é reduzida (lado maior de 420 px) e salva em JPEG pequeno. Como o banco é o IndexedDB, não existe mais o limite de ~5 MB do `localStorage`; em Configurações → **Banco de dados** você vê quanto espaço está usando.
 - **Capa vertical sempre que possível.** Ao usar a busca automática (🌐 Auto), o app procura sozinho a **capa vertical**: primeiro a da **Steam** (600×900, achada pelo link da loja que a RAWG informa) e depois a da **Wikipédia** (capa do artigo). Só se não achar nenhuma é que usa a arte horizontal da RAWG, e então avisa para você recortar. Não precisa de chave nem de conta além da RAWG.
 - **Recortar a capa.** O botão **Recortar** (no cadastro, e em **Recortar a capa** ao tocar na capa de um jogo) abre um recorte 2:3: arraste para posicionar, use o controle (ou a pinça/roda do mouse) para ampliar, **Preencher** para cobrir tudo ou **Imagem inteira** para encaixar a arte horizontal toda sobre um fundo desfocado.
 - **Trocar capa.** O buscador mostra as candidatas (Wikipédia, Steam e artes da RAWG) e você escolhe; as horizontais abrem direto o recorte. Fotos enviadas por você também podem ser recortadas.
@@ -244,10 +245,28 @@ Ao atualizar o app, conquistas que você já cumpria são registradas em silênc
 
 ## Dados, backup e privacidade
 
-- **Onde ficam os dados:** no `localStorage` do navegador (chave `myBacklogData`), mais a sessão em andamento (`zeralog_session`), o tema (`zeralog_theme`) e, se você configurar, a chave da RAWG (`zeralog_rawg_key`). O IndexedDB guarda só uma cópia da sessão em andamento para as notificações.
+- **Onde ficam os dados:** no **IndexedDB** do navegador (banco `zeralog-db`: os dados do app, uma tabela só de imagens e os pontos de restauração). No `localStorage` ficam apenas pequenas preferências: tema (`zeralog_theme`), chave da RAWG (`zeralog_rawg_key`) e a sessão em andamento (`zeralog_session`). Veja a seção [Banco de dados](#banco-de-dados).
 - **Backup:** o ícone de **disquete** abre o painel para **Baixar Backup (.json)** e **Restaurar Backup**. Faça backup antes de limpar os dados do navegador ou trocar de aparelho. Backups antigos são migrados automaticamente.
 - **Sem rastreamento.** O app não tem conta, analytics nem servidor próprio. Os dados só saem do aparelho quando você usa as buscas externas descritas abaixo.
 - **Redefinição geral** (em Configurações) apaga tudo; use com cuidado.
+
+## Banco de dados
+
+O ZeraLog grava tudo no **IndexedDB**, o banco do próprio navegador, em vez do `localStorage` (limite de ~5 MB, que enchia rápido com capas).
+
+- **Mais espaço, mais rápido.** Os dados leves ficam num registro pequeno e as **imagens numa tabela própria** (id → imagem). Salvar uma alteração grava só o registro leve e as imagens que mudaram, então continua instantâneo mesmo com centenas de capas.
+- **Gravação segura.** Cada salvamento é uma transação (ou grava tudo, ou nada). Se a gravação falhar (por exemplo, disco cheio), o app avisa na hora.
+- **Migração automática.** Na primeira abertura depois da atualização, os dados do `localStorage` são copiados para o novo banco, conferidos (quantidade de jogos e de imagens) e só então retirados do local antigo. Uma **cópia antiga** fica guardada por 14 dias (ou até você apagar em Configurações), e o primeiro **ponto de restauração** é "Antes da migração".
+- **Pontos de restauração.** O app guarda automaticamente um ponto por dia (os 7 mais recentes), com o estado dos dados no primeiro salvamento do dia. Em Configurações → Banco de dados você restaura qualquer um; as imagens que ainda estão no banco são mantidas.
+- **Dados ilegíveis ou incompletos.** Se o dado salvo estiver corrompido, o app guarda uma cópia (`myBacklogData_corrupt`) e abre limpo em vez de travar; dados antigos ou com campos faltando são normalizados sem apagar nada.
+- **Modo compatível.** Se o navegador não permitir IndexedDB (alguns modos privados, por exemplo), o app volta ao `localStorage` e avisa em Configurações que o limite é de ~5 MB.
+- **Backup continua igual.** O arquivo `.json` (com imagens) pode ser baixado e restaurado como antes, inclusive backups feitos em versões antigas.
+
+### Plano gratuito e Premium
+
+O código já separa o app do banco: `js/db.js` define uma interface única de provedor (`load`, `save`, pontos de restauração, espaço usado), hoje com os provedores IndexedDB e localStorage. Um provedor de nuvem (sincronização entre aparelhos) poderia ser registrado ali sem mexer no resto do app, e `js/plan.js` escolhe o provedor conforme o plano. **Para cobrar de verdade é preciso um servidor** (login, pagamento e validação da assinatura), porque qualquer trava feita só no navegador pode ser contornada. O guia completo, com opções e passos, está em [`docs/PREMIUM.md`](docs/PREMIUM.md).
+
+---
 
 ## Serviços externos usados
 
@@ -278,7 +297,10 @@ zeralog/
 ├── docs/screenshots/   # imagens usadas neste README
 └── js/
     ├── main.js         # ponto de entrada: liga os módulos e expõe as funções ao HTML
-    ├── store.js        # dados (appData), localStorage, migração de versões antigas
+    ├── store.js        # dados (appData), gravação no banco, migração de versões antigas
+    ├── db.js           # provedores de banco: IndexedDB (padrão) e localStorage (modo compatível)
+    ├── storage-ui.js   # Configurações → Banco de dados (espaço, pontos de restauração)
+    ├── plan.js         # plano Free/Premium (organização da interface; ver docs/PREMIUM.md)
     ├── ui.js           # renderização, modais, fila, zerados, wishlist, timeline, prateleira, estatísticas
     ├── gameApi.js      # busca automática (RAWG), capas, tratamento de erros
     ├── wiki.js         # leitor de wikis (MediaWiki), vínculo automático, Fandom, localizar no texto
@@ -346,7 +368,7 @@ Resumo do que é salvo (o objeto completo vai no backup `.json`):
 - **Ícones Phosphor:** dependem da CDN na primeira carga; offline eles ficam ocultos.
 - **Descrição:** vem em inglês.
 - **Wikis:** funciona com wikis **MediaWiki** (Wikipédia, Fandom, Yugipedia, Bulbapedia...). Sites de outro tipo (ex.: Fextralife) não são suportados. O visual é um leitor simples, sem o tema original, e infoboxes complexas podem ficar básicas. A descoberta automática do Fandom tenta os endereços mais prováveis a partir do nome do jogo ou da franquia; se não achar, use **Outra wiki**.
-- **Armazenamento:** o `localStorage` tem limite (~5 MB). As capas são reduzidas, mas bibliotecas muito grandes podem chegar perto do limite; faça backups.
+- **Armazenamento:** o IndexedDB tem um limite que depende do aparelho e do navegador (em geral centenas de MB a vários GB), mostrado em Configurações. O navegador pode apagar dados de sites se faltar espaço no aparelho; o app pede "armazenamento protegido" e mostra se foi concedido. Faça backups de vez em quando.
 - **Sem sincronização entre aparelhos.** Use o backup `.json` para levar seus dados de um lugar para outro.
 - **Timer de Sessão:** uma sessão por vez.
 - **Conquistas baseadas em contadores** (Hora de Jogar, Dedicação Total, Desejo Realizado) contam a partir da versão em que foram criadas.

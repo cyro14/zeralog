@@ -209,10 +209,17 @@
                 <label style="font-weight: bold;">Tema Visual:</label>
                 <div id="theme-grid" class="theme-grid" role="radiogroup" aria-label="Tema visual"></div>
             </div>
-            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
-                <label style="font-weight: bold;">Armazenamento do app:</label>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                <label style="font-weight: bold;">Banco de dados:</label>
                 <div class="storage-meter"><span id="storage-bar" style="width: 0%"></span></div>
                 <small id="storage-text" style="color: var(--text-muted);"></small>
+                <small id="storage-engine" style="color: var(--text-muted);"></small>
+                <details class="snap-box">
+                    <summary>Pontos de restauração (<span id="snap-count">0</span>)</summary>
+                    <ul id="snap-list" class="snap-list"></ul>
+                    <small style="color: var(--text-muted);">Um ponto por dia (os 7 mais recentes). Restaurar troca os dados, mas mantém as imagens que já estão no banco.</small>
+                </details>
+                <button type="button" class="pill-btn" id="legacy-clear" onclick="clearLegacyCopy()" style="display: none; align-self: flex-start;">Apagar cópia antiga (armazenamento do navegador)</button>
             </div>
             <div class="setting-row">
                 <label style="font-weight: bold;">Plataforma nos cards:</label>
