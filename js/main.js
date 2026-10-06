@@ -1,4 +1,5 @@
-import { appData, saveData, backupData, setAppData, defaultData } from './store.js';
+import { appData, saveData, backupData, setAppData, defaultData, initStore, purgeOldLegacyCopy } from './store.js';
+import { initStorageUI, restoreSnapshotUI, clearLegacyCopyUI } from './storage-ui.js';
 import { openCardGenerator, downloadCard } from './card.js';
 import { hydrateIcons } from './icons.js';
 import { applyTheme, currentTheme } from './themes.js';
@@ -93,14 +94,23 @@ window.wikiFindStep = wikiFindStep;
 window.wikiFindClose = () => wikiFindClose();
 Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, cropApply, cropCancel, cropReset, cropFit, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, iconSearch, iconWeightChange, iconMore, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, coversSearch, qmSetDiff, qmToggleEmulated, genreSetBase, genreSetYear, setHomeView, shelfDo, openShelfDetail, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, openGameDataFromFinished, wishToBacklog, wishToPlaying, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
 
-// Inicialização Principal
-document.addEventListener("DOMContentLoaded", () => {
-    if(appData.settings.compact) document.body.classList.add('compact-mode');
+// Inicialização Principal (o banco é aberto de forma assíncrona antes de desenhar a tela)
+window.restoreSnapshotUI = restoreSnapshotUI;
+window.clearLegacyCopy = clearLegacyCopyUI;
+window.__zlData = () => appData;   // leitura dos dados em memória (usado nos testes)
+
+async function start() {
+    try { await initStore(); } catch (e) { console.error('Falha ao abrir o banco:', e); }
+    if (appData.settings.compact) document.body.classList.add('compact-mode');
     applyTheme(currentTheme());
     ensureForData(appData);
     hydrateIcons();
     render();
     initSession({ render, toast: msg => triggerToast(msg, false), undo: saveStateForUndo });
+    initStorageUI({ render, toast: (msg, undo) => triggerToast(msg, undo !== false) });
+    purgeOldLegacyCopy();
     checkWelcome();
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
-});
+    window.__zeralogReady = true;
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

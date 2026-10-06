@@ -2,6 +2,7 @@ import { icon, platformIcons } from './icons.js';
 import { getSession, paintNotifySettings } from './session.js';
 import { detectNewAchievements, renderAchievements } from './achievements.js';
 import { renderGenreStats } from './genres.js';
+import { renderStorageSettings } from './storage-ui.js';
 import { applyTheme, renderThemePicker } from './themes.js';
 import { phHtml, openIconPicker } from './phosphor.js';
 import { platformLabel } from './platforms.js';
@@ -602,14 +603,7 @@ function applyStatsPane() {
     return p;
 }
 
-export function updateStorageMeter() {
-    let bytes = 0;
-    try { bytes = new Blob([localStorage.getItem('myBacklogData') || '']).size; } catch (e) {}
-    const limit = 5 * 1024 * 1024;
-    const pct = Math.min(100, Math.round(bytes / limit * 100));
-    document.getElementById('storage-bar').style.width = pct + '%';
-    document.getElementById('storage-text').textContent = `${(bytes / 1048576).toFixed(2).replace('.', ',')} MB de ~5 MB (${pct}%). Se encher, faça backup e use capas menores.`;
-}
+export function updateStorageMeter() { renderStorageSettings(); }
 
 export function updateStatsAndCharts() {
     const pane = applyStatsPane();
