@@ -3,6 +3,8 @@ import { getSession, paintNotifySettings } from './session.js';
 import { detectNewAchievements, renderAchievements } from './achievements.js';
 import { renderGenreStats } from './genres.js';
 import { renderStorageSettings } from './storage-ui.js';
+import { applyFilters, renderFilterBars, activeCount } from './filters.js';
+import { releaseState, countdownText, fmtDate, daysUntil, refreshReleaseDates, syncReleaseWatch, askNotifyIfNeeded } from './releases.js';
 import { applyTheme, renderThemePicker } from './themes.js';
 import { phHtml, openIconPicker } from './phosphor.js';
 import { platformLabel } from './platforms.js';
@@ -71,6 +73,7 @@ export function switchTab(tabId) {
 // ================= BUSCA AUTOMÁTICA (RAWG) =================
 let pendingCover = null;   // capa baixada, aguardando o "Salvar"
 let pendingRawgId = null;  // id da RAWG do jogo escolhido na busca automática
+let pendingTba = false;     // RAWG informou lançamento "a confirmar"
 let lastResults = [];
 
 let currentCoverSrc = null;   // capa exibida no cadastro (nova ou já salva)
@@ -86,6 +89,10 @@ function updateCoverPreview(src) {
 function resetAutoFill() {
     pendingCover = null;
     pendingRawgId = null;
+    pendingTba = false;
+    document.getElementById('game-wish-released').value = '';
+    document.getElementById('game-wish-notify').checked = false;
+    paintWishNotify();
     lastResults = [];
     document.getElementById('rawg-results').innerHTML = '';
     ['game-description', 'game-genres', 'game-released', 'game-metacritic', 'game-hours-played', 'game-journal-notes']
@@ -114,6 +121,16 @@ export async function fetchGameFromRAWG() {
 }
 
 // Preenche o formulário com um jogo da RAWG (busca automática ou sugestão de franquia)
+// A caixinha "avisar quando lançar" só aparece quando a data é de hoje ou futura
+export function paintWishNotify() {
+    const d = document.getElementById('game-wish-released').value;
+    const n = daysUntil(d);
+    const ok = n !== null && n >= 0;
+    document.getElementById('game-wish-notify-row').style.display = ok ? '' : 'none';
+    if (!ok) document.getElementById('game-wish-notify').checked = false;
+    document.getElementById('game-wish-release-hint').textContent = d ? (n === null ? '' : n > 0 ? `Lança em ${n} ${n === 1 ? 'dia' : 'dias'}` : n === 0 ? 'Lança hoje' : 'Já foi lançado') : 'Sem data: use a busca automática ou preencha.';
+}
+
 export async function applyRawgGame(base) {
     const box = document.getElementById('rawg-results');
     box.innerHTML = '<div class="rawg-msg">Carregando dados...</div>';
@@ -125,6 +142,9 @@ export async function applyRawgGame(base) {
     document.getElementById('game-description').value = g.description || '';
     document.getElementById('game-genres').value = (g.genres || []).join(', ');
     document.getElementById('game-released').value = g.released || '';
+    document.getElementById('game-wish-released').value = g.released || '';
+    pendingTba = !!g.tba && !g.released;
+    paintWishNotify();
     document.getElementById('game-metacritic').value = g.metacritic ?? '';
     if (g.playtime && !document.getElementById('game-time-val').value) {
         document.getElementById('game-time-val').value = g.playtime;
@@ -308,7 +328,9 @@ export function render() {
         filterContainer.innerHTML += `<div class="filter-chip ${state.currentPlatformFilter === p.name ? 'active' : ''}" onclick="setPlatformFilter('${p.name}', this)" style="display:inline-flex; align-items:center; gap:6px;">${p.icon} <span>${p.name}</span></div>`;
     });
 
-    const playingGames = getSortedGames(appData.games.filter(g => g.state === 'playing' && !g.continuous), null, false);
+    const filtersOn = activeCount('home') > 0; let homeShown = 0;
+    const playingGames = getSortedGames(applyFilters('home', appData.games.filter(g => g.state === 'playing' && !g.continuous)), null, false);
+    homeShown += playingGames.length;
     const playingCatDiv = document.createElement('div');
     playingCatDiv.className = `category ${appData.collapsedCats.includes('playing-category') ? 'collapsed' : ''}`; playingCatDiv.id = 'playing-category';
     if(playingGames.length > 0) playingCatDiv.style.display = 'block';
@@ -317,7 +339,8 @@ export function render() {
     const listPlaying = playingCatDiv.querySelector('#list-playing'); fillList(listPlaying, playingGames);
 
     // Seção de Jogos Contínuos (live service / sandbox): só horas e diário, sem "Zerado"
-    const contGames = appData.games.filter(g => g.continuous).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
+    const contGames = applyFilters('home', appData.games.filter(g => g.continuous)).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
+    homeShown += contGames.length;
     if (contGames.length) {
         const total = contGames.reduce((a, g) => a + hoursNum(g.hoursPlayed), 0);
         const contDiv = document.createElement('div');
@@ -325,7 +348,7 @@ export function render() {
         contDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('continuous-category', event)"><div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>Jogos Contínuos</h2><span class="chip chip-live">${fmtHours(total)} jogadas</span></div><div class="cat-actions"><button onclick="openGameModal('continuous')">+ Jogo</button></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-continuous"></ul></div>`;
         containerHome.appendChild(contDiv);
         const listCont = contDiv.querySelector('#list-continuous'); fillList(listCont, contGames);
-    } else {
+    } else if (!filtersOn) {
         const addDiv = document.createElement('div');
         addDiv.className = 'add-continuous-wrap';
         addDiv.innerHTML = `<button type="button" class="add-continuous" onclick="openGameModal('continuous')">+ Jogo Contínuo <small>(live service / sandbox infinito)</small></button>`;
@@ -333,7 +356,9 @@ export function render() {
     }
 
     appData.categories.forEach(cat => {
-        const catGames = getSortedGames(appData.games.filter(g => g.catId === cat.id && g.state === null && !g.continuous), null, false);
+        const catGames = getSortedGames(applyFilters('home', appData.games.filter(g => g.catId === cat.id && g.state === null && !g.continuous)), null, false);
+        homeShown += catGames.length;
+        if (filtersOn && !catGames.length) return;   // categoria sem resultados some enquanto filtra
         const catDiv = document.createElement('div'); catDiv.className = `category ${appData.collapsedCats.includes(cat.id) ? 'collapsed' : ''}`; catDiv.id = cat.id;
         catDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${cat.id}', event)">
@@ -352,7 +377,9 @@ export function render() {
         const listEl = catDiv.querySelector(`#list-${cat.id}`); fillList(listEl, catGames);
     });
 
+    if (filtersOn && !homeShown) containerHome.insertAdjacentHTML('beforeend', '<div class="empty-state">Nenhum jogo da fila combina com os filtros.</div>');
     renderWishlist();
+    renderFilterBars();
     renderQuickMatch();
     renderViewToggles();
     renderFinishedTab();
@@ -363,8 +390,9 @@ export function render() {
 
 export function renderFinishedTab() {
     const finishedContainer = document.getElementById('finished-list-container');
-    const finishedGames = getSortedGames(appData.games.filter(g => g.state === 'finished'), appData.settings.finishedSort, true);
-    document.getElementById('count-finished').innerText = finishedGames.length;
+    const finishedAll = getSortedGames(appData.games.filter(g => g.state === 'finished'), appData.settings.finishedSort, true);
+    const finishedGames = applyFilters('finished', finishedAll);
+    document.getElementById('count-finished').innerText = finishedAll.length;
 
     Object.keys(sortLabels).forEach(k => {
         const el = document.getElementById(`sort-fin-${k}`);
@@ -381,7 +409,7 @@ export function renderFinishedTab() {
     document.getElementById('fin-sort-bar').style.display = view === 'timeline' ? 'none' : '';
 
     if (finishedGames.length === 0) {
-        finishedContainer.innerHTML = `<div class="empty-state">Nenhum jogo finalizado ainda. Hora de focar no backlog!</div>`;
+        finishedContainer.innerHTML = finishedAll.length ? `<div class="empty-state">Nenhum jogo zerado combina com os filtros.</div>` : `<div class="empty-state">Nenhum jogo finalizado ainda. Hora de focar no backlog!</div>`;
         return;
     }
     if (view === 'timeline') { renderTimeline(finishedContainer, finishedGames); return; }
@@ -733,6 +761,7 @@ function prepareGameModal(mode) {
     document.getElementById('game-platform').innerHTML = appData.platforms.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
     document.getElementById('console-list').innerHTML = [...new Set([...CONSOLES, ...appData.platforms.map(p => p.name)])].map(c => `<option value="${esc(c)}"></option>`).join('');
     document.getElementById('game-continuous').disabled = false;
+    document.getElementById('game-released').style.display = wish ? 'none' : '';
 }
 
 export function toggleModalFlags() {
@@ -798,6 +827,10 @@ export function openEditGameModal(gameId, isWish = false) {
     if (isWish) {
         document.getElementById('game-wish-note').value = game.note || '';
         if (game.catId) document.getElementById('game-wish-cat').value = game.catId;
+        document.getElementById('game-wish-released').value = game.released || '';
+        document.getElementById('game-wish-notify').checked = !!game.notifyRelease;
+        pendingTba = !!game.tba;
+        paintWishNotify();
     }
     document.getElementById('game-platform').value = game.platform;
 
@@ -847,6 +880,11 @@ export function saveGame() {
 
     if (wish) {
         const extra = { ...base, ...idPatch, catId: val('game-wish-cat') || (appData.categories[0] && appData.categories[0].id) || '', note: val('game-wish-note').trim() };
+        const wd = val('game-wish-released') || '';
+        extra.released = wd;
+        extra.tba = !wd && pendingTba;
+        extra.notifyRelease = document.getElementById('game-wish-notify').checked && daysUntil(wd) !== null && daysUntil(wd) >= 0;
+        { const old = gameId ? appData.wishlist.find(g => g.id === gameId) : null; if (!old || old.released !== wd || !old.notifyRelease) extra.releaseNotified = false; }
         if (gameId) {
             const item = appData.wishlist.find(g => g.id === gameId);
             if (item) { Object.assign(item, extra, { title }); if (pendingCover !== null) item.image = pendingCover || null; }
@@ -901,7 +939,7 @@ export function renderViewToggles() {
     document.getElementById('home-view-shelf').classList.toggle('active', v === 'shelf');
 }
 
-export function createShelfItem(g) {
+export function createShelfItem(g, kind = 'game') {
     const li = document.createElement('li');
     const sess = getSession();
     const live = !!(sess && sess.gameId === g.id);
@@ -914,16 +952,22 @@ export function createShelfItem(g) {
     li.setAttribute('role', 'button');
     li.setAttribute('aria-label', g.title);
     li.title = g.title;
-    li.onclick = () => openShelfDetail(g.id);
-    li.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openShelfDetail(g.id); } };
+    const open = () => (kind === 'wish' ? openEditWishModal(g.id) : openShelfDetail(g.id));
+    li.onclick = open;
+    li.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
     const badges = [];
     if (g.is100) badges.push(`<span class="shelf-badge gold">${icon('star', { size: '10px' })}100%</span>`);
     if (g.state === 'finished' && g.userRating) badges.push(`<span class="shelf-badge">${esc(g.userRating)}</span>`);
+    if (kind === 'wish') {
+        const st = releaseState(g);
+        if (st === 'future' || st === 'today') badges.push(`<span class="shelf-badge gold">${esc(fmtDate(g.released).replace(/ de /g, ' '))}</span>`);
+        else if (st === 'tba') badges.push('<span class="shelf-badge">TBA</span>');
+    }
     li.innerHTML = `
         <div class="cart">
             <div class="cart-label">${g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : `<span class="cart-empty">${esc(g.title)}</span>`}</div>
             ${badges.length ? `<div class="shelf-badges">${badges.join('')}</div>` : ''}
-            ${live ? '<span class="shelf-live" title="Em sessão"></span>' : (g.state === 'playing' ? '<span class="shelf-playing" title="Jogando"></span>' : '')}
+            ${kind === 'wish' ? (g.notifyRelease ? `<span class="shelf-bell" title="Aviso de lançamento ligado">${icon('bell', { size: '11px' })}</span>` : '') : (live ? '<span class="shelf-live" title="Em sessão"></span>' : (g.state === 'playing' ? '<span class="shelf-playing" title="Jogando"></span>' : ''))}
         </div>
         <span class="game-title sr-only">${esc(g.title)}</span>`;
     return li;
@@ -979,6 +1023,21 @@ export function shelfDo(fn, id) {
 const scoreChip = m => `<span class="chip score ${m >= 75 ? 'good' : m >= 50 ? 'mid' : 'bad'}" title="Nota Metacritic">Metacritic ${esc(m)}</span>`;
 const franchiseChip = name => `<span class="chip chip-franchise" data-f="${esc(name)}" onclick="filterByFranchise(this.dataset.f)" title="Ver jogos da franquia">${esc(name)}</span>`;
 
+const WISH_SORTS = { release: 'Lançamento', added: 'Adicionado', az: 'A-Z', meta: 'Nota' };
+export function setWishSort(k) { appData.settings.wishSort = WISH_SORTS[k] ? k : 'release'; saveData(() => render()); }
+export function setWishView(v) { appData.settings.wishView = v === 'shelf' ? 'shelf' : 'list'; saveData(() => render()); }
+
+function wishReleaseHtml(w) {
+    const st = releaseState(w);
+    const cal = icon('calendar', { size: '1em' });
+    if (st === 'unknown' || st === 'tba') return `<div class="wish-release ${st}"><span class="wr-date">${cal} ${st === 'tba' ? 'Data a confirmar' : 'Sem data de lançamento'}</span></div>`;
+    const soon = st === 'future' || st === 'today';
+    let extra = '';
+    if (soon) extra = `<label class="wish-notify"><input type="checkbox" ${w.notifyRelease ? 'checked' : ''} onchange="toggleWishNotify('${w.id}', this.checked)"><span>${icon('bell', { size: '1em' })} Avisar quando lançar</span></label>`;
+    else if (w.notifyRelease && w.releaseNotified && daysUntil(w.released) >= -14) extra = `<span class="chip chip-accent wish-new">${icon('bell', { size: '1em' })} Acabou de lançar!</span>`;
+    return `<div class="wish-release ${st}"><span class="wr-date">${cal} ${esc(fmtDate(w.released))}</span><span class="chip wr-count ${soon ? 'soon' : ''}">${esc(countdownText(w))}</span></div>${extra}`;
+}
+
 export function createWishElement(w) {
     const li = document.createElement('li');
     li.className = 'game-item';
@@ -991,7 +1050,6 @@ export function createWishElement(w) {
         ? `<img src="${esc(w.image)}" alt="" class="gi-cover" style="cursor:default">`
         : `<div class="gi-cover gi-cover-empty" style="cursor:default">${esc((w.title.trim()[0] || '?').toUpperCase())}</div>`;
     const sub = [platformLabel(w.platform)];
-    if (w.released) sub.push(esc(w.released.slice(0, 4)));
     if (w.genres && w.genres.length) sub.push(esc(w.genres.slice(0, 2).join(', ')));
     if (w.meta) sub.push(`${esc(fmtTime(w.meta))} p/ zerar`);
     const chips = [];
@@ -1006,6 +1064,7 @@ export function createWishElement(w) {
         <div class="gi-body">
             <div class="game-title">${esc(w.title)}</div>
             <div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div>
+            ${wishReleaseHtml(w)}
             ${chips.length ? `<div class="gi-chips">${chips.join('')}</div>` : ''}
             ${w.note ? `<div class="wish-note">${esc(w.note)}</div>` : ''}
             <div class="gi-status">
@@ -1023,18 +1082,83 @@ export function createWishElement(w) {
     return li;
 }
 
+// Seções da wishlist na ordem em que aparecem na tela (também usada ao compartilhar)
+export function wishSections(items) {
+    const sort = appData.settings.wishSort;
+    const byAdded = (a, b) => (b.addedAt || 0) - (a.addedAt || 0);
+    const cmp = { release: byAdded, added: byAdded, az: (a, b) => a.title.localeCompare(b.title), meta: (a, b) => (b.metacritic || 0) - (a.metacritic || 0) }[sort] || byAdded;
+    const upcoming = items.filter(w => ['future', 'today'].includes(releaseState(w))).sort((a, b) => a.released.localeCompare(b.released));
+    const released = items.filter(w => releaseState(w) === 'released').sort(sort === 'release' ? (a, b) => b.released.localeCompare(a.released) : cmp);
+    const nodate = items.filter(w => ['tba', 'unknown'].includes(releaseState(w))).sort(cmp);
+    return [{ key: 'soon', title: 'Em breve', list: upcoming }, { key: 'out', title: 'Já lançados', list: released }, { key: 'nodate', title: 'Sem data', list: nodate }].filter(s => s.list.length);
+}
+
+function renderWishSummary(all) {
+    const el = document.getElementById('wish-summary');
+    const up = all.filter(w => ['future', 'today'].includes(releaseState(w))).sort((a, b) => a.released.localeCompare(b.released));
+    const watching = all.filter(w => w.notifyRelease && !w.releaseNotified && w.released).length;
+    if (!all.length) { el.innerHTML = ''; return; }
+    const next = up[0];
+    el.innerHTML = `<div class="wish-sum">
+        <div><strong>${up.length}</strong> ${up.length === 1 ? 'lançamento futuro' : 'lançamentos futuros'}${watching ? ` · <strong>${watching}</strong> com aviso` : ''}</div>
+        ${next ? `<div class="wish-next">Próximo: <strong>${esc(next.title)}</strong> · ${esc(countdownText(next).replace('Lança ', ''))} (${esc(fmtDate(next.released))})</div>` : '<div class="wish-next">Nenhum lançamento futuro na lista.</div>'}
+    </div>`;
+}
+
 export function renderWishlist() {
     const box = document.getElementById('wish-list-container');
-    const items = [...(appData.wishlist || [])].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
-    document.getElementById('count-wish').innerText = items.length;
+    const all = appData.wishlist || [];
+    document.getElementById('count-wish').innerText = all.length;
+    Object.keys(WISH_SORTS).forEach(k => { const el = document.getElementById(`sort-wish-${k}`); if (el) el.classList.toggle('active', appData.settings.wishSort === k); });
+    const shelf = appData.settings.wishView === 'shelf';
+    document.getElementById('wish-view-list').classList.toggle('active', !shelf);
+    document.getElementById('wish-view-shelf').classList.toggle('active', shelf);
     box.innerHTML = '';
-    if (!items.length) { box.innerHTML = '<div class="empty-state">Sua wishlist está vazia. Adicione os jogos que pretende comprar ou baixar.</div>'; return; }
-    const cat = document.createElement('div');
-    cat.className = 'category';
-    cat.id = 'wishlist-category';
-    cat.innerHTML = '<div class="game-list-wrapper"><ul class="game-list"></ul></div>';
-    items.forEach(w => cat.querySelector('ul').appendChild(createWishElement(w)));
-    box.appendChild(cat);
+    renderWishSummary(all);
+    if (!all.length) { box.innerHTML = '<div class="empty-state">Sua wishlist está vazia. Adicione os jogos que pretende comprar ou baixar.</div>'; return; }
+    const items = applyFilters('wish', all);
+    if (!items.length) { box.innerHTML = '<div class="empty-state">Nenhum desejo combina com os filtros.</div>'; return; }
+    wishSections(items).forEach(sec => {
+        const cat = document.createElement('div');
+        cat.className = `category wish-sec wish-${sec.key}`;
+        cat.innerHTML = `<div class="category-header"><div class="cat-title-area"><h2>${sec.title}</h2><span class="chip">${sec.list.length}</span></div></div><div class="game-list-wrapper"><ul class="game-list"></ul></div>`;
+        const ul = cat.querySelector('ul');
+        ul.classList.toggle('shelf', shelf);
+        sec.list.forEach(w => ul.appendChild(shelf ? createShelfItem(w, 'wish') : createWishElement(w)));
+        box.appendChild(cat);
+    });
+    syncReleaseWatch();
+}
+
+export function toggleWishNotify(id, on) {
+    const w = (appData.wishlist || []).find(x => x.id === id);
+    if (!w) return;
+    w.notifyRelease = !!on;
+    if (on) { w.releaseNotified = false; askNotifyIfNeeded(); }
+    saveData(() => render());
+    triggerToast(on ? `Vou avisar quando "${w.title}" lançar.` : 'Aviso de lançamento desligado.', false);
+}
+
+export async function refreshDatesUI() {
+    const btn = document.getElementById('wish-refresh-btn'), st = document.getElementById('wish-refresh-status');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const res = await refreshReleaseDates({ force: true, onProgress: p => { st.textContent = p.finished ? '' : `Atualizando ${p.done}/${p.total}: ${p.title}`; } });
+    btn.disabled = false;
+    appData.settings.lastReleaseRefresh = Date.now();
+    saveData(() => render());
+    st.textContent = res.checked ? `${res.changed} ${res.changed === 1 ? 'data atualizada' : 'datas atualizadas'} de ${res.checked} jogos.` : 'Nenhum desejo para atualizar.';
+}
+
+// Jogos na ordem em que aparecem na tela (para compartilhar)
+export function getTabGames(tab) {
+    if (tab === 'wish') return wishSections(applyFilters('wish', appData.wishlist || [])).flatMap(s => s.list);
+    if (tab === 'finished') return getSortedGames(applyFilters('finished', appData.games.filter(g => g.state === 'finished')), appData.settings.finishedSort, true);
+    const home = g => applyFilters('home', [g]).length > 0;
+    const playing = getSortedGames(appData.games.filter(g => g.state === 'playing' && !g.continuous && home(g)), null, false);
+    const cont = appData.games.filter(g => g.continuous && home(g)).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
+    const cats = appData.categories.flatMap(c => getSortedGames(appData.games.filter(g => g.catId === c.id && g.state === null && !g.continuous && home(g)), null, false));
+    return [...playing, ...cont, ...cats];
 }
 
 // Move o desejo para a biblioteca sem redigitar nada (capa, dados e franquia vão junto)

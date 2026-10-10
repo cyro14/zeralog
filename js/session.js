@@ -166,6 +166,7 @@ export function initSession(h) {
         navigator.serviceWorker.addEventListener('message', e => {
             const d = e.data || {};
             if (d.type === 'session-sync') syncSessionFromIdb();
+            if (d.type === 'open-tab' && window.switchTab) window.switchTab(d.tab);
             if (d.type === 'session-action') { syncSessionFromIdb().then(() => handleSessionAction(d.action)); }
         });
     }

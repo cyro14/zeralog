@@ -28,7 +28,8 @@ function normalize(g) {
     return {
         rawgId: g.id,
         title: g.name,
-        released: g.released || '',                       // AAAA-MM-DD
+        released: g.released || '',
+        tba: !!g.tba,                       // AAAA-MM-DD
         genres: (g.genres || []).map(x => GENRES_PT[x.name] || x.name),
         metacritic: g.metacritic || null,
         playtime: g.playtime || 0,                        // média de horas dos usuários da RAWG

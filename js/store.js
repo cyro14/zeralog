@@ -22,6 +22,7 @@ export const defaultData = {
     games: [],
     wikis: [],
     wishlist: [],
+    savedFilters: [],
     counters: { sessions: 0, sessionMinutes: 0, wishMoved: 0 },
     achSeeded: false,
     unlockedAchievements: [] 
@@ -41,9 +42,11 @@ const str = (v, fallback = '') => (v === null || v === undefined ? fallback : St
 // Deixa qualquer dado (antigo, importado ou incompleto) no formato atual, sem apagar nada do usuário
 export function migrateData(data) {
     if (!isObj(data)) data = clone(defaultData);
-    ['categories', 'games', 'wikis', 'wishlist', 'collapsedCats', 'unlockedAchievements'].forEach(k => { if (!Array.isArray(data[k])) data[k] = []; });
+    ['categories', 'games', 'wikis', 'wishlist', 'collapsedCats', 'unlockedAchievements', 'savedFilters'].forEach(k => { if (!Array.isArray(data[k])) data[k] = []; });
     if (!Array.isArray(data.platforms)) data.platforms = clone(defaultData.platforms);
-    data.settings = { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc', ...(isObj(data.settings) ? data.settings : {}) };
+    data.settings = { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc', wishSort: 'release', wishView: 'list', ...(isObj(data.settings) ? data.settings : {}) };
+    if (!isObj(data.settings.filters)) data.settings.filters = {};
+    ['home', 'finished', 'wish'].forEach(t => { if (!Array.isArray(data.settings.filters[t])) data.settings.filters[t] = []; });
     data.counters = { sessions: 0, sessionMinutes: 0, wishMoved: 0, ...(isObj(data.counters) ? data.counters : {}) };
     if (data.achSeeded === undefined) data.achSeeded = false;
 

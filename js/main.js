@@ -1,6 +1,9 @@
 import { appData, saveData, backupData, setAppData, defaultData, initStore, purgeOldLegacyCopy } from './store.js';
 import { initStorageUI, restoreSnapshotUI, clearLegacyCopyUI } from './storage-ui.js';
-import { openCardGenerator, downloadCard } from './card.js';
+import { openShare, openCardGenerator, initShare, shareSetStyle, sharePage, shareTitleChanged, shareTitlesChanged, shareDownload, shareShare, canShareFiles } from './share.js';
+import { initFilters, openFilters, filtersClear, filtersSaveCurrent, filterSummary } from './filters.js';
+import { checkReleases, refreshReleaseDates, registerPeriodicCheck, fmtDate } from './releases.js';
+import { getTabGames, setWishSort, setWishView, toggleWishNotify, refreshDatesUI, paintWishNotify } from './ui.js';
 import { hydrateIcons } from './icons.js';
 import { applyTheme, currentTheme } from './themes.js';
 import { iconSearch, iconWeightChange, iconMore, ensureForData } from './phosphor.js';
@@ -26,7 +29,18 @@ import {
 
 // Anexando ao escopo global para que o index.html possa ler os onlicks
 window.openCardGenerator = openCardGenerator;
-window.downloadCard = () => downloadCard(triggerToast);
+Object.assign(window, {
+    openFilters, filtersClear, filtersSaveCurrent, shareSetStyle, sharePage, shareTitleChanged, shareTitlesChanged, shareDownload, shareShare,
+    setWishSort, setWishView, toggleWishNotify, refreshDatesUI, paintWishNotify,
+    openShare: tab => {
+        const items = getTabGames(tab);
+        if (!items.length) { triggerToast('Não há jogos para compartilhar nesta tela (confira os filtros).', false); return; }
+        const names = { home: 'Minha fila de jogos', finished: 'Jogos zerados', wish: 'Minha wishlist' };
+        const view = tab === 'home' ? appData.settings.homeView : tab === 'finished' ? appData.settings.finishedView : appData.settings.wishView;
+        const filt = filterSummary(tab);
+        openShare({ items, mode: tab, title: names[tab], subtitle: `${items.length} ${items.length === 1 ? 'jogo' : 'jogos'}${filt.length ? ' · ' + filt.join(' · ') : ''}`, style: view === 'shelf' ? 'shelf' : 'cards' });
+    }
+});
 
 // Mapeamento massivo da UI
 window.checkWelcome = checkWelcome;
@@ -99,6 +113,22 @@ window.restoreSnapshotUI = restoreSnapshotUI;
 window.clearLegacyCopy = clearLegacyCopyUI;
 window.__zlData = () => appData;   // leitura dos dados em memória (usado nos testes)
 
+// Confere lançamentos ao abrir, ao voltar para o app e a cada hora; atualiza as datas 1x por dia
+async function releaseTick() {
+    const due = await checkReleases();
+    if (due.length) { due.forEach(w => triggerToast(`${w.title} já está disponível! (${fmtDate(w.released)})`, false)); render(); }
+}
+function startReleaseWatch() {
+    releaseTick();
+    registerPeriodicCheck();
+    const DAY = 86400000;
+    if (Date.now() - (appData.settings.lastReleaseRefresh || 0) > DAY) {
+        refreshReleaseDates().then(r => { appData.settings.lastReleaseRefresh = Date.now(); saveData(null); if (r.changed) { render(); triggerToast(`${r.changed} ${r.changed === 1 ? 'data de lançamento atualizada' : 'datas de lançamento atualizadas'}.`, false); } });
+    }
+    setInterval(releaseTick, 3600000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) releaseTick(); });
+}
+
 async function start() {
     try { await initStore(); } catch (e) { console.error('Falha ao abrir o banco:', e); }
     if (appData.settings.compact) document.body.classList.add('compact-mode');
@@ -108,6 +138,12 @@ async function start() {
     render();
     initSession({ render, toast: msg => triggerToast(msg, false), undo: saveStateForUndo });
     initStorageUI({ render, toast: (msg, undo) => triggerToast(msg, undo !== false) });
+    initFilters({ render });
+    initShare({ toast: msg => triggerToast(msg, false) });
+    if (!canShareFiles()) document.getElementById('sh-share-btn').style.display = 'none';
+    startReleaseWatch();
+    const tabParam = new URLSearchParams(location.search).get('tab');
+    if (tabParam === 'wish') { switchTab('wish'); history.replaceState(null, '', location.pathname); }
     purgeOldLegacyCopy();
     checkWelcome();
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
