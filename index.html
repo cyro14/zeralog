@@ -11,7 +11,6 @@
     
     <!-- Bibliotecas Externas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
     <!-- Seu novo arquivo CSS isolado -->
     <link rel="stylesheet" href="style.css">
@@ -85,6 +84,12 @@
             <button type="button" id="home-view-shelf" onclick="setHomeView('shelf')">Prateleira</button>
         </div>
 
+        <div class="tab-tools" data-tab="home">
+            <button type="button" class="tool-btn" onclick="openFilters('home')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-home" style="display:none"></span></button>
+            <button type="button" class="tool-btn" onclick="openShare('home')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
+        </div>
+        <div class="filter-chips" id="fc-home" style="display:none"></div>
+
         <div class="sort-bar" id="home-sort-bar">
             <div class="sort-chip active" id="sort-home-manual" onclick="setHomeSort('manual')">Manual</div>
             <div class="sort-chip" id="sort-home-az" onclick="setHomeSort('az')">A-Z</div>
@@ -99,8 +104,26 @@
     <!-- WISHLIST TAB -->
     <div id="tab-wish" class="tab-content">
         <div class="wish-bar">
-            <p class="wish-hint">Jogos que você ainda quer comprar ou baixar. Quando decidir começar, mova com um clique.</p>
+            <p class="wish-hint">Jogos que você ainda quer comprar ou baixar. Veja as datas de lançamento, ligue o aviso e, quando decidir começar, mova com um clique.</p>
             <button type="button" onclick="openGameModal('wishlist')">+ Desejo</button>
+        </div>
+        <div id="wish-summary"></div>
+        <div class="view-toggle" role="group" aria-label="Modo de exibição dos desejos">
+            <button type="button" id="wish-view-list" onclick="setWishView('list')">Cards</button>
+            <button type="button" id="wish-view-shelf" onclick="setWishView('shelf')">Prateleira</button>
+        </div>
+        <div class="tab-tools" data-tab="wish">
+            <button type="button" class="tool-btn" onclick="openFilters('wish')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-wish" style="display:none"></span></button>
+            <button type="button" class="tool-btn" onclick="openShare('wish')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
+            <button type="button" class="tool-btn" id="wish-refresh-btn" onclick="refreshDatesUI()"><span data-icon="refresh" data-size="1em"></span>Atualizar datas</button>
+        </div>
+        <div class="filter-chips" id="fc-wish" style="display:none"></div>
+        <small id="wish-refresh-status" class="wish-refresh-status"></small>
+        <div class="sort-bar" id="wish-sort-bar">
+            <div class="sort-chip" id="sort-wish-release" onclick="setWishSort('release')">Lançamento</div>
+            <div class="sort-chip" id="sort-wish-added" onclick="setWishSort('added')">Adicionado</div>
+            <div class="sort-chip" id="sort-wish-az" onclick="setWishSort('az')">A-Z</div>
+            <div class="sort-chip" id="sort-wish-meta" onclick="setWishSort('meta')">Nota</div>
         </div>
         <div id="wish-list-container"></div>
     </div>
@@ -112,6 +135,11 @@
             <button type="button" id="fin-view-timeline" onclick="setFinishedView('timeline')">Linha do tempo</button>
             <button type="button" id="fin-view-shelf" onclick="setFinishedView('shelf')">Prateleira</button>
         </div>
+        <div class="tab-tools" data-tab="finished">
+            <button type="button" class="tool-btn" onclick="openFilters('finished')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-finished" style="display:none"></span></button>
+            <button type="button" class="tool-btn" onclick="openShare('finished')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
+        </div>
+        <div class="filter-chips" id="fc-finished" style="display:none"></div>
         <div class="sort-bar" id="fin-sort-bar">
             <div class="sort-chip" id="sort-fin-date" onclick="setFinishedSort('date')">Data</div>
             <div class="sort-chip" id="sort-fin-rating" onclick="setFinishedSort('rating')">Nota</div>
@@ -362,12 +390,57 @@
             </div>
 
             <div id="game-wish-fields" class="modal-form" style="display: none;">
+                <label for="game-wish-released" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Data de lançamento:</label>
+                <input type="date" id="game-wish-released" oninput="paintWishNotify()" onchange="paintWishNotify()">
+                <small id="game-wish-release-hint" style="color: var(--text-muted); margin-top: -8px;"></small>
+                <label class="flag-row" id="game-wish-notify-row" style="display: none;">
+                    <input type="checkbox" id="game-wish-notify">
+                    <span><strong>Avisar quando lançar</strong><small>Você recebe uma notificação no dia do lançamento (o app confere ao abrir e, no Android instalado, também em segundo plano).</small></span>
+                </label>
                 <label for="game-wish-cat" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Categoria ao mover para a fila:</label>
                 <select id="game-wish-cat"></select>
                 <input type="text" id="game-wish-note" placeholder="Observação (preço, loja, link...)">
             </div>
 
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-game')">Cancelar</button><button id="btn-save-game" onclick="saveGame()">Salvar</button></div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-filters" class="filters-dialog">
+        <div class="modal-form">
+            <div class="flt-top"><h3 id="filters-title" style="margin: 0;">Filtros</h3><button type="button" class="icon-btn" onclick="closeModal('modal-filters')" aria-label="Fechar"><span data-icon="x"></span></button></div>
+            <div id="filters-count" class="rawg-msg"></div>
+            <div id="filters-saved" class="flt-saved"></div>
+            <div id="filters-body" class="flt-body"></div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="filtersClear()">Limpar</button>
+                <button class="btn-cancel" onclick="filtersSaveCurrent()">Salvar filtro</button>
+                <button onclick="closeModal('modal-filters')">Ver jogos</button>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-share" class="share-dialog-img">
+        <div class="modal-form">
+            <div class="flt-top"><h3 style="margin: 0;">Compartilhar imagem</h3><button type="button" class="icon-btn" onclick="closeModal('modal-share')" aria-label="Fechar"><span data-icon="x"></span></button></div>
+            <div id="sh-style-row" class="view-toggle" role="group" aria-label="Estilo da imagem">
+                <button type="button" id="sh-style-shelf" onclick="shareSetStyle('shelf')">Prateleira</button>
+                <button type="button" id="sh-style-cards" onclick="shareSetStyle('cards')">Cards</button>
+            </div>
+            <input type="text" id="sh-title" placeholder="Título da imagem" oninput="shareTitleChanged()">
+            <label class="flag-row" id="sh-titles-row"><input type="checkbox" id="sh-titles" onchange="shareTitlesChanged()"><span>Mostrar os nomes dos jogos na prateleira</span></label>
+            <div id="sh-status" class="rawg-msg"></div>
+            <div class="share-preview"><img id="sh-preview" alt="Prévia da imagem"></div>
+            <div id="sh-pages" class="share-pages" style="display: none;">
+                <button type="button" class="pill-btn" onclick="sharePage(-1)">‹ Anterior</button>
+                <span id="sh-page-label"></span>
+                <button type="button" class="pill-btn" onclick="sharePage(1)">Próxima ›</button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('modal-share')">Fechar</button>
+                <button class="btn-cancel" id="sh-share-btn" onclick="shareShare()">Compartilhar</button>
+                <button onclick="shareDownload()">Baixar imagem</button>
+            </div>
         </div>
     </dialog>
 
@@ -502,40 +575,7 @@
         </div>
     </dialog>
 
-    <dialog id="modal-card-generator">
-        <div class="modal-form">
-            <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Compartilhar Conquista</h3>
-            
-            <div id="export-card-wrapper">
-                <div id="card-bg-layer"></div>
-                <div id="card-bg-overlay"></div>
-                
-                <div id="card-img-preview"></div>
-                <div id="card-title">Nome do Jogo</div>
-                <div id="card-details">
-                    <span id="card-platform">PC</span>
-                    <span id="card-cat">Categoria</span>
-                </div>
-                <div><span id="card-rating-badge">10/10</span></div>
-                
-                <div id="card-date" style="font-size: 0.85em; opacity: 0.8; margin-top: 15px;">Finalizado em: 00/00/0000</div>
-                
-                <div id="card-review"></div>
-                
-                <div class="card-brand-logo">
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4 4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4H4ZM4 6H20V12H4V6ZM10.59 17.41L7 13.83L8.41 12.41L10.59 14.58L15.59 9.59L17 11L10.59 17.41Z" fill="url(#logo-grad)"/>
-                    </svg>
-                    <span>ZeraLog <span style="color: var(--accent-playing); font-weight: 900;">x Anywhere Gamer</span></span>
-                </div>
-            </div>
-
-            <div class="modal-actions" style="justify-content: center;">
-                <button class="btn-cancel" onclick="closeModal('modal-card-generator')" style="flex:1;">Fechar</button>
-                <button onclick="downloadCard()" style="flex:1; background-color: var(--accent-playing);"><span class="ic-lead" data-icon="download"></span>Salvar Imagem</button>
-            </div>
-        </div>
-    </dialog>
+    
 
     <dialog id="modal-factory-reset"><div class="modal-form"><h3 style="margin-top: 0; color: var(--danger);">APAGAR TUDO?</h3><p style="font-size: 0.9em;">Esta ação <strong>NÃO PODE SER DESFEITA</strong>.</p><label style="font-size: 0.9em; color: var(--text-muted);">Digite <strong>APAGAR</strong> para confirmar:</label><input type="text" id="reset-confirm-input" placeholder="Digite APAGAR"><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-factory-reset')">Cancelar</button><button style="background-color: var(--danger);" onclick="confirmFactoryReset()">Confirmar Exclusão</button></div></div></dialog>
     <dialog id="modal-cat"><div class="modal-form"><h3 id="cat-modal-title" style="margin-top: 0;">Nova Categoria</h3><input type="hidden" id="edit-cat-id"><input type="text" id="cat-name" placeholder="Nome (Ex: RPGs)">

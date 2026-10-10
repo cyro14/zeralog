@@ -72,8 +72,36 @@ async function onAction(action) {
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+// Lançamentos da wishlist: confere as datas guardadas (sem rede) e avisa o que já lançou
+async function checkReleasesBg() {
+    const list = (await get('releases')) || [];
+    if (!list.length) return;
+    const t = new Date(); const today = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+    const due = list.filter(w => w.released && w.released <= today);
+    if (!due.length) return;
+    const done = (await get('releasesDone')) || [];
+    for (const w of due) {
+        await self.registration.showNotification(`${w.title} já está disponível!`, {
+            body: 'Toque para abrir sua wishlist.', tag: `zeralog-release-${w.id}`, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png', data: { tab: 'wish' }
+        });
+        done.push(w.id);
+    }
+    await set('releasesDone', done);
+    await set('releases', list.filter(w => !due.includes(w)));
+    await broadcast({ type: 'session-sync' });
+}
+self.addEventListener('periodicsync', e => { if (e.tag === 'zeralog-releases') e.waitUntil(checkReleasesBg()); });
+
 self.addEventListener('notificationclick', e => {
     e.notification.close();
+    if (e.notification.data && e.notification.data.tab === 'wish') {
+        e.waitUntil((async () => {
+            const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+            if (wins.length) { try { await wins[0].focus(); } catch (err) {} wins[0].postMessage({ type: 'open-tab', tab: 'wish' }); }
+            else await self.clients.openWindow('./?tab=wish');
+        })());
+        return;
+    }
     e.waitUntil(onAction(e.action));
 });
-self.__zl = { onAction, elapsed, get, set };   // usado nos testes
+self.__zl = { onAction, elapsed, get, set, checkReleasesBg };   // usado nos testes

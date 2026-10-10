@@ -34,7 +34,7 @@
 - **Sem cadastro e sem servidor.** Tudo fica salvo no **IndexedDB** do seu navegador (banco local, com espaço para milhares de capas). Você é dono dos dados e pode exportá-los a qualquer momento em um arquivo `.json`.
 - **Feito para o celular.** Layout pensado para telas verticais, com ajustes para paisagem e desktop. Instalável como PWA.
 - **Automático quando você quer, manual quando precisa.** Digitou o nome do jogo? O app busca capa, gêneros, data de lançamento, nota do Metacritic, descrição e tempo médio. Prefere preencher na mão? Todos os campos continuam editáveis.
-- **Mais que uma lista.** Wishlist, Timer de Sessão com pausa e notificação na barra do celular, diário de bordo, linha do tempo, prateleira de cartuchos, franquias com busca de novos jogos, gráficos de gênero, capas verticais automáticas com recorte, 12 temas e conquistas.
+- **Mais que uma lista.** Wishlist, Timer de Sessão com pausa e notificação na barra do celular, diário de bordo, linha do tempo, prateleira de cartuchos, franquias com busca de novos jogos, gráficos de gênero, capas verticais automáticas com recorte, 12 temas e conquistas, wishlist com datas de lançamento e avisos, filtros universais e imagens bonitas para compartilhar.
 
 ## Galeria
 
@@ -71,6 +71,16 @@ Capturas geradas com dados de exemplo (as capas são ilustrações de teste).
 | Recorte de capa | Imagem inteira | Sessão pausada | Configurações |
 |:---:|:---:|:---:|:---:|
 | ![Recorte](docs/screenshots/22-recorte-capa.jpg) | ![Imagem inteira](docs/screenshots/23-recorte-imagem-inteira.jpg) | ![Sessão pausada](docs/screenshots/24-sessao-pausada.jpg) | ![Configurações](docs/screenshots/25-configuracoes-sessao-capas.jpg) |
+
+| Wishlist com lançamentos | Painel de filtros | Prateleira filtrada |
+|:---:|:---:|:---:|
+| ![Wishlist](docs/screenshots/26-wishlist-lancamentos.jpg) | ![Filtros](docs/screenshots/27-filtros-painel.jpg) | ![Filtro na prateleira](docs/screenshots/28-filtro-prateleira.jpg) |
+
+Imagens geradas para compartilhar:
+
+| Prateleira filtrada | Cards dos zerados | Cartão de um jogo | Wishlist |
+|:---:|:---:|:---:|:---:|
+| ![Prateleira](docs/screenshots/29-imagem-prateleira-filtrada.jpg) | ![Cards](docs/screenshots/30-imagem-cards-zerados.jpg) | ![Cartão](docs/screenshots/31-cartao-do-jogo.jpg) | ![Wishlist](docs/screenshots/32-imagem-wishlist.jpg) |
 
 Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 
@@ -127,10 +137,15 @@ Alterne **Cards ↔ Prateleira** na Fila e **Lista ↔ Linha do tempo ↔ Pratel
 - **toque em um cartucho** para abrir os detalhes (capa grande, selos, horas, review ou diário) e as ações rápidas: iniciar sessão, jogar agora, compartilhar, wiki, dados do jogo e editar conclusão;
 - busca e filtros continuam funcionando na prateleira.
 
-### 6. Wishlist (Desejos)
+### 6. Wishlist (Desejos): lançamentos e avisos
 
-- Aba própria para os jogos que você ainda quer comprar ou baixar, com o mesmo cadastro (inclusive busca automática), **observação** (preço, loja, link) e **categoria de destino**.
-- **Para a fila** e **Jogar agora** movem o jogo com um clique, levando capa, dados e franquia, sem redigitar nada.
+- Aba própria para os jogos que você quer comprar ou baixar, com o mesmo cadastro (inclusive a busca automática), **observação** (preço, loja, link) e **categoria de destino**.
+- **Data de lançamento.** O app puxa a data pela RAWG e mostra **data completa e contagem regressiva** ("Lança em 12 dias", "Lançado há 3 meses", "Data a confirmar"). A lista se organiza em **Em breve** (do lançamento mais próximo), **Já lançados** e **Sem data**, com ordenação por Lançamento, Adicionado, A-Z ou Nota e modo **Cards ou Prateleira**. Um resumo no topo mostra os lançamentos futuros e o próximo.
+- **Avisar quando lançar.** Se a data for futura, aparece a caixinha **Avisar quando lançar** (no cadastro e em cada card). No dia do lançamento o app avisa com uma notificação e um aviso na tela.
+  - O app confere ao abrir, ao voltar para ele e a cada hora com ele aberto.
+  - No Android com o app instalado, o service worker também confere **em segundo plano** (Periodic Background Sync, sem rede, só comparando as datas salvas). O horário é decidido pelo navegador, então pode atrasar; sem um servidor de notificações push não há garantia de hora exata.
+- **Datas sempre em dia.** Uma vez por dia o app atualiza as datas dos jogos ainda não lançados (ou sem data), e o botão **Atualizar datas** força a conferência. Se um lançamento for adiado, o aviso é rearmado.
+- **Para a fila** e **Jogar agora** movem o jogo com um clique, levando capa, dados e franquia.
 
 ### 7. Timer de Sessão (modo imersivo) e notificação
 
@@ -179,6 +194,26 @@ Cada jogo tem um botão de **lupa** que abre a wiki dele numa janela do próprio
 - **Leitor básico:** pesquisa com lupa, links internos abrem na própria janela, botão Voltar e "Abrir no navegador".
 - **Localizar no texto (Ctrl+F).** Botão de lupa ou **Ctrl+F**: destaca todas as ocorrências (sem diferenciar maiúsculas ou acentos), mostra "3/12", navega com **Enter / Shift+Enter** e **Esc** fecha só a busca.
 - O conteúdo é buscado pela API e **sanitizado** (sem scripts, estilos ou eventos embutidos), por isso funciona mesmo em sites que bloqueiam iframe.
+
+### 11b. Filtros universais
+
+Toda tela de jogos (**Fila, Zerados e Desejos**) tem o botão **Filtros**. Escolha **qualquer variável do app** e a própria tela mostra só os jogos que combinam:
+
+- **Categorias de filtro:** plataforma, gênero, franquia, categoria, status, dificuldade, **emulado** e **console original**, portátil, contínuo, 100%, tem capa, tem diário, wiki vinculada, **data de lançamento**, ainda não lançado, avisar no lançamento, **data em que zerou**, nota Metacritic, minha nota, tempo estimado, horas jogadas e texto (título, descrição, diário, review).
+- **Combinação:** vários filtros valem ao mesmo tempo (por exemplo, *emulado = sim* + *console = Super Nintendo* + *gênero = RPG*). Dentro de um mesmo filtro, vale qualquer valor marcado.
+- **Atalhos de data:** Este ano, Últimos 12 meses, Futuros e Já passou.
+- **Resultado na própria tela:** os filtros aparecem como chips removíveis; na **prateleira** o resultado vira uma prateleira nova, e as categorias sem resultado somem.
+- **Meus filtros:** salve uma combinação com um nome e reaplique depois. Os filtros ativos ficam salvos por tela.
+
+### 11c. Compartilhar imagens (jogo, cards e prateleira)
+
+O botão **Compartilhar** de cada tela (e o botão de compartilhar de um jogo zerado) gera uma imagem pronta para postar, com as cores do seu tema e as logos **ZeraLog x Anywhere Gamer**:
+
+- **Prateleira:** cartuchos sobre tábuas de madeira, selo dourado nos 100%, nota em cada capa e, se quiser, os nomes dos jogos.
+- **Cards:** lista em duas colunas com capa, plataforma (ícone), ano, gêneros e selos (nota, 100%, data, emulado, dificuldade, lançamento).
+- **Cartão de um jogo:** capa grande sobre fundo desfocado com a cor da capa, nota, selo 100%, plataforma, selos e um trecho da sua review.
+- A imagem respeita os **filtros ativos** (o subtítulo lista os filtros) e a ordem da tela. Mais de 40 jogos viram partes numeradas (12 por parte nos cards).
+- **Baixar imagem** salva um PNG; **Compartilhar** usa o menu do celular quando o navegador permite enviar arquivos.
 
 ### 12. Estatísticas (em submenus)
 
@@ -278,12 +313,11 @@ O código já separa o app do banco: `js/db.js` define uma interface única de p
 | CDN da Steam | Capa vertical 600×900 de jogos de PC | Nada (baixa a imagem) |
 | [Phosphor Icons](https://phosphoricons.com) via jsDelivr | Ícones de categorias e plataformas | Nada (baixa CSS e fonte) |
 | [Chart.js](https://www.chartjs.org/) (CDN) | Gráficos | Nada (carrega o script) |
-| [html2canvas](https://html2canvas.hertzen.com/) (CDN) | Imagem do cartão de compartilhamento | Nada (carrega o script) |
 | corsproxy.io (último recurso) | Baixar uma capa quando o site de origem bloqueia o acesso direto | URL da imagem |
 
 **Capas verticais sem chave extra.** Steam e Wikipédia são consultadas direto do navegador; a Steam só cobre jogos de PC e a Wikipédia depende de o artigo ter capa. Para os demais, use **Recortar** na arte horizontal.
 
-**Chave da RAWG.** O app traz uma chave padrão, que pode atingir o limite de uso. Se a busca automática falhar, crie uma chave gratuita em <https://rawg.io/apidocs> e cole em **Configurações → Chave da API RAWG**. O app mostra mensagens claras: chave recusada, limite atingido ou sem conexão.
+**Chave da RAWG.** O app traz uma chave padrão (a mesma é enviada ao navegador de quem usa o site, como é normal nas chaves públicas da RAWG), que pode atingir o limite de uso. Se a busca automática falhar, crie uma chave gratuita em <https://rawg.io/apidocs> e cole em **Configurações → Chave da API RAWG**. O app mostra mensagens claras: chave recusada, limite atingido ou sem conexão.
 
 ## Estrutura do projeto
 
@@ -308,13 +342,15 @@ zeralog/
     ├── quickmatch.js   # filtros de humor e roleta
     ├── genres.js       # gráfico de gêneros (Chart.js + alternativa em SVG)
     ├── franchises.js   # franquias em sanfona e busca de mais jogos da série
+    ├── filters.js      # filtros universais (campos, combinação, painel e chips)
+    ├── share.js        # imagens para compartilhar (cartão, prateleira, cards)
+    ├── releases.js     # datas de lançamento, contagem regressiva, avisos e atualização
     ├── covers.js       # capas verticais (Steam e Wikipédia automáticas, buscador manual, lote)
     ├── crop.js         # recorte de capa 2:3 (arrastar, zoom, imagem inteira)
     ├── themes.js       # lista de temas e seletor visual
     ├── phosphor.js     # seletor de ícones Phosphor (categorias e plataformas)
     ├── platforms.js    # plataforma como ícone ou nome nos cards
     ├── achievements.js # conquistas
-    ├── card.js         # cartão de compartilhamento
     └── icons.js        # ícones SVG
 ```
 
@@ -393,5 +429,5 @@ Resumo do que é salvo (o objeto completo vai no backup `.json`):
 
 - Criado por **Cyro**, para a comunidade do blog **[Anywhere Gamer](https://anywheregamer.blogspot.com/)**, dedicado a jogar em qualquer lugar.
 - Dados de jogos: [RAWG](https://rawg.io/). Conteúdo das wikis: Wikipédia, Yugipedia, Bulbapedia, Fandom e outras, de acordo com as licenças de cada uma.
-- Bibliotecas: [Chart.js](https://www.chartjs.org/) e [html2canvas](https://html2canvas.hertzen.com/). Ícones de linha no estilo [Lucide](https://lucide.dev/).
+- Bibliotecas: [Chart.js](https://www.chartjs.org/) (gráficos) e [Phosphor Icons](https://phosphoricons.com) (MIT). Ícones de linha no estilo [Lucide](https://lucide.dev/). As imagens para compartilhar são desenhadas direto em canvas, sem biblioteca.
 - Metacritic e HowLongToBeat são marcas dos respectivos donos; o app apenas abre as buscas nesses sites.
