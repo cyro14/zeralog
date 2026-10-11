@@ -27,6 +27,8 @@ function steamStatus(msg) { const el = $('steam-sync-status'); if (el) el.textCo
 const normName = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
 // ---------- chamadas à Steam Web API (via proxy CORS) ----------
+// Cloudflare Worker do projeto (melhor opção): siga docs/steam-proxy.md e cole a URL aqui.
+const DEFAULT_PROXY = 'https://worker-rapid-dawn-e634.cyromtg.workers.dev/';
 const PROXIES = [
     u => `https://cors-proxy.htmldriven.com/?url=${encodeURIComponent(u)}`,
     u => `https://test.cors.workers.dev/?${u}`,
@@ -40,7 +42,8 @@ const PROXIES = [
 function proxyMakers() {
     const custom = String(st().proxy || '').trim();
     const own = custom ? [u => (custom.includes('%s') ? custom.replace('%s', encodeURIComponent(u)) : custom + encodeURIComponent(u))] : [];
-    return [...own, ...PROXIES];
+    const def = DEFAULT_PROXY ? [u => `${DEFAULT_PROXY}?url=${encodeURIComponent(u)}`] : [];
+    return [...own, ...def, ...PROXIES];
 }
 async function steamApi(path, params) {
     const url = `https://api.steampowered.com/${path}?${new URLSearchParams(params)}`;
@@ -58,6 +61,9 @@ async function steamApi(path, params) {
     }
     throw last || new Error('sem conexão');
 }
+
+// A chave é opcional quando o proxy do projeto existe (ele pode injetar uma padrão)
+const hasKey = () => !!(st().apiKey || '').trim() || !!DEFAULT_PROXY;
 
 // ---------- login (OpenID) ----------
 export function steamLogin() {
@@ -100,7 +106,7 @@ export async function steamSaveManualId() {
     else if (ID_RE.test(raw)) id = raw;
     const van = raw.match(/id\/([A-Za-z0-9_-]{2,64})/) || (!id && raw && !/[\s\/]/.test(raw) ? [null, raw] : null);
     if (!id && van) {
-        if (!st().apiKey) { steamStatus('Para achar pelo nome do perfil preciso da chave da Web API (abaixo). Cole o link com o número (profiles/7656...) ou gere a chave.'); return; }
+        if (!hasKey()) { steamStatus('Para achar pelo nome do perfil preciso da chave da Web API (abaixo). Cole o link com o número (profiles/7656...) ou gere a chave.'); return; }
         steamStatus('Procurando seu perfil na Steam...');
         try {
             const r = await steamApi('ISteamUser/ResolveVanityURL/v1/', { key: st().apiKey, vanityurl: van[1] });
@@ -151,7 +157,7 @@ export async function steamSync() {
     if (syncing) { hooks.toast('A sincronização da Steam já está em andamento.', false); return; }
     const s = st();
     if (!s.steamId) { steamStatus('Conecte sua conta primeiro (ou cole o link do perfil abaixo).'); hooks.toast('Conecte a Steam antes de sincronizar.', false); return; }
-    if (!s.apiKey) { steamStatus('Cole sua chave da Steam Web API abaixo — crie grátis em steamcommunity.com/dev/apikey (com a Steam logada, domínio pode ser qualquer um).'); hooks.toast('Falta a chave da Steam Web API (Configurações › Steam).', false); return; }
+    if (!hasKey()) { steamStatus('Cole sua chave da Steam Web API abaixo — crie grátis em steamcommunity.com/dev/apikey (com a Steam logada, domínio pode ser qualquer um).'); hooks.toast('Falta a chave da Steam Web API (Configurações › Steam).', false); return; }
     syncing = true;
     const btn = $('steam-sync-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Sincronizando...'; }
@@ -260,7 +266,7 @@ export function renderSteamSettings() {
     if (proxyInp && document.activeElement !== proxyInp) proxyInp.value = s.proxy || '';
     const login = $('steam-login-btn'), sync = $('steam-sync-btn'), out = $('steam-logout-btn');
     if (out) out.style.display = s.steamId ? '' : 'none';
-    if (sync) sync.style.display = s.steamId && s.apiKey ? '' : 'none';
+    if (sync) sync.style.display = s.steamId && hasKey() ? '' : 'none';
     if (login) login.style.display = s.steamId ? 'none' : '';
     if (s.steamId) {
         const last = s.lastSync ? ` · última sincronização: ${new Date(s.lastSync).toLocaleDateString('pt-BR')} (${s.lastCount || 0} ${s.lastCount === 1 ? 'jogo' : 'jogos'})` : '';
