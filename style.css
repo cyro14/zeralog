@@ -922,3 +922,8 @@ body.shelf-plain .shelf-item.is100 .cart-label { box-shadow: 0 0 0 2px var(--sta
 
 /* Icones dentro dos botoes do modal da prateleira */
 .sd-actions .pill-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Botão flutuante de busca da wiki (lupa grande no canto inferior) */
+#modal-wiki { position: relative; }
+.wiki-fab { position: absolute; right: 18px; bottom: 18px; width: 56px; height: 56px; border-radius: 50%; background: var(--accent-playing); color: var(--on-accent); border: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45); z-index: 5; transition: transform 0.15s, filter 0.15s; }
+.wiki-fab:hover { transform: scale(1.07); filter: brightness(1.1); }

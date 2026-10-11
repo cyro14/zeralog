@@ -1,4 +1,4 @@
-﻿// Busca automática de dados de jogos via RAWG (https://rawg.io/apidocs).
+// Busca automática de dados de jogos via RAWG (https://rawg.io/apidocs).
 // Dica: crie sua própria chave gratuita lá e troque abaixo.
 const DEFAULT_KEY = 'ae08037aa9fb40a48b12090819cedb07';
 const KEY_STORAGE = 'zeralog_rawg_key';
@@ -78,6 +78,65 @@ export async function getGameStores(id) {
 // A busca não traz a descrição; ela vem do endpoint de detalhes
 export async function getGameDetails(id) {
     return normalize(await rawg(`/games/${id}`));
+}
+
+// ---------- fontes diretas (fallback quando a RAWG falha ou não tem o dado) ----------
+// HLTB e Metacritic não têm CORS aberto; as chamadas passam por proxies públicos.
+const SCRAPE_PROXIES = [
+    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    u => `https://api.cors.lol/?url=${encodeURIComponent(u)}`
+];
+async function scrape(url, postBody) {
+    for (const mk of SCRAPE_PROXIES) {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 12000);
+        try {
+            const opt = postBody
+                ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: postBody, signal: ctrl.signal }
+                : { signal: ctrl.signal };
+            const res = await fetch(mk(url), opt);
+            clearTimeout(t);
+            if (res.ok) return await res.text();
+        } catch (e) { clearTimeout(t); }
+    }
+    return null;
+}
+
+const metaSlug = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/&/g, ' and ').replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+// Nota do Metacritic lida da página do jogo (JSON-LD da própria página)
+export async function fetchMetacriticScore(title) {
+    const slugs = [metaSlug(title)];
+    const short = metaSlug(String(title).replace(/\s+(?:[ivx]+|\d+)\s*$/i, ''));
+    if (short && short !== slugs[0]) slugs.push(short);
+    for (const slug of slugs) {
+        if (!slug) continue;
+        const html = await scrape(`https://www.metacritic.com/game/${slug}/`);
+        if (!html) continue;
+        const m = html.match(/"aggregateRating"\s*:\s*\{[^}]*"ratingValue"\s*:\s*(\d{1,3})/) || html.match(/"ratingValue"\s*:\s*(\d{1,3})/);
+        if (m) { const v = parseInt(m[1], 10); if (v >= 0 && v <= 100) return v; }
+    }
+    return null;
+}
+
+// Tempo para zerar (história principal) lido da busca do HowLongToBeat
+export async function fetchHLTBTime(title) {
+    const body = JSON.stringify({
+        searchType: 'games', searchTerms: [title], searchPage: 1, size: 3,
+        searchOptions: { games: { userId: 0, platform: '', sortCategory: 'popular', rangeCategory: 'main', rangeTime: { min: 0, max: 0 }, gameplay: { perspective: '', flow: '', genre: '' }, modifier: '' }, users: { sortCategory: 'postcount' } },
+        filter: '', sort: 0, randomizer: 0
+    });
+    const txt = await scrape('https://howlongtobeat.com/api/search', body);
+    if (!txt) return null;
+    try {
+        const data = JSON.parse(txt);
+        const g = (data.data || [])[0];
+        const sec = g && (g.comp_main || 0);
+        return sec > 0 ? Math.round(sec / 360) / 10 : null;
+    } catch (e) { return null; }
 }
 
 export async function blobToSmallJpeg(blob, maxSide = 420) {

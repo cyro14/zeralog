@@ -1,4 +1,4 @@
-﻿// Leitor de wikis integrado: usa a API MediaWiki (CORS liberado com origin=*) e desenha a página
+// Leitor de wikis integrado: usa a API MediaWiki (CORS liberado com origin=*) e desenha a página
 // dentro do próprio app. Funciona com qualquer wiki MediaWiki (Wikipédia, Yugipedia, Fandom, etc.).
 // Sites que bloqueiam iframe não são problema, porque o conteúdo é buscado via API e não embutido.
 import { appData, saveData } from './store.js';
@@ -352,6 +352,15 @@ export function wikiChangeSource(id) {
     $('wiki-body').innerHTML = '';
     updateToolbar();
     wikiSearch();
+}
+
+// Botão flutuante de busca: volta ao topo, foca a caixa de pesquisa e já busca
+export function wikiSearchFab() {
+    const q = $('wiki-query');
+    $('wiki-scroll').scrollTop = 0;
+    q.focus();
+    q.select();
+    if (q.value.trim()) wikiSearch();
 }
 
 export async function wikiSearch(keepStatus = false) {

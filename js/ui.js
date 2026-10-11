@@ -1,4 +1,4 @@
-﻿import { icon, platformIcons } from './icons.js';
+import { icon, platformIcons } from './icons.js';
 import { getSession, paintNotifySettings } from './session.js';
 import { detectNewAchievements, renderAchievements } from './achievements.js';
 import { renderGenreStats } from './genres.js';
@@ -9,7 +9,7 @@ import { applyTheme, renderThemePicker } from './themes.js';
 import { phHtml, openIconPicker } from './phosphor.js';
 import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
-import { searchGames, getGameDetails, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey } from './gameApi.js';
+import { searchGames, getGameDetails, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime } from './gameApi.js';
 import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade } from './covers.js';
 import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
@@ -123,7 +123,8 @@ export async function fetchGameFromRAWG() {
             </button>`).join('');
     } catch (err) {
         console.error(err);
-        box.innerHTML = `<div class="rawg-msg rawg-err">${esc(describeError(err))} Você pode preencher manualmente.</div>`;
+        box.innerHTML = `<div class="rawg-msg rawg-err">${esc(describeError(err))} Buscando tempo de jogo e nota direto nas fontes (HLTB/Metacritic)...</div>`;
+        autoFillExternal(query);
     }
 }
 
@@ -170,6 +171,32 @@ export async function applyRawgGame(base) {
         coverNote = ' Só achei arte horizontal: toque em <strong>Recortar</strong> para ajustar à capa vertical.';
     }
     box.innerHTML = `<div class="rawg-msg rawg-ok">${icon('check')} Dados de <strong>${esc(g.title)}</strong> preenchidos.${coverNote} Revise e salve.</div>`;
+    autoFillExternal(g.title);
+}
+
+// Fallback automático (a RAWG anda falhando): tempo de conclusão direto do HowLongToBeat
+// e nota direto do Metacritic. Só preenche os campos que estiverem vazios, sem tocar no que já veio.
+function autoFillExternal(title) {
+    const timeEl = document.getElementById('game-time-val');
+    const scoreEl = document.getElementById('game-metacritic');
+    if (!timeEl.value) {
+        fetchHLTBTime(title).then(h => {
+            if (h && !timeEl.value) {
+                timeEl.value = h;
+                document.getElementById('game-time-unit').value = 'h';
+                triggerToast(`HowLongToBeat: ~${h}h para zerar a história.`);
+            }
+        }).catch(() => {});
+    }
+    if (!scoreEl.value) {
+        fetchMetacriticScore(title).then(s => {
+            if (s !== null && !scoreEl.value) {
+                scoreEl.value = s;
+                document.getElementById('game-extra').open = true;
+                triggerToast(`Metacritic: nota ${s} encontrada.`);
+            }
+        }).catch(() => {});
+    }
 }
 
 export async function pickRawgResult(i) {
@@ -244,6 +271,7 @@ export function getSortedGames(gamesArray, sortType, isFinishedTab = false) {
         let vB = parseFloat((b.meta || '0').replace(',', '.')) || 0; if(b.meta && b.meta.includes('m')) vB /= 60;
         return (vA - vB) * mult;
     });
+    if (sort === 'played') return arr.sort((a, b) => ((parseFloat(a.hoursPlayed) || 0) - (parseFloat(b.hoursPlayed) || 0)) * mult);
     if (sort === 'portable') return arr.sort((a, b) => {
         let vA = a.isPortable ? 1 : 0; let vB = b.isPortable ? 1 : 0;
         return (vA - vB) * mult;
@@ -441,7 +469,7 @@ export function renderFinishedTab() {
         yearDiv.className = `category ${appData.collapsedCats.includes(yearId) ? 'collapsed' : ''}`;
         yearDiv.id = yearId;
         
-        let titleText = isDateSort ? `Concluídos em ${year}` : (appData.settings.finishedSort === 'rating' ? 'Ordenados por Nota' : (appData.settings.finishedSort === 'time' ? 'Ordenados por Tempo' : 'Ordenados por Portátil'));
+        let titleText = isDateSort ? `Concluídos em ${year}` : (appData.settings.finishedSort === 'rating' ? 'Ordenados por Nota' : (appData.settings.finishedSort === 'time' ? 'Ordenados por Tempo' : (appData.settings.finishedSort === 'played' ? 'Ordenados por Horas Jogadas' : 'Ordenados por Portátil')));
         yearDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${yearId}', event)">
                 <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2 style="color: var(--accent-finished)">${titleText}</h2></div>

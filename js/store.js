@@ -1,12 +1,12 @@
-﻿import { platformIcons } from './icons.js';
+import { platformIcons } from './icons.js';
 import { openProvider } from './db.js';
 import { planInfo } from './plan.js';
 
 // Ícones e dados padrão
 export const defaultPlatformsIcons = platformIcons;
 
-export const homeSortLabels = { 'manual': 'Manual', 'az': 'A-Z', 'time': 'Tempo', 'portable': 'Portátil' };
-export const sortLabels = { 'date': 'Data', 'rating': 'Nota', 'time': 'Tempo', 'portable': 'Portátil' };
+export const homeSortLabels = { 'manual': 'Manual', 'az': 'A-Z', 'time': 'Tempo', 'played': 'Horas Jogadas', 'portable': 'Portátil' };
+export const sortLabels = { 'date': 'Data', 'rating': 'Nota', 'time': 'Tempo', 'played': 'Horas Jogadas', 'portable': 'Portátil' };
 
 export const defaultData = {
     settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', homeView: 'shelf', wishView: 'shelf', platformDisplay: 'icon', steam: {} }, 

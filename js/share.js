@@ -1,4 +1,4 @@
-﻿// Imagens para compartilhar: cartão de um jogo, prateleira de cartuchos ou lista de cards
+// Imagens para compartilhar: cartão de um jogo, prateleira de cartuchos ou lista de cards
 // (inclusive já filtrados). Desenhadas direto num canvas, com as cores do tema e as logos do app.
 import { appData } from './store.js';
 import { fmtDate, daysUntil, countdownText } from './releases.js';
@@ -244,8 +244,29 @@ export async function renderGameCard(game) {
 }
 
 // ---------- 2) prateleira de cartuchos ----------
-async function drawCart(ctx, item, x, y, w, h, p, showBadges, dim) {
+async function drawCart(ctx, item, x, y, w, h, p, showBadges, dim, plain = false) {
     const img = await loadImg(item.image);
+    if (plain) {
+        // Prateleira limpa: só a capa com sombra, sem o desenho do cartucho
+        const r = Math.max(10, w * 0.09);
+        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8;
+        rr(ctx, x, y, w, h, r); ctx.fillStyle = '#101014'; ctx.fill(); ctx.restore();
+        if (img) {
+            if (dim) { ctx.save(); try { ctx.filter = 'grayscale(1) brightness(0.7)'; } catch (e) {} coverFit(ctx, img, x, y, w, h, r); ctx.restore(); }
+            else coverFit(ctx, img, x, y, w, h, r);
+        } else {
+            rr(ctx, x, y, w, h, r); ctx.fillStyle = '#16161a'; ctx.fill();
+            ctx.fillStyle = '#d5d9e2'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `700 ${Math.max(13, w * 0.12)}px ${FONT}`;
+            wrap(ctx, item.title, w - 12, 5).forEach((l, i, a) => ctx.fillText(l, x + w / 2, y + h / 2 + (i - (a.length - 1) / 2) * w * 0.15));
+        }
+        if (item.is100) { rr(ctx, x, y, w, h, r); ctx.lineWidth = Math.max(3, w * 0.03); ctx.strokeStyle = p.star; ctx.stroke(); }
+        if (showBadges) {
+            let bx = x + 6; const by = y + h - 8 - Math.max(24, w * 0.2);
+            if (item.is100) { const r0 = pill(ctx, bx, by, '★100%', { size: Math.max(12, w * 0.11), padX: 8, bg: 'rgba(0,0,0,0.78)', fg: p.star }); bx += r0.w + 6; }
+            if (item.state === 'finished' && item.userRating) pill(ctx, bx, by, String(item.userRating), { size: Math.max(12, w * 0.11), padX: 9, bg: 'rgba(0,0,0,0.78)', fg: '#fff' });
+        }
+        return;
+    }
     ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 8;
     rr(ctx, x, y, w, h, [w * 0.1, w * 0.1, w * 0.04, w * 0.04]);
     const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#4a4a52'); g.addColorStop(1, '#2a2a2f'); ctx.fillStyle = g; ctx.fill(); ctx.restore();
@@ -296,7 +317,7 @@ export async function renderShelf(items, o) {
             const it = items[r * cols + k]; if (!it) break;
             const x = pad + k * (cartW + gap);
             const dim = !!(o.gray && it.state !== 'finished');
-            await drawCart(ctx, it, x, top, cartW, cartH, p, cols <= 7, dim);
+            await drawCart(ctx, it, x, top, cartW, cartH, p, cols <= 7, dim, o.plain);
             if (showTitles) { ctx.font = `600 ${cols <= 5 ? 20 : 17}px ${FONT}`; ctx.fillStyle = dim ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.92)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ellipsis(ctx, it.title, cartW + gap - 8), x + cartW / 2, by + 24 + (boardH - 44) / 2 + 10); }
         }
     }
@@ -370,7 +391,7 @@ async function build() {
             S.page = Math.min(S.page, pages - 1);
             const slice = S.items.slice(S.page * per, (S.page + 1) * per);
             const title = S.title + (pages > 1 ? ` · parte ${S.page + 1}/${pages}` : '');
-            const o = { title, subtitle: S.subtitle, titles: $('sh-titles').checked, mode: S.mode, gray: S.gray };
+            const o = { title, subtitle: S.subtitle, titles: $('sh-titles').checked, mode: S.mode, gray: S.gray, plain: !!appData.settings.shelfPlain };
             canvas = S.style === 'shelf' ? await renderShelf(slice, o) : await renderCards(slice, o);
             $('sh-pages').style.display = pages > 1 ? '' : 'none';
             $('sh-page-label').textContent = `Parte ${S.page + 1} de ${pages}`;

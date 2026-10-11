@@ -1,4 +1,4 @@
-﻿import { appData, saveData, backupData, setAppData, defaultData, initStore, purgeOldLegacyCopy } from './store.js';
+import { appData, saveData, backupData, setAppData, defaultData, initStore, purgeOldLegacyCopy } from './store.js';
 import { initStorageUI, restoreSnapshotUI, clearLegacyCopyUI } from './storage-ui.js';
 import { openShare, openCardGenerator, initShare, shareSetStyle, sharePage, shareTitleChanged, shareTitlesChanged, shareDownload, shareShare, canShareFiles } from './share.js';
 import { initFilters, openFilters, filtersClear, filtersSaveCurrent, filterSummary } from './filters.js';
@@ -13,7 +13,7 @@ import { genreSetBase, genreSetYear } from './genres.js';
 import { coversSearch } from './covers.js';
 import { cropApply, cropCancel, cropReset, cropFit } from './crop.js';
 import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, setHomeView, shelfDo, openShelfDetail, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
-import { openWiki, wikiChangeSource, wikiSearch, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
+import { openWiki, wikiChangeSource, wikiSearch, wikiSearchFab, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
 import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSync } from './steam.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
@@ -105,6 +105,7 @@ window.saveRawgKey = saveRawgKey;
 window.openWiki = openWiki;
 window.wikiChangeSource = wikiChangeSource;
 window.wikiSearch = () => wikiSearch();
+window.wikiSearchFab = () => wikiSearchFab();
 window.wikiBack = wikiBack;
 window.wikiLinkGame = wikiLinkGame;
 window.wikiToggleAdd = wikiToggleAdd;
