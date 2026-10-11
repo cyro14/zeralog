@@ -1,4 +1,4 @@
-// Configurações → Banco de dados: motor em uso, espaço, pontos de restauração e cópia antiga.
+﻿// Configurações → Banco de dados: motor em uso, espaço, pontos de restauração e cópia antiga.
 import { getStorageInfo, listSnapshots, restoreSnapshot, storageState, hasLegacyCopy, clearLegacyCopy } from './store.js';
 import { esc } from './gameApi.js';
 

@@ -1,4 +1,4 @@
-// Conquistas orientadas a dados: cada uma é calculada ao vivo a partir do appData.
+﻿// Conquistas orientadas a dados: cada uma é calculada ao vivo a partir do appData.
 // Os contadores (sessões, desejos realizados) ficam em appData.counters.
 import { appData } from './store.js';
 import { icon } from './icons.js';

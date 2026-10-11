@@ -1,4 +1,4 @@
-// Conexão com a Steam: login via OpenID (botão "Entrar com a Steam"), importação
+﻿// Conexão com a Steam: login via OpenID (botão "Entrar com a Steam"), importação
 // da biblioteca com as horas jogadas e sincronização por botão de refresh.
 //
 // Como funciona, na prática:

@@ -1,4 +1,4 @@
-// Sessão de Jogo: cronômetro em tempo real. O início fica salvo no localStorage,
+﻿// Sessão de Jogo: cronômetro em tempo real. O início fica salvo no localStorage,
 // então o tempo continua correto mesmo se você fechar a aba ou recarregar a página.
 import { appData, saveData } from './store.js';
 
@@ -78,7 +78,7 @@ export async function showSessionNotification() {
         await reg.showNotification(`${s.title || 'Jogo'} · ${s.paused ? 'Pausado' : 'Em sessão'}`, {
             body: s.paused ? `Pausado com ${formatHuman(min)} jogados` : `Jogando há ${formatHuman(min)} (desde ${since})`,
             tag: TAG, renotify: false, silent: true, requireInteraction: true,
-            icon: 'icons/icon-192.png', badge: 'icons/badge-96.png',
+            icon: 'icons/logo-192.png', badge: 'icons/badge-96.png',
             ...(cover ? { image: cover } : {}),
             actions: [{ action: s.paused ? 'resume' : 'pause', title: s.paused ? 'Retomar' : 'Pausar' }, { action: 'finish', title: 'Finalizar' }],
             data: { gameId: s.gameId }

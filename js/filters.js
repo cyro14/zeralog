@@ -1,4 +1,4 @@
-// Filtros universais: o usuário escolhe qualquer variável do app (gênero, data de lançamento, emulado, console...)
+﻿// Filtros universais: o usuário escolhe qualquer variável do app (gênero, data de lançamento, emulado, console...)
 // e a própria tela mostra só os jogos que combinam. Funciona na Fila, nos Zerados e nos Desejos, e na
 // prateleira o resultado vira uma prateleira nova. Vários filtros se combinam (todos precisam valer).
 import { appData, saveData } from './store.js';

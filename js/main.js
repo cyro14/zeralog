@@ -1,4 +1,4 @@
-import { appData, saveData, backupData, setAppData, defaultData, initStore, purgeOldLegacyCopy } from './store.js';
+﻿import { appData, saveData, backupData, setAppData, defaultData, initStore, purgeOldLegacyCopy } from './store.js';
 import { initStorageUI, restoreSnapshotUI, clearLegacyCopyUI } from './storage-ui.js';
 import { openShare, openCardGenerator, initShare, shareSetStyle, sharePage, shareTitleChanged, shareTitlesChanged, shareDownload, shareShare, canShareFiles } from './share.js';
 import { initFilters, openFilters, filtersClear, filtersSaveCurrent, filterSummary } from './filters.js';

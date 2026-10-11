@@ -1,4 +1,4 @@
-// Temas: as variáveis de cor ficam em style.css (html[data-theme="..."]);
+﻿// Temas: as variáveis de cor ficam em style.css (html[data-theme="..."]);
 // aqui ficam só os dados para o seletor visual e a troca de tema.
 export const THEMES = [
     { id: 'gog', name: 'Padrão', bg: '#0d0d13', card: '#17171f', text: '#e8e6f0', dots: ['#b366f0', '#8a5cf0', '#c792ea'] },

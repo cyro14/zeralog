@@ -1,4 +1,4 @@
-// Ícones Phosphor (https://phosphoricons.com, licença MIT) via fonte oficial na CDN do jsDelivr.
+﻿// Ícones Phosphor (https://phosphoricons.com, licença MIT) via fonte oficial na CDN do jsDelivr.
 // Guardamos só {name, weight}; o CSS do peso usado é carregado sob demanda.
 // Sem internet na primeira vez, o ícone não aparece (e o nome da categoria continua visível).
 import { esc } from './gameApi.js';

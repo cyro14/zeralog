@@ -1,4 +1,4 @@
-// Como mostrar a plataforma nos cards: ícone (padrão) ou nome.
+﻿// Como mostrar a plataforma nos cards: ícone (padrão) ou nome.
 import { appData } from './store.js';
 import { esc } from './gameApi.js';
 

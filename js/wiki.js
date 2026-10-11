@@ -1,4 +1,4 @@
-// Leitor de wikis integrado: usa a API MediaWiki (CORS liberado com origin=*) e desenha a página
+﻿// Leitor de wikis integrado: usa a API MediaWiki (CORS liberado com origin=*) e desenha a página
 // dentro do próprio app. Funciona com qualquer wiki MediaWiki (Wikipédia, Yugipedia, Fandom, etc.).
 // Sites que bloqueiam iframe não são problema, porque o conteúdo é buscado via API e não embutido.
 import { appData, saveData } from './store.js';

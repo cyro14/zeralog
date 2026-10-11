@@ -350,7 +350,12 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
 .pill input:focus-visible + span { outline: 2px solid var(--accent-playing); outline-offset: 2px; }
 .pill-playing input:checked + span { background: var(--accent-playing); border-color: var(--accent-playing); color: var(--on-accent); }
 .pill-finished input:checked + span { background: var(--accent-finished); border-color: var(--accent-finished); color: var(--on-accent); }
-.gi-actions { display: flex; flex-direction: column; gap: 2px; }
+.gi-actions { display: flex; flex-direction: row; gap: 2px; align-self: end; justify-content: flex-end; flex-wrap: wrap; }
+/* Botões dos cards: hover com realce e leve elevação */
+.gi-actions .icon-btn { transition: transform 0.12s, background 0.12s, color 0.12s, box-shadow 0.12s; }
+.gi-actions .icon-btn:hover { background: color-mix(in srgb, var(--accent-playing) 18%, transparent); color: var(--accent-playing); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28); }
+.gi-actions .icon-btn.danger:hover { background: rgba(244, 67, 54, 0.14); color: var(--danger); }
+.gi-actions .icon-btn.session-running:hover { background: rgba(244, 67, 54, 0.14); color: #f44336; }
 .icon-btn { background: transparent; color: var(--text-muted); padding: 7px; border-radius: 8px; display: flex; line-height: 0; }
 .icon-btn:hover { background: rgba(128,128,128,0.15); color: var(--text-main); opacity: 1; }
 .icon-btn.danger:hover { color: var(--danger); }

@@ -1,4 +1,4 @@
-// Capas verticais. Duas formas de uso:
+﻿// Capas verticais. Duas formas de uso:
 //  1) automática: autoVerticalCover() tenta Steam (capa 600x900) e Wikipédia (capa do artigo);
 //  2) manual: o buscador mostra as candidatas e, se a escolhida for horizontal, abre o recorte.
 // Fontes sem chave: Wikipédia (pageimages, licença "any"), Steam (via link da loja na RAWG) e artes da RAWG.

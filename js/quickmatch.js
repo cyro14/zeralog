@@ -1,4 +1,4 @@
-// Quick Match: filtros de humor para escolher o que jogar (e alimentar a roleta).
+﻿// Quick Match: filtros de humor para escolher o que jogar (e alimentar a roleta).
 import { appData } from './store.js';
 import { esc } from './gameApi.js';
 

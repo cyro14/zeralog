@@ -1,4 +1,4 @@
-// Recorte de capa em formato vertical (2:3): arraste para posicionar e use o zoom.
+﻿// Recorte de capa em formato vertical (2:3): arraste para posicionar e use o zoom.
 // "Imagem inteira" encaixa a arte horizontal inteira sobre um fundo desfocado.
 import { fetchImageBlob } from './gameApi.js';
 

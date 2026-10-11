@@ -1,4 +1,4 @@
-// Franquias: progresso, lista de jogos (sanfona) e sugestão de mais jogos da série via RAWG.
+﻿// Franquias: progresso, lista de jogos (sanfona) e sugestão de mais jogos da série via RAWG.
 import { appData } from './store.js';
 import { esc, searchGames, getGameSeries, resizeUrl, describeError } from './gameApi.js';
 import { icon } from './icons.js';

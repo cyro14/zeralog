@@ -1,4 +1,4 @@
-// Camada de banco local do ZeraLog. Dois provedores com a MESMA interface, para o resto do app
+﻿// Camada de banco local do ZeraLog. Dois provedores com a MESMA interface, para o resto do app
 // não saber qual está em uso (e para dar para encaixar um provedor de nuvem no futuro):
 //
 //   load()                        -> { metaJson, images: Map(id -> dataURL) }

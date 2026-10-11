@@ -1,4 +1,4 @@
-import { icon, platformIcons } from './icons.js';
+﻿import { icon, platformIcons } from './icons.js';
 import { getSession, paintNotifySettings } from './session.js';
 import { detectNewAchievements, renderAchievements } from './achievements.js';
 import { renderGenreStats } from './genres.js';

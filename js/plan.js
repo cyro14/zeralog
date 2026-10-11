@@ -1,4 +1,4 @@
-// Plano (Free / Premium) e limites.
+﻿// Plano (Free / Premium) e limites.
 // ATENÇÃO: o app roda inteiro no navegador do usuário, então qualquer trava feita aqui é apenas organização
 // da interface e pode ser contornada. Para cobrar de verdade, o plano precisa ser validado por um servidor
 // (login + pagamento). Veja docs/PREMIUM.md.

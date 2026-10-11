@@ -1,4 +1,4 @@
-// Imagens para compartilhar: cartão de um jogo, prateleira de cartuchos ou lista de cards
+﻿// Imagens para compartilhar: cartão de um jogo, prateleira de cartuchos ou lista de cards
 // (inclusive já filtrados). Desenhadas direto num canvas, com as cores do tema e as logos do app.
 import { appData } from './store.js';
 import { fmtDate, daysUntil, countdownText } from './releases.js';

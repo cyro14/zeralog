@@ -1,4 +1,4 @@
-// Datas de lançamento da wishlist: contagem regressiva, atualização pela RAWG e aviso quando o jogo lança.
+﻿// Datas de lançamento da wishlist: contagem regressiva, atualização pela RAWG e aviso quando o jogo lança.
 // Sem servidor não existe "push" garantido: o app confere ao abrir e a cada hora com ele aberto; em Android
 // com o app instalado, o service worker também confere em segundo plano (Periodic Background Sync), sem rede.
 import { appData, saveData } from './store.js';
@@ -63,7 +63,7 @@ async function showReleaseNotification(w) {
     try {
         await reg.showNotification(`${w.title} já está disponível!`, {
             body: `Lançamento em ${fmtDate(w.released, true)}. Toque para abrir sua wishlist.`,
-            tag: `zeralog-release-${w.id}`, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png',
+            tag: `zeralog-release-${w.id}`, icon: 'icons/logo-192.png', badge: 'icons/badge-96.png',
             ...(w.image ? { image: w.image } : {}),
             data: { tab: 'wish' }
         });

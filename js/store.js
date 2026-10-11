@@ -1,4 +1,4 @@
-import { platformIcons } from './icons.js';
+﻿import { platformIcons } from './icons.js';
 import { openProvider } from './db.js';
 import { planInfo } from './plan.js';
 
