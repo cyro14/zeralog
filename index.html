@@ -240,20 +240,69 @@
 
     <dialog id="modal-settings">
         <div class="modal-form">
-            <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Configurações</h3>
-            <details class="set-group" open>
-                <summary><span data-icon="shapes"></span>Aparência</summary>
-                <div class="set-body">
+            <!-- HUB: grade de seções -->
+            <div id="settings-hub">
+                <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Configurações</h3>
+                <div class="settings-hub-grid">
+                    <button type="button" class="set-card" onclick="openSettingsSection('appearance')">
+                        <span class="set-card-ic" data-icon="shapes" data-size="1.5em"></span>
+                        <strong>Aparência</strong>
+                        <small>Temas e cores</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('display')">
+                        <span class="set-card-ic" data-icon="monitor" data-size="1.5em"></span>
+                        <strong>Exibição</strong>
+                        <small>Cards e compacto</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('data')">
+                        <span class="set-card-ic" data-icon="library" data-size="1.5em"></span>
+                        <strong>Dados</strong>
+                        <small>Armazenamento e backup</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('notify')">
+                        <span class="set-card-ic" data-icon="bell" data-size="1.5em"></span>
+                        <strong>Notificações</strong>
+                        <small>Sessão na barra</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('covers')">
+                        <span class="set-card-ic" data-icon="image" data-size="1.5em"></span>
+                        <strong>Capas e Busca</strong>
+                        <small>Capas verticais e API RAWG</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('steam')">
+                        <span class="set-card-ic" data-icon="steam" data-size="1.5em"></span>
+                        <strong>Conexões</strong>
+                        <small>Conta Steam e importação</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('platforms')">
+                        <span class="set-card-ic" data-icon="gamepad" data-size="1.5em"></span>
+                        <strong>Plataformas</strong>
+                        <small>Criar e editar</small>
+                    </button>
+                    <button type="button" class="set-card set-card-danger" onclick="openFactoryReset()">
+                        <span class="set-card-ic" data-icon="alert" data-size="1.5em"></span>
+                        <strong>Zona de Perigo</strong>
+                        <small>Redefinição geral</small>
+                    </button>
+                </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Aparência -->
+            <div id="settings-page-appearance" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="shapes"></span>Aparência</h4>
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 10px;">
                 <label style="font-weight: bold;">Tema Visual:</label>
                 <div id="theme-grid" class="theme-grid" role="radiogroup" aria-label="Tema visual"></div>
             </div>
-                </div>
-            </details>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
 
-            <details class="set-group">
-                <summary><span data-icon="library"></span>Dados e Backup</summary>
-                <div class="set-body">
+            <!-- PÁGINA: Dados e Backup -->
+            <div id="settings-page-data" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="library"></span>Dados e Backup</h4>
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
                 <label style="font-weight: bold;">Banco de dados:</label>
                 <div class="storage-meter"><span id="storage-bar" style="width: 0%"></span></div>
@@ -266,12 +315,13 @@
                 </details>
                 <button type="button" class="pill-btn" id="legacy-clear" onclick="clearLegacyCopy()" style="display: none; align-self: flex-start;">Apagar cópia antiga (armazenamento do navegador)</button>
             </div>
-                </div>
-            </details>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
 
-            <details class="set-group" open>
-                <summary><span data-icon="monitor"></span>Exibição</summary>
-                <div class="set-body">
+            <!-- PÁGINA: Exibição -->
+            <div id="settings-page-display" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="monitor"></span>Exibição</h4>
             <div class="setting-row">
                 <label style="font-weight: bold;">Plataforma nos cards:</label>
                 <div class="view-toggle" role="group" aria-label="Plataforma nos cards" style="margin: 0;">
@@ -280,12 +330,13 @@
                 </div>
             </div>
             <div class="setting-row"><label style="font-weight: bold;">Modo Compacto:</label><input type="checkbox" id="compact-toggle" onchange="toggleCompact(this.checked)" style="width: 20px; height: 20px; accent-color: var(--accent-playing);"></div>
-                </div>
-            </details>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
 
-            <details class="set-group">
-                <summary><span data-icon="bell"></span>Sessão e Notificações</summary>
-                <div class="set-body">
+            <!-- PÁGINA: Notificações -->
+            <div id="settings-page-notify" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="bell"></span>Sessão e Notificações</h4>
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                     <label for="session-notify-toggle" style="font-weight: bold;">Sessão na barra de notificações:</label>
@@ -294,12 +345,13 @@
                 <small id="session-notify-status" style="color: var(--text-muted);"></small>
                 <button type="button" class="pill-btn" id="session-notify-ask" onclick="askNotifyPermission()" style="align-self: flex-start;">Permitir notificações</button>
             </div>
-                </div>
-            </details>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
 
-            <details class="set-group">
-                <summary><span data-icon="image"></span>Capas</summary>
-                <div class="set-body">
+            <!-- PÁGINA: Capas e Busca -->
+            <div id="settings-page-covers" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="image"></span>Capas e Busca</h4>
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
                 <label style="font-weight: bold;">Capas verticais:</label>
                 <button type="button" class="pill-btn" id="cover-upgrade-btn" onclick="upgradeCovers()" style="align-self: flex-start;">Buscar capas verticais da biblioteca</button>
@@ -307,10 +359,19 @@
             </div>
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
                 <label for="rawg-key-input" style="font-weight: bold;">Chave da API RAWG:</label>
-                <input type="text" id="rawg-key-input" placeholder="Cole sua chave (opcional)" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="saveRawgKey(this.value)">
-                <small style="color: var(--text-muted);">Usada na busca automática de jogos. Se ela falhar, crie uma chave grátis em rawg.io/apidocs e cole aqui. Deixe vazio para usar a padrão.</small>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="rawg-key-input" placeholder="Cole sua chave (opcional)" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="saveRawgKey(this.value)" style="flex: 1;">
+                    <a class="pill-btn" href="https://rawg.io/apidocs" target="_blank" rel="noopener" title="Abrir a página da RAWG para criar sua chave grátis" style="display: inline-flex; align-items: center; gap: 5px; text-decoration: none; white-space: nowrap;"><span data-icon="external" data-size="0.95em"></span>Gerar chave</a>
+                </div>
+                <small style="color: var(--text-muted);">Usada na busca automática de jogos. Se ela falhar, crie uma chave grátis clicando em "Gerar chave" e cole aqui. Deixe vazio para usar a padrão.</small>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
             </div>
 
+            <!-- PÁGINA: Conexões (Steam) -->
+            <div id="settings-page-steam" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="steam"></span>Conexões (Steam)</h4>
             <div class="setting-row steam-box" style="flex-direction: column; align-items: stretch; gap: 8px;">
                 <label style="font-weight: bold; display: flex; align-items: center; gap: 6px;"><span data-icon="steam"></span>Steam:</label>
                 <div id="steam-status" class="steam-status"></div>
@@ -324,16 +385,25 @@
                     <button type="button" onclick="steamSaveManualId()">Vincular</button>
                 </div>
                 <label for="steam-key-input" style="font-size: 0.85em; color: var(--text-muted);">Chave da Steam Web API (necessária para importar os jogos):</label>
-                <input type="text" id="steam-key-input" placeholder="32 caracteres — crie em steamcommunity.com/dev/apikey" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="steamSaveKey(this.value)">
-                <small id="steam-sync-status" style="color: var(--text-muted);">Como usar: com a Steam logada no navegador, crie a chave grátis em steamcommunity.com/dev/apikey (o domínio pode ser qualquer um) e deixe os "Detalhes do jogo" do seu perfil públicos (Privacidade da Steam). Os jogos entram na categoria "Steam" com as horas jogadas — e "Sincronizar agora" atualiza as horas e pega jogos novos.</small>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="steam-key-input" placeholder="32 caracteres" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="steamSaveKey(this.value)" style="flex: 1;">
+                    <a class="pill-btn" href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener" title="Abrir a página da Steam para gerar sua chave de API grátis" style="display: inline-flex; align-items: center; gap: 5px; text-decoration: none; white-space: nowrap;"><span data-icon="external" data-size="0.95em"></span>Gerar chave</a>
+                </div>
+                <small id="steam-sync-status" style="color: var(--text-muted);">Como usar: com a Steam logada no navegador, clique em "Gerar chave" para criar a chave grátis no site da Steam (o domínio pode ser qualquer um) e deixe os "Detalhes do jogo" do seu perfil públicos (Privacidade da Steam). Os jogos entram na categoria "Steam" com as horas jogadas — e "Sincronizar agora" atualiza as horas e pega jogos novos.</small>
                 <details class="steam-adv">
                     <summary>Opções avançadas (proxy CORS)</summary>
                     <small>A Steam não aceita chamadas diretas do navegador, então o app tenta vários proxies públicos automaticamente — em geral <strong>não precisa mexer aqui</strong>. Se os cinco falharem de novo, cole um proxy próprio no formato https://meu-proxy.com/?url=%s (%s vira a URL da Steam).</small>
                     <input type="text" id="steam-proxy-input" placeholder="Proxy personalizado (opcional), com %s no lugar da URL" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="steamSaveProxy(this.value)">
                 </details>
             </div>
-            
-            <div style="margin-top: 15px;">
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Plataformas -->
+            <div id="settings-page-platforms" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="gamepad"></span>Plataformas</h4>
+            <div style="margin-top: 5px;">
                 <label style="font-weight: bold;">Editar Plataformas:</label>
                 <div class="platform-manager">
                     <div id="platforms-list-admin"></div>
@@ -351,9 +421,8 @@
                     </div>
                 </div>
             </div>
-
-            <div style="margin-top: 20px;"><button style="background-color: var(--danger); width: 100%;" onclick="openFactoryReset()"><span class="ic-lead" data-icon="alert"></span>Redefinição Geral (Apagar Tudo)</button></div>
-            <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
         </div>
     </dialog>
 

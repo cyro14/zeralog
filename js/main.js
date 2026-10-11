@@ -25,7 +25,7 @@ import {
     openRatingModal, openEditFinishedModal, cancelRating, skipRating, saveRating, saveFinishedEdit,
     spinRoulette, acceptRoulette, quickSearch, openImageModal, searchCoverOnGoogle, previewImageEdit, saveEditedImage,
     openBackupModal, exportBackup, importBackup, openSettings, openFactoryReset, confirmFactoryReset,
-    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey
+    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey, openSettingsSection, backToSettingsHub
 } from './ui.js';
 
 // Anexando ao escopo global para que o index.html possa ler os onlicks
@@ -84,6 +84,8 @@ window.openBackupModal = openBackupModal;
 window.exportBackup = exportBackup;
 window.importBackup = importBackup;
 window.openSettings = openSettings;
+window.openSettingsSection = openSettingsSection;
+window.backToSettingsHub = backToSettingsHub;
 window.openFactoryReset = openFactoryReset;
 window.confirmFactoryReset = confirmFactoryReset;
 window.previewPlatformIcon = previewPlatformIcon;

@@ -1586,7 +1586,21 @@ export function importBackup(event) {
 
 export function saveRawgKey(value) { setRawgKey(value); triggerToast(value.trim() ? 'Chave da RAWG salva.' : 'Voltou para a chave padrão.'); }
 
+export function openSettingsSection(id) {
+    document.getElementById('settings-hub').hidden = true;
+    const page = document.getElementById('settings-page-' + id);
+    if (page) page.hidden = false;
+    document.getElementById('modal-settings').scrollTop = 0;
+}
+export function backToSettingsHub() {
+    document.querySelectorAll('#modal-settings .settings-page').forEach(p => { p.hidden = true; });
+    const hub = document.getElementById('settings-hub');
+    if (hub) hub.hidden = false;
+    document.getElementById('modal-settings').scrollTop = 0;
+}
+
 export function openSettings() {
+    backToSettingsHub();
     document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
     renderThemePicker();
     paintPlatformDisplay();
