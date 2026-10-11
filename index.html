@@ -201,19 +201,27 @@
 
     <!-- Modais do Sistema -->
     <dialog id="modal-welcome">
-        <div class="modal-form" style="text-align: center;">
-            <h2 style="margin-top: 0; color: var(--accent-playing);">Bem-vindo ao ZeraLog!</h2>
-            <p style="font-size: 1.05em; margin-bottom: 10px;">Seu app para organizar e focar nos jogos.</p>
-            <div style="text-align: left; background: rgba(128,128,128,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <p style="margin: 5px 0;"><strong>Sorteio:</strong> Use a roleta se não souber o que jogar.</p>
-                <p style="margin: 5px 0;"><strong>Status:</strong> Acompanhe seus gráficos e conquistas.</p>
-                <p style="margin: 5px 0;"><strong>App:</strong> Você pode adicionar esta página à tela inicial do celular!</p>
+        <div class="modal-form wl">
+            <div class="wl-top">
+                <svg class="wl-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs><linearGradient id="wl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:var(--accent-playing)"/><stop offset="100%" style="stop-color:var(--accent-finished)"/></linearGradient></defs>
+                    <path d="M4 4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4H4ZM4 6H20V12H4V6ZM10.59 17.41L7 13.83L8.41 12.41L10.59 14.58L15.59 9.59L17 11L10.59 17.41Z" fill="url(#wl-grad)"/>
+                </svg>
+                <h2>Bem-vindo ao ZeraLog</h2>
+                <p>Seu backlog de jogos, do "quero jogar" ao "zerei" — direto no navegador, sem conta.</p>
             </div>
-            <div style="background-color: rgba(244, 67, 54, 0.1); border: 1px solid var(--danger); padding: 15px; border-radius: 8px; text-align: left;">
-                <p style="margin: 0; font-size: 0.95em;"><strong>IMPORTANTE - BACKUP:</strong></p>
-                <p style="margin: 5px 0 0 0; font-size: 0.85em;">Seus dados ficam no navegador. Limpar o cache apaga tudo. Use o <strong>ícone de salvar no topo</strong> frequentemente para baixar seu backup!</p>
+            <div class="wl-grid">
+                <span><strong>Roleta</strong> escolhe o que jogar agora</span>
+                <span><strong>Estatísticas</strong> com gráficos e conquistas</span>
+                <span><strong>Prateleira</strong> dos seus jogos em um clique</span>
             </div>
-            <div class="modal-actions" style="margin-top: 20px; justify-content: center;"><button style="width: 100%; padding: 15px; font-size: 1.1em;" onclick="closeWelcome()">Vamos começar!</button></div>
+            <div class="wl-steam">
+                <div class="wl-steam-title"><span data-icon="steam" data-size="1.4em"></span> Tem conta na Steam?</div>
+                <p>Conecte e o ZeraLog cria a categoria Steam, importa sua biblioteca e suas horas jogadas automaticamente.</p>
+                <button type="button" class="wl-btn-steam" onclick="welcomeSteam()">Entrar com a Steam</button>
+            </div>
+            <p class="wl-note">Seus dados ficam no navegador: baixe seu backup de vez em quando pelo ícone de salvar no topo.</p>
+            <button type="button" class="wl-btn-go" onclick="closeWelcome()">Começar sem conectar</button>
         </div>
     </dialog>
 
@@ -233,10 +241,19 @@
     <dialog id="modal-settings">
         <div class="modal-form">
             <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Configurações</h3>
+            <details class="set-group" open>
+                <summary><span data-icon="shapes"></span>Aparência</summary>
+                <div class="set-body">
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 10px;">
                 <label style="font-weight: bold;">Tema Visual:</label>
                 <div id="theme-grid" class="theme-grid" role="radiogroup" aria-label="Tema visual"></div>
             </div>
+                </div>
+            </details>
+
+            <details class="set-group">
+                <summary><span data-icon="library"></span>Dados e Backup</summary>
+                <div class="set-body">
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
                 <label style="font-weight: bold;">Banco de dados:</label>
                 <div class="storage-meter"><span id="storage-bar" style="width: 0%"></span></div>
@@ -249,6 +266,12 @@
                 </details>
                 <button type="button" class="pill-btn" id="legacy-clear" onclick="clearLegacyCopy()" style="display: none; align-self: flex-start;">Apagar cópia antiga (armazenamento do navegador)</button>
             </div>
+                </div>
+            </details>
+
+            <details class="set-group" open>
+                <summary><span data-icon="monitor"></span>Exibição</summary>
+                <div class="set-body">
             <div class="setting-row">
                 <label style="font-weight: bold;">Plataforma nos cards:</label>
                 <div class="view-toggle" role="group" aria-label="Plataforma nos cards" style="margin: 0;">
@@ -257,6 +280,12 @@
                 </div>
             </div>
             <div class="setting-row"><label style="font-weight: bold;">Modo Compacto:</label><input type="checkbox" id="compact-toggle" onchange="toggleCompact(this.checked)" style="width: 20px; height: 20px; accent-color: var(--accent-playing);"></div>
+                </div>
+            </details>
+
+            <details class="set-group">
+                <summary><span data-icon="bell"></span>Sessão e Notificações</summary>
+                <div class="set-body">
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                     <label for="session-notify-toggle" style="font-weight: bold;">Sessão na barra de notificações:</label>
@@ -265,6 +294,12 @@
                 <small id="session-notify-status" style="color: var(--text-muted);"></small>
                 <button type="button" class="pill-btn" id="session-notify-ask" onclick="askNotifyPermission()" style="align-self: flex-start;">Permitir notificações</button>
             </div>
+                </div>
+            </details>
+
+            <details class="set-group">
+                <summary><span data-icon="image"></span>Capas</summary>
+                <div class="set-body">
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
                 <label style="font-weight: bold;">Capas verticais:</label>
                 <button type="button" class="pill-btn" id="cover-upgrade-btn" onclick="upgradeCovers()" style="align-self: flex-start;">Buscar capas verticais da biblioteca</button>
