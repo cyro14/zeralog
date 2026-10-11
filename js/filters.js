@@ -40,7 +40,7 @@ export const FIELDS = [
     { id: 'metacritic', label: 'Nota Metacritic', type: 'range', tabs: ALL, get: g => num(g.metacritic) },
     { id: 'rating', label: 'Minha nota', type: 'range', tabs: ['finished'], get: g => num(g.userRating) },
     { id: 'estTime', label: 'Tempo estimado (horas)', type: 'range', tabs: ALL, get: g => hoursOf(g.meta) },
-    { id: 'played', label: 'Horas jogadas', type: 'range', tabs: ['home', 'finished'], get: g => num(g.hoursPlayed) },
+    { id: 'played', label: 'Horas jogadas', type: 'range', tabs: ALL, get: g => num(g.hoursPlayed) },
     { id: 'title', label: 'Título contém', type: 'text', tabs: ALL, get: g => g.title },
     { id: 'text', label: 'Descrição, diário ou review contém', type: 'text', tabs: ALL, get: g => [g.description, g.journalNotes, g.review].filter(Boolean).join(' ') }
 ];

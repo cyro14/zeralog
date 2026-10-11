@@ -89,11 +89,13 @@ function catchOpenIdReturn() {
     const m = (qs.get('openid.claimed_id') || '').match(/openid\/id\/(\d{17})/);
     try { history.replaceState(null, '', location.pathname); } catch (e) {}
     if (!m) return;
+    try { localStorage.setItem('zeralog_welcomed', 'true'); } catch (e) {}   // quem volta da Steam já passou da boas-vindas
     appData.settings.steam = { ...st(), steamId: m[1] };
     saveData(null);
     renderSteamSettings();
+    if (hooks.openSteamSettings) hooks.openSteamSettings();   // volta direto para a tela de Conexões
     if (st().apiKey) { hooks.toast('Steam conectada! Sincronizando sua biblioteca...', false); steamSync(); }
-    else hooks.toast('Steam conectada! Cole sua chave da Web API em Configurações › Steam para importar os jogos.', false);
+    else hooks.toast('Steam conectada! Cole sua chave da Web API para importar os jogos — a sincronização começa sozinha ao salvar a chave.', false);
 }
 
 // ---------- vincular manualmente (link do perfil ou SteamID64) ----------
@@ -127,6 +129,11 @@ export function steamSaveKey(v) {
     saveData(null);
     hooks.toast(k ? (/^[0-9A-Fa-f]{32}$/.test(k) ? 'Chave da Steam salva.' : 'Chave salva — mas a da Steam tem 32 caracteres; confira se colou completa.') : 'Chave da Steam removida.', false);
     renderSteamSettings();
+    // Com a conta conectada e uma chave válida, a importação começa sozinha
+    if (k && /^[0-9A-Fa-f]{32}$/.test(k) && st().steamId && !st().lastSync) {
+        hooks.toast('Chave salva! Sincronizando sua biblioteca...', false);
+        steamSync();
+    }
 }
 export function steamSaveProxy(v) {
     appData.settings.steam = { ...st(), proxy: String(v || '').trim() };
@@ -144,7 +151,7 @@ export function steamLogout() {
 // ---------- categoria "Steam" + plataforma "Steam" ----------
 function ensureSteamRefs() {
     let cat = appData.categories.find(c => c.id === st().catId) || appData.categories.find(c => normName(c.name) === 'steam');
-    if (!cat) { cat = { id: 'c' + Date.now(), name: 'Steam', icon: { name: 'steam-logo', weight: 'fill' } }; appData.categories.push(cat); }
+    if (!cat) { cat = { id: 'c' + Date.now(), name: 'Steam', icon: { name: 'steam-logo', weight: 'fill' } }; appData.categories.unshift(cat); }   // categorias novas entram primeiro na ordem
     if (!cat.icon) cat.icon = { name: 'steam-logo', weight: 'fill' };
     if (!appData.platforms.some(p => p.name === 'Steam')) appData.platforms.push({ name: 'Steam', icon: icon('steam') });
     appData.settings.steam = { ...st(), catId: cat.id };
@@ -331,7 +338,7 @@ export function renderSteamSettings() {
 
 // ---------- inicialização (chamado no start) ----------
 export function initSteam(h) {
-    hooks = { render: (h && h.render) || (() => {}), toast: (h && h.toast) || (() => {}), undo: (h && h.undo) || (() => {}) };
+    hooks = { render: (h && h.render) || (() => {}), toast: (h && h.toast) || (() => {}), undo: (h && h.undo) || (() => {}), openSteamSettings: (h && h.openSteamSettings) || null };
     const dlg = $('modal-settings');
     if (dlg) dlg.addEventListener('toggle', () => { if (dlg.open) renderSteamSettings(); });
     catchOpenIdReturn();

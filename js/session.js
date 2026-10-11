@@ -72,11 +72,14 @@ export async function showSessionNotification() {
     const min = Math.floor(elapsedMs(s) / 60000);
     const since = new Date(s.startedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     lastNotifMin = min;
+    const game = appData.games.find(g => g.id === s.gameId);
+    const cover = (game && game.image) || s.cover || null;   // capa do jogo como imagem da notificação
     try {
         await reg.showNotification(`${s.title || 'Jogo'} · ${s.paused ? 'Pausado' : 'Em sessão'}`, {
             body: s.paused ? `Pausado com ${formatHuman(min)} jogados` : `Jogando há ${formatHuman(min)} (desde ${since})`,
             tag: TAG, renotify: false, silent: true, requireInteraction: true,
             icon: 'icons/icon-192.png', badge: 'icons/badge-96.png',
+            ...(cover ? { image: cover } : {}),
             actions: [{ action: s.paused ? 'resume' : 'pause', title: s.paused ? 'Retomar' : 'Pausar' }, { action: 'finish', title: 'Finalizar' }],
             data: { gameId: s.gameId }
         });
@@ -186,7 +189,7 @@ export function startSession(gameId) {
     const g = appData.games.find(x => x.id === gameId);
     if (!g) return;
     const now = Date.now();
-    setSession({ gameId, title: g.title, startedAt: now, runStart: now, accMs: 0, paused: false, updatedAt: now });
+    setSession({ gameId, title: g.title, cover: g.image || null, startedAt: now, runStart: now, accMs: 0, paused: false, updatedAt: now });
     startTicking();
     updateBar();
     hooks.render();

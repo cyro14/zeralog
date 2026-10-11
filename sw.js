@@ -32,6 +32,7 @@ function show(s) {
         body: s.paused ? `Pausado com ${fmt(min)} jogados` : `Jogando há ${fmt(min)} (desde ${since})`,
         tag: TAG, renotify: false, silent: true, requireInteraction: true,
         icon: 'icons/icon-192.png', badge: 'icons/badge-96.png',
+        ...(s.cover ? { image: s.cover } : {}),
         actions: [{ action: s.paused ? 'resume' : 'pause', title: s.paused ? 'Retomar' : 'Pausar' }, { action: 'finish', title: 'Finalizar' }],
         data: { gameId: s.gameId }
     });
@@ -82,7 +83,9 @@ async function checkReleasesBg() {
     const done = (await get('releasesDone')) || [];
     for (const w of due) {
         await self.registration.showNotification(`${w.title} já está disponível!`, {
-            body: 'Toque para abrir sua wishlist.', tag: `zeralog-release-${w.id}`, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png', data: { tab: 'wish' }
+            body: 'Toque para abrir sua wishlist.', tag: `zeralog-release-${w.id}`, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png',
+            ...(w.image ? { image: w.image } : {}),
+            data: { tab: 'wish' }
         });
         done.push(w.id);
     }

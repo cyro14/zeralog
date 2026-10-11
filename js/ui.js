@@ -724,7 +724,7 @@ export function saveCategory() {
     } else {
         const cat = { id: 'c' + Date.now(), name };
         if (catIconDraft) cat.icon = catIconDraft;
-        appData.categories.push(cat);
+        appData.categories.unshift(cat);   // a categoria nova aparece primeiro na ordem
     }
     closeModal('modal-cat');
     saveData(() => render());

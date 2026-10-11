@@ -46,7 +46,7 @@ async function idbSet(k, v) { const db = await idb(); return new Promise((res, r
 
 export async function syncReleaseWatch() {
     try {
-        const list = (appData.wishlist || []).filter(w => w.notifyRelease && !w.releaseNotified && w.released).map(w => ({ id: w.id, title: w.title, released: w.released }));
+        const list = (appData.wishlist || []).filter(w => w.notifyRelease && !w.releaseNotified && w.released).map(w => ({ id: w.id, title: w.title, released: w.released, image: (typeof w.image === 'string' && /^https?:/.test(w.image)) ? w.image : null }));
         await idbSet('releases', list);
     } catch (e) { /* sem IndexedDB: só confere com o app aberto */ }
 }
@@ -63,7 +63,9 @@ async function showReleaseNotification(w) {
     try {
         await reg.showNotification(`${w.title} já está disponível!`, {
             body: `Lançamento em ${fmtDate(w.released, true)}. Toque para abrir sua wishlist.`,
-            tag: `zeralog-release-${w.id}`, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png', data: { tab: 'wish' }
+            tag: `zeralog-release-${w.id}`, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png',
+            ...(w.image ? { image: w.image } : {}),
+            data: { tab: 'wish' }
         });
     } catch (e) { /* sem suporte */ }
 }

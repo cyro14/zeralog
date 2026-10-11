@@ -146,7 +146,7 @@ async function start() {
     initSession({ render, toast: msg => triggerToast(msg, false), undo: saveStateForUndo });
     initStorageUI({ render, toast: (msg, undo) => triggerToast(msg, undo !== false) });
     initFilters({ render });
-    initSteam({ render, toast: (msg, undo) => triggerToast(msg, undo === true), undo: saveStateForUndo });
+    initSteam({ render, toast: (msg, undo) => triggerToast(msg, undo === true), undo: saveStateForUndo, openSteamSettings: () => { openSettings(); openSettingsSection('steam'); } });
     initShare({ toast: msg => triggerToast(msg, false) });
     if (!canShareFiles()) document.getElementById('sh-share-btn').style.display = 'none';
     startReleaseWatch();
