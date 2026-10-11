@@ -275,6 +275,28 @@
                 <input type="text" id="rawg-key-input" placeholder="Cole sua chave (opcional)" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="saveRawgKey(this.value)">
                 <small style="color: var(--text-muted);">Usada na busca automática de jogos. Se ela falhar, crie uma chave grátis em rawg.io/apidocs e cole aqui. Deixe vazio para usar a padrão.</small>
             </div>
+
+            <div class="setting-row steam-box" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                <label style="font-weight: bold; display: flex; align-items: center; gap: 6px;"><span data-icon="steam"></span>Steam:</label>
+                <div id="steam-status" class="steam-status"></div>
+                <div class="steam-actions">
+                    <button type="button" class="pill-btn primary" id="steam-login-btn" onclick="steamLogin()">Entrar com a Steam</button>
+                    <button type="button" class="pill-btn" id="steam-sync-btn" onclick="steamSyncUI()" style="display:none">Sincronizar agora</button>
+                    <button type="button" class="pill-btn" id="steam-logout-btn" onclick="steamLogout()" style="display:none">Desconectar</button>
+                </div>
+                <div class="steam-manual">
+                    <input type="text" id="steam-id-input" placeholder="ou cole o link do seu perfil / SteamID64" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter'){event.preventDefault();steamSaveManualId();}">
+                    <button type="button" onclick="steamSaveManualId()">Vincular</button>
+                </div>
+                <label for="steam-key-input" style="font-size: 0.85em; color: var(--text-muted);">Chave da Steam Web API (necessária para importar os jogos):</label>
+                <input type="text" id="steam-key-input" placeholder="32 caracteres — crie em steamcommunity.com/dev/apikey" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="steamSaveKey(this.value)">
+                <small id="steam-sync-status" style="color: var(--text-muted);">Como usar: com a Steam logada no navegador, crie a chave grátis em steamcommunity.com/dev/apikey (o domínio pode ser qualquer um) e deixe os "Detalhes do jogo" do seu perfil públicos (Privacidade da Steam). Os jogos entram na categoria "Steam" com as horas jogadas — e "Sincronizar agora" atualiza as horas e pega jogos novos.</small>
+                <details class="steam-adv">
+                    <summary>Opções avançadas (proxy CORS)</summary>
+                    <small>A Steam não aceita chamadas diretas do navegador, então o app tenta vários proxies públicos automaticamente — em geral <strong>não precisa mexer aqui</strong>. Se os cinco falharem de novo, cole um proxy próprio no formato https://meu-proxy.com/?url=%s (%s vira a URL da Steam).</small>
+                    <input type="text" id="steam-proxy-input" placeholder="Proxy personalizado (opcional), com %s no lugar da URL" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="steamSaveProxy(this.value)">
+                </details>
+            </div>
             
             <div style="margin-top: 15px;">
                 <label style="font-weight: bold;">Editar Plataformas:</label>

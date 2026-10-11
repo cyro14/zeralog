@@ -13,6 +13,7 @@ import { searchGames, getGameDetails, coverToDataURL, fileToSmallJpeg, blobToSma
 import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade } from './covers.js';
 import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
+import { renderSteamSettings } from './steam.js';
 import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
 
 let toastTimeout = null;
@@ -362,11 +363,13 @@ export function render() {
         const catGames = getSortedGames(applyFilters('home', appData.games.filter(g => g.catId === cat.id && g.state === null && !g.continuous)), null, false);
         homeShown += catGames.length;
         if (filtersOn && !catGames.length) return;   // categoria sem resultados some enquanto filtra
+        const steamOn = appData.settings.steam && appData.settings.steam.catId === cat.id && appData.settings.steam.steamId;
         const catDiv = document.createElement('div'); catDiv.className = `category ${appData.collapsedCats.includes(cat.id) ? 'collapsed' : ''}`; catDiv.id = cat.id;
         catDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${cat.id}', event)">
                 <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span>${cat.icon ? `<span class="cat-ico">${phHtml(cat.icon)}</span>` : ''}<h2>${esc(cat.name)}</h2></div>
                 <div class="cat-actions">
+                    ${steamOn ? `<button class="btn-icon" onclick="steamSyncUI()" title="Sincronizar com a Steam (jogos e horas)" aria-label="Sincronizar com a Steam">${icon('refresh')}</button>` : ''}
                     <button class="btn-icon" onclick="moveCategory('${cat.id}', -1)" title="Mover para Cima">${ICONS.up}</button>
                     <button class="btn-icon" onclick="moveCategory('${cat.id}', 1)" title="Mover para Baixo">${ICONS.down}</button>
                     <button class="btn-icon" onclick="openEditCatModal('${cat.id}')" title="Editar Categoria">${ICONS.edit}</button>
@@ -1583,16 +1586,17 @@ export function importBackup(event) {
 
 export function saveRawgKey(value) { setRawgKey(value); triggerToast(value.trim() ? 'Chave da RAWG salva.' : 'Voltou para a chave padrão.'); }
 
-export function openSettings() { 
+export function openSettings() {
     document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
     renderThemePicker();
     paintPlatformDisplay();
     updateStorageMeter();
     paintNotifySettings();
-    document.getElementById('compact-toggle').checked = appData.settings.compact; 
-    cancelEditPlatform(); 
+    renderSteamSettings();   // painel da Steam (status, botões, chave)
+    document.getElementById('compact-toggle').checked = appData.settings.compact;
+    cancelEditPlatform();
     renderPlatformAdmin();
-    document.getElementById('modal-settings').showModal(); 
+    document.getElementById('modal-settings').showModal();
 }
 export function openFactoryReset() { document.getElementById('reset-confirm-input').value = ''; document.getElementById('modal-factory-reset').showModal(); }
 export function confirmFactoryReset() { if (document.getElementById('reset-confirm-input').value === 'APAGAR') { saveStateForUndo(); setAppData({ settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc' }, collapsedCats:[], categories:[], platforms: defaultData.platforms, games:[], wikis:[], wishlist:[], counters: { sessions: 0, sessionMinutes: 0, wishMoved: 0 }, achSeeded: true, unlockedAchievements:[] }); saveData(() => render()); closeModal('modal-factory-reset'); closeModal('modal-settings'); localStorage.removeItem('zeralog_welcomed'); triggerToast('Apagado.'); setTimeout(checkWelcome, 500); } else { alert('Digite APAGAR'); } }

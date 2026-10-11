@@ -14,6 +14,7 @@ import { coversSearch } from './covers.js';
 import { cropApply, cropCancel, cropReset, cropFit } from './crop.js';
 import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, setHomeView, shelfDo, openShelfDetail, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
 import { openWiki, wikiChangeSource, wikiSearch, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
+import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSync } from './steam.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleCompact, saveStateForUndo, undoAction, switchTab, 
@@ -108,6 +109,9 @@ window.wikiFindStep = wikiFindStep;
 window.wikiFindClose = () => wikiFindClose();
 Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, cropApply, cropCancel, cropReset, cropFit, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, iconSearch, iconWeightChange, iconMore, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, coversSearch, qmSetDiff, qmToggleEmulated, genreSetBase, genreSetYear, setHomeView, shelfDo, openShelfDetail, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
 
+// Steam: login, sincronização e configurações
+Object.assign(window, { steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSyncUI: steamSync });
+
 // Inicialização Principal (o banco é aberto de forma assíncrona antes de desenhar a tela)
 window.restoreSnapshotUI = restoreSnapshotUI;
 window.clearLegacyCopy = clearLegacyCopyUI;
@@ -139,6 +143,7 @@ async function start() {
     initSession({ render, toast: msg => triggerToast(msg, false), undo: saveStateForUndo });
     initStorageUI({ render, toast: (msg, undo) => triggerToast(msg, undo !== false) });
     initFilters({ render });
+    initSteam({ render, toast: (msg, undo) => triggerToast(msg, undo === true), undo: saveStateForUndo });
     initShare({ toast: msg => triggerToast(msg, false) });
     if (!canShareFiles()) document.getElementById('sh-share-btn').style.display = 'none';
     startReleaseWatch();

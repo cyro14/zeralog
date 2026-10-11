@@ -54,6 +54,7 @@ const P = {
     refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
     filter: '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
     share2: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>',
+    steam: '<circle cx="12" cy="12" r="10"/><circle cx="15" cy="8" r="2.5"/><circle cx="9.5" cy="15.5" r="3.5"/><path d="M13.5 10 11.6 12.7"/>',
     gamepad: '<line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><rect width="20" height="12" x="2" y="6" rx="2"/>',
     // Plataformas
     monitor: '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>',
@@ -75,6 +76,7 @@ export const platformIcons = {
     'Playstation': icon('ps'),
     'Xbox': icon('xbox'),
     'Mobile': icon('phone'),
+    'Steam': icon('steam'),
     'default': icon('gamepad')
 };
 

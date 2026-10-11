@@ -777,6 +777,22 @@ html.ph-offline .ph-ico { display: none; }
 #crop-zoom { box-sizing: border-box; max-width: 100%; margin: 0; }
 
 .snap-box summary { cursor: pointer; font-size: 0.9em; font-weight: 600; }
+
+/* ===== Steam (login e sincronização) ===== */
+.steam-box .steam-status { min-height: 20px; }
+#steam-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; font-size: 0.9em; }
+.steam-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.steam-manual { display: flex; gap: 8px; }
+.steam-manual input { flex: 1; min-width: 0; background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; font-size: 0.9em; outline: none; }
+.steam-manual input:focus { border-color: var(--accent-playing); }
+.steam-manual button { padding: 8px 12px; font-size: 0.85em; }
+.steam-adv summary { cursor: pointer; font-size: 0.85em; font-weight: 600; }
+.steam-adv small { display: block; margin: 8px 0; color: var(--text-muted); }
+.steam-adv input { width: 100%; box-sizing: border-box; background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; font-size: 0.9em; outline: none; }
+.steam-adv input:focus { border-color: var(--accent-playing); }
+#steam-sync-btn:disabled { opacity: 0.55; cursor: wait; }
+#steam-key-input, #steam-proxy-input { background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; font-size: 0.9em; outline: none; }
+#steam-key-input:focus { border-color: var(--accent-playing); }
 .snap-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; }
 .snap-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--border-color); font-size: 0.9em; }
 .snap-list li:first-child { border-top: none; }
