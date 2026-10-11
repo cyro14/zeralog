@@ -9,7 +9,7 @@ export const homeSortLabels = { 'manual': 'Manual', 'az': 'A-Z', 'time': 'Tempo'
 export const sortLabels = { 'date': 'Data', 'rating': 'Nota', 'time': 'Tempo', 'portable': 'Portátil' };
 
 export const defaultData = {
-    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc', homeView: 'list', platformDisplay: 'icon' }, 
+    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', homeView: 'shelf', wishView: 'shelf', platformDisplay: 'icon' }, 
     collapsedCats: [], 
     categories: [ { id: 'c1', name: 'Cartas e Estratégia' }, { id: 'c2', name: 'Plataforma 3D' } ],
     platforms: [
@@ -44,7 +44,9 @@ export function migrateData(data) {
     if (!isObj(data)) data = clone(defaultData);
     ['categories', 'games', 'wikis', 'wishlist', 'collapsedCats', 'unlockedAchievements', 'savedFilters'].forEach(k => { if (!Array.isArray(data[k])) data[k] = []; });
     if (!Array.isArray(data.platforms)) data.platforms = clone(defaultData.platforms);
-    data.settings = { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc', wishSort: 'release', wishView: 'list', ...(isObj(data.settings) ? data.settings : {}) };
+    data.settings = { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', wishSort: 'release', wishView: 'shelf', homeView: 'shelf', platformDisplay: 'icon', ...(isObj(data.settings) ? data.settings : {}) };
+    // Uma única vez: abrir direto no modo Prateleira (novo padrão visual)
+    if (!data.settings.vShelfDefault) { data.settings.homeView = 'shelf'; data.settings.wishView = 'shelf'; data.settings.finishedView = 'shelf'; data.settings.vShelfDefault = 1; }
     if (!isObj(data.settings.filters)) data.settings.filters = {};
     ['home', 'finished', 'wish'].forEach(t => { if (!Array.isArray(data.settings.filters[t])) data.settings.filters[t] = []; });
     data.counters = { sessions: 0, sessionMinutes: 0, wishMoved: 0, ...(isObj(data.counters) ? data.counters : {}) };

@@ -1,6 +1,7 @@
 // Temas: as variáveis de cor ficam em style.css (html[data-theme="..."]);
 // aqui ficam só os dados para o seletor visual e a troca de tema.
 export const THEMES = [
+    { id: 'gog', name: 'Padrão', bg: '#0d0d13', card: '#17171f', text: '#e8e6f0', dots: ['#b366f0', '#8a5cf0', '#c792ea'] },
     { id: 'dark', name: 'Escuro', bg: '#121212', card: '#1e1e1e', text: '#ffffff', dots: ['#2196f3', '#4caf50', '#ff9800'] },
     { id: 'amoled', name: 'Preto Total', bg: '#000000', card: '#0c0c0c', text: '#f2f2f2', dots: ['#3ea6ff', '#3ddc84', '#ffa726'] },
     { id: 'light', name: 'Claro', bg: '#f4f5f7', card: '#ffffff', text: '#1a1d23', dots: ['#1565c0', '#2e7d32', '#e65100'] },
@@ -15,13 +16,14 @@ export const THEMES = [
     { id: 'contrast', name: 'Alto Contraste', bg: '#000000', card: '#000000', text: '#ffffff', dots: ['#4fc3f7', '#00e676', '#ffea00'] }
 ];
 
+export const DEFAULT_THEME = 'gog';
 export const currentTheme = () => {
-    const saved = localStorage.getItem('zeralog_theme') || 'dark';
-    return THEMES.some(t => t.id === saved) ? saved : 'dark';
+    const saved = localStorage.getItem('zeralog_theme') || DEFAULT_THEME;
+    return THEMES.some(t => t.id === saved) ? saved : DEFAULT_THEME;
 };
 
 export function applyTheme(id) {
-    const theme = THEMES.find(t => t.id === id) ? id : 'dark';
+    const theme = THEMES.find(t => t.id === id) ? id : DEFAULT_THEME;
     document.documentElement.setAttribute('data-theme', theme);
     try { localStorage.setItem('zeralog_theme', theme); } catch (e) {}
     const meta = document.querySelector('meta[name="theme-color"]');

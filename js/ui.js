@@ -199,9 +199,12 @@ export function coverCropFromGameModal() {
 }
 export function coverRemoveFromGameModal() { pendingCover = ''; updateCoverPreview(null); }
 
+// Procura um item tanto na biblioteca quanto na wishlist (capas funcionam nas duas telas)
+const findItemAny = id => appData.games.find(g => g.id === id) || (appData.wishlist || []).find(g => g.id === id);
+
 export function coverPickFromImageModal() {
     const id = document.getElementById('edit-img-game-id').value;
-    const game = appData.games.find(g => g.id === id);
+    const game = findItemAny(id);
     if (!game) return;
     openCoverPicker({
         title: game.title,
@@ -550,7 +553,8 @@ export function createGameElement(game) {
         ? `<button type="button" class="icon-btn" onclick="openCardGenerator('${game.id}')" title="Compartilhar" aria-label="Compartilhar">${ICONS.share}</button>
            ${infoBtn}
            <button type="button" class="icon-btn" onclick="openEditFinishedModal('${game.id}')" title="Editar conclusão (nota, data, review)" aria-label="Editar conclusão">${ICONS.edit}</button>`
-        : `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>`);
+        : `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>
+           <button type="button" class="icon-btn" onclick="backlogToWish('${game.id}')" title="Devolver para a wishlist" aria-label="Devolver para a wishlist">${icon('bookmark', { size: '18px' })}</button>`);
 
     // Diário de bordo: recolhível quando for grande
     let journal = '';
@@ -952,7 +956,7 @@ export function createShelfItem(g, kind = 'game') {
     li.setAttribute('role', 'button');
     li.setAttribute('aria-label', g.title);
     li.title = g.title;
-    const open = () => (kind === 'wish' ? openEditWishModal(g.id) : openShelfDetail(g.id));
+    const open = () => openShelfDetail(g.id, kind === 'wish');
     li.onclick = open;
     li.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
     const badges = [];
@@ -973,10 +977,10 @@ export function createShelfItem(g, kind = 'game') {
     return li;
 }
 
-export function openShelfDetail(id) {
-    const g = appData.games.find(x => x.id === id);
+export function openShelfDetail(id, isWish = false) {
+    const g = isWish ? (appData.wishlist || []).find(x => x.id === id) : appData.games.find(x => x.id === id);
     if (!g) return;
-    const finished = g.state === 'finished';
+    const finished = !isWish && g.state === 'finished';
     const sub = [platformLabel(g.platform)];
     if (g.released) sub.push(esc(g.released.slice(0, 4)));
     if (g.genres && g.genres.length) sub.push(esc(g.genres.slice(0, 3).join(', ')));
@@ -993,14 +997,24 @@ export function openShelfDetail(id) {
     if (finished && g.dateFinished) facts.push(`Zerado em <strong>${esc(g.dateFinished)}</strong>`);
     if (g.meta) facts.push(`Tempo estimado <strong>${esc(fmtTime(g.meta))}</strong>`);
     if (g.hoursPlayed) facts.push(`Jogadas <strong>${esc(fmtHours(hoursNum(g.hoursPlayed)))}</strong>`);
-    const text = finished && g.review ? g.review : g.journalNotes;
-    const btn = (label, fn, primary) => `<button type="button" class="pill-btn ${primary ? 'primary' : ''}" onclick="shelfDo('${fn}', '${g.id}')">${label}</button>`;
+    const text = finished && g.review ? g.review : (g.journalNotes || g.note);
+    const btn = (label, fn, primary, danger) => `<button type="button" class="pill-btn ${primary ? 'primary' : ''} ${danger ? 'danger-link' : ''}" onclick="shelfDo('${fn}', '${g.id}')">${label}</button>`;
     const actions = [];
-    if (g.continuous || g.state === 'playing') actions.push(btn('Iniciar sessão', 'startSession', true));
-    if (!finished && !g.continuous && g.state !== 'playing') actions.push(btn('Jogar agora', 'playNow', true));
-    if (finished) actions.push(btn('Compartilhar', 'openCardGenerator', true));
-    actions.push(btn('Wiki', 'openWiki'), btn('Dados do jogo', 'openEditGameModal'));
-    if (finished) actions.push(btn('Editar conclusão', 'openEditFinishedModal'));
+    if (isWish) {
+        actions.push(btn('Para a fila', 'wishToBacklog', true));
+        if (!g.continuous) actions.push(btn('Jogar agora', 'wishToPlaying'));
+        actions.push(btn('Wiki', 'openWiki'), btn('Trocar capa', 'openImageModal'), btn('Editar', 'openEditWishModal'), btn('Remover', 'askDeleteWish', false, true));
+    } else {
+        if (g.continuous || g.state === 'playing') actions.push(btn('Iniciar sessão', 'startSession', true));
+        if (!finished && !g.continuous && g.state !== 'playing') actions.push(btn('Jogar agora', 'playNow', true));
+        if (finished) actions.push(btn('Compartilhar', 'openCardGenerator', true));
+        if (!finished && !g.continuous) actions.push(btn(g.state === 'playing' ? 'Parar de jogar' : 'Marcar como jogando', 'markPlaying'), btn('Marcar como zerado', 'markFinished'));
+        if (g.continuous) actions.push(btn('Anotar no diário', 'openJournalEntry'));
+        actions.push(btn('Wiki', 'openWiki'), btn('Dados do jogo', 'openEditGameModal'), btn('Trocar capa', 'openImageModal'));
+        if (finished) actions.push(btn('Editar conclusão', 'openEditFinishedModal'));
+        else actions.push(btn('Voltar à wishlist', 'backlogToWish'));
+        actions.push(btn('Remover', 'askDeleteGame', false, true));
+    }
     document.getElementById('shelf-detail-body').innerHTML = `
         <div class="sd-top">
             ${g.image ? `<img class="sd-cover" src="${esc(g.image)}" alt="">` : `<div class="sd-cover sd-empty">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
@@ -1016,6 +1030,8 @@ export function openShelfDetail(id) {
 export function shelfDo(fn, id) {
     closeModal('modal-shelf');
     if (fn === 'playNow') { toggleState(id, 'playing'); return; }
+    if (fn === 'markPlaying') { toggleState(id, 'playing'); return; }
+    if (fn === 'markFinished') { toggleState(id, 'finished'); return; }
     if (typeof window[fn] === 'function') window[fn](id);
 }
 
@@ -1047,8 +1063,8 @@ export function createWishElement(w) {
     li.dataset.tags = tagsOf(w);
 
     const cover = w.image
-        ? `<img src="${esc(w.image)}" alt="" class="gi-cover" style="cursor:default">`
-        : `<div class="gi-cover gi-cover-empty" style="cursor:default">${esc((w.title.trim()[0] || '?').toUpperCase())}</div>`;
+        ? `<img src="${esc(w.image)}" alt="" class="gi-cover" onclick="openImageModal('${w.id}')" title="Trocar capa">`
+        : `<div class="gi-cover gi-cover-empty" onclick="openImageModal('${w.id}')" title="Adicionar capa">${esc((w.title.trim()[0] || '?').toUpperCase())}</div>`;
     const sub = [platformLabel(w.platform)];
     if (w.genres && w.genres.length) sub.push(esc(w.genres.slice(0, 2).join(', ')));
     if (w.meta) sub.push(`${esc(fmtTime(w.meta))} p/ zerar`);
@@ -1181,6 +1197,20 @@ function moveWish(id, toPlaying) {
 }
 export const wishToBacklog = id => moveWish(id, false);
 export const wishToPlaying = id => moveWish(id, true);
+
+// Devolve um jogo da biblioteca (fila/jogando/contínuo) para a wishlist, mantendo capa e dados
+export function backlogToWish(id) {
+    const idx = appData.games.findIndex(g => g.id === id);
+    if (idx < 0) return;
+    const g = appData.games[idx];
+    if (g.state === 'finished') { triggerToast('Jogos zerados ficam no histórico. Só é possível devolver jogos da fila ou em andamento.', false); return; }
+    saveStateForUndo();
+    const { state, userRating, dateFinished, is100, review, hoursPlayed, journalNotes, ...rest } = g;
+    appData.wishlist.push({ ...rest, id: 'w' + Date.now(), note: '', addedAt: Date.now(), notifyRelease: false });
+    appData.games.splice(idx, 1);
+    saveData(() => render());
+    triggerToast(`"${g.title}" voltou para a wishlist.`);
+}
 
 export function askDeleteWish(id) {
     const w = appData.wishlist.find(x => x.id === id);
@@ -1451,7 +1481,7 @@ function paintEditImage(src) {
     el.innerHTML = src ? `<img src="${esc(src)}" style="max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 8px;">` : icon('gamepad', { size: '3em' });
 }
 export function openImageModal(gameId) {
-    const game = appData.games.find(g => g.id === gameId);
+    const game = findItemAny(gameId);
     if (!game) return;
     document.getElementById('edit-img-game-id').value = gameId;
     document.getElementById('edit-game-name').innerText = game.title;
@@ -1460,7 +1490,7 @@ export function openImageModal(gameId) {
     paintEditImage(editImageSrc);
     document.getElementById('modal-image').showModal();
 }
-export function searchCoverOnGoogle() { const gameId = document.getElementById('edit-img-game-id').value; const game = appData.games.find(g => g.id === gameId); if (game) window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, '_blank'); }
+export function searchCoverOnGoogle() { const gameId = document.getElementById('edit-img-game-id').value; const game = findItemAny(gameId); if (game) window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, '_blank'); }
 export function previewImageEdit(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -1474,7 +1504,7 @@ export function cropEditImage() {
 }
 export async function saveEditedImage() {
     const gameId = document.getElementById('edit-img-game-id').value;
-    const game = appData.games.find(g => g.id === gameId);
+    const game = findItemAny(gameId);
     if (editImageDirty && editImageSrc && game) {
         const data = await blobToSmallJpeg(await (await fetch(editImageSrc)).blob()).catch(() => editImageSrc);
         saveStateForUndo();
