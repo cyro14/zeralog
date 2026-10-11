@@ -4,12 +4,16 @@
     --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-muted: #aaaaaa; --border-color: #333333;
     --accent-finished: #4caf50; --accent-playing: #2196f3; --accent-add: #ff9800; --danger: #f44336; --star-color: #ffd700; --accent-live: #a77bff;
     --google-blue: #4285f4; --input-bg: #121212; --input-text: #ffffff; --on-accent: #ffffff;
+    /* Cores só do gráfico/estatísticas: cada status sempre distinto, mesmo em temas monocromáticos */
+    --chart-backlog: var(--accent-add); --chart-playing: var(--accent-playing); --chart-finished: var(--accent-finished);
 }
 html[data-theme="gog"] {
     color-scheme: dark;
     --bg-color: #0d0d13; --card-bg: #17171f; --text-main: #e8e6f0; --text-muted: #9b96ad; --border-color: #2a2a38;
     --accent-finished: #8a5cf0; --accent-playing: #b366f0; --accent-add: #b366f0; --danger: #f44336; --star-color: #ffd700; --accent-live: #c792ea;
     --google-blue: #4285f4; --input-bg: #101018; --input-text: #e8e6f0; --on-accent: #ffffff;
+    /* Gráfico e estatísticas continuam legíveis: âmbar / roxo / verde */
+    --chart-backlog: #ffb84d; --chart-playing: #b366f0; --chart-finished: #8bc34a;
 }
 html[data-theme="amoled"] {
     color-scheme: dark;
@@ -500,13 +504,13 @@ body.compact-mode .gi-chips, body.compact-mode .gi-progress, body.compact-mode .
 
 /* ===== Franquias ===== */
 .chip-franchise { color: var(--accent-add); border-color: var(--accent-add); cursor: pointer; }
-.franchise-summary { color: var(--text-muted); font-size: 0.9em; margin: 12px 0; }
-.franchise-summary strong { color: var(--text-main); }
-.fr-item:last-child { border-bottom: none; }
+.franchise-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 14px 16px; margin: 12px 0 16px; font-size: 0.92em; color: var(--text-muted); }
+.franchise-summary span + span::before { content: "·"; margin-right: 14px; opacity: 0.6; }
+.franchise-summary strong { color: var(--accent-playing); font-size: 1.12em; }
+.fr-done { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: rgba(255, 215, 0, 0.14); border: 1px solid rgba(255, 215, 0, 0.45); color: var(--star-color); font-weight: 700; margin-left: 8px; font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.05em; }
 .fr-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; }
 .fr-head span { font-size: 0.85em; color: var(--text-muted); white-space: nowrap; }
 .fr-item small { display: block; margin-top: 4px; color: var(--text-muted); }
-.fr-done { color: var(--star-color); font-weight: 700; margin-left: 6px; font-size: 0.75em; }
 .fr-item.complete .gi-bar span { background: var(--star-color); }
 
 /* ===== Linha do tempo (Zerados) ===== */
@@ -685,15 +689,24 @@ body.session-on { padding-top: calc(20px + 42px + env(safe-area-inset-top, 0px))
 .pane-head small { color: var(--text-muted); font-weight: 600; }
 
 
-/* ===== Franquias (sanfona) ===== */
-.fr-item { padding: 12px 0; border-bottom: 1px solid var(--border-color); cursor: default; }
-.fr-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: transparent; color: var(--text-main); padding: 0 0 8px; border-radius: 0; font-weight: 400; text-align: left; }
+/* ===== Franquias (cards expansíveis) ===== */
+.fr-item { padding: 0; border: 1px solid var(--border-color); border-radius: 14px; margin-bottom: 12px; cursor: default; background: var(--card-bg); overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
+.fr-item:hover { border-color: rgba(128, 128, 128, 0.55); }
+.fr-item.open { border-color: var(--accent-playing); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); }
+.fr-item.complete { border-color: rgba(255, 215, 0, 0.45); }
+.fr-item.complete.open { border-color: var(--star-color); }
+.fr-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: transparent; color: var(--text-main); padding: 14px 16px 10px; border-radius: 0; font-weight: 400; text-align: left; }
 .fr-toggle:hover { opacity: 1; }
 .fr-chevron { display: inline-flex; color: var(--text-muted); transition: transform 0.2s; }
-.fr-item.open .fr-chevron { transform: rotate(180deg); }
+.fr-item.open .fr-chevron { transform: rotate(180deg); color: var(--accent-playing); }
 .fr-toggle .fr-head { flex: 1; min-width: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 0; }
-.fr-extra { display: block; margin-top: 6px; color: var(--text-muted); }
-.fr-panel { margin-top: 12px; padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; display: flex; flex-direction: column; gap: 12px; }
+.fr-toggle .fr-head strong { font-size: 1.02em; }
+.fr-item .gi-bar { height: 8px; border-radius: 999px; margin: 0 16px; background: rgba(128, 128, 128, 0.18); }
+.fr-item .gi-bar span { background: linear-gradient(90deg, var(--chart-finished, var(--accent-finished)), color-mix(in srgb, var(--chart-finished, var(--accent-finished)) 45%, #ffffff)); border-radius: 999px; }
+.fr-extra { display: block; margin: 6px 16px 12px; color: var(--text-muted); }
+.fr-panel { margin: 4px 16px 16px; padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; display: flex; flex-direction: column; gap: 12px; }
+.fr-actions .fr-share { display: inline-flex; align-items: center; gap: 6px; border-color: var(--accent-playing); color: var(--accent-playing); }
+.fr-actions .fr-share:hover { background: color-mix(in srgb, var(--accent-playing) 14%, transparent); color: var(--accent-playing); }
 .fr-games, .fr-sug-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .fr-game, .fr-sug { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-top: 1px solid var(--border-color); cursor: pointer; border-radius: 6px; }
 .fr-game:first-child, .fr-sug:first-child { border-top: none; }

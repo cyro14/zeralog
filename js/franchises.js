@@ -3,6 +3,7 @@ import { appData } from './store.js';
 import { esc, searchGames, getGameSeries, resizeUrl, describeError } from './gameApi.js';
 import { icon } from './icons.js';
 import { platformLabel } from './platforms.js';
+import { openShare } from './share.js';
 
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 let openKey = null;              // franquia aberta (uma por vez)
@@ -74,6 +75,7 @@ function panelHtml(f) {
         <div class="fr-actions">
             <button type="button" class="pill-btn primary" data-act="search">Procurar mais jogos</button>
             <button type="button" class="pill-btn" data-act="filter">Ver na lista</button>
+            <button type="button" class="pill-btn fr-share" data-act="share">${icon('share2', { size: '1em' })} Compartilhar</button>
         </div>
         <div class="fr-suggest">${suggestionHtml(f.key)}</div>
     </div>`;
@@ -96,7 +98,7 @@ export function renderFranchiseStats() {
     const totalAll = withGames.reduce((a, f) => a + f.total, 0);
     const doneAll = withGames.reduce((a, f) => a + f.done, 0);
     const complete = withGames.filter(f => f.done === f.total).length;
-    sum.innerHTML = `Progresso geral nas franquias: <strong>${totalAll ? Math.round(doneAll / totalAll * 100) : 0}%</strong> &nbsp;·&nbsp; Franquias completas: <strong>${complete} de ${withGames.length}</strong>`;
+    sum.innerHTML = `<span>Progresso geral nas franquias: <strong>${totalAll ? Math.round(doneAll / totalAll * 100) : 0}%</strong></span><span>Franquias completas: <strong>${complete} de ${withGames.length}</strong></span>`;
     box.innerHTML = stats.map(f => {
         const p = f.total ? Math.round(f.done / f.total * 100) : 0;
         const full = f.total >= 2 && f.done === f.total;
@@ -150,6 +152,18 @@ function onAction(t, ev) {
         case 'wishitem': window.openEditWishModal(t.dataset.id); break;
         case 'search': search(k); break;
         case 'filter': { const f = getFranchiseStats().find(x => x.key === k); if (f) window.filterByFranchise(f.name); break; }
+        case 'share': {
+            const f = getFranchiseStats().find(x => x.key === k);
+            if (!f) break;
+            // Zerados primeiro (coloridos); o resto (jogando, fila e desejos) sai em tom de cinza
+            const games = [...f.games].sort((a, b) => (b.state === 'finished') - (a.state === 'finished'));
+            const items = [...games, ...f.wishItems];
+            if (!items.length) break;
+            const pct = f.total ? Math.round(f.done / f.total * 100) : 0;
+            const sub = f.total ? `${f.done} de ${f.total} zerados · ${pct}%${f.wish ? ` · ${f.wish} na wishlist` : ''}` : 'Jogos que ainda faltam na coleção';
+            openShare({ items, mode: 'franchise', title: `Franquia ${f.name}`, subtitle: sub, style: 'shelf', gray: 'todo' });
+            break;
+        }
         case 'add': case 'wish': {
             const f = getFranchiseStats().find(x => x.key === k);
             const s = suggestions.get(k);

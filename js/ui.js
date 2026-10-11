@@ -683,7 +683,7 @@ export function updateStatsAndCharts() {
             type: 'doughnut',
             data: {
                 labels:['Backlog', 'Jogando', 'Finalizados'],
-                datasets:[{ data:[backlog, playing, finished], backgroundColor:[col('--accent-add'), col('--accent-playing'), col('--accent-finished')], borderWidth: 0 }]
+                datasets:[{ data:[backlog, playing, finished], backgroundColor:[col('--chart-backlog') || col('--accent-add'), col('--chart-playing') || col('--accent-playing'), col('--chart-finished') || col('--accent-finished')], borderWidth: 0 }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: textColor } } } }
         });
@@ -998,6 +998,18 @@ export function openShelfDetail(id, isWish = false) {
     if (g.meta) facts.push(`Tempo estimado <strong>${esc(fmtTime(g.meta))}</strong>`);
     if (g.hoursPlayed) facts.push(`Jogadas <strong>${esc(fmtHours(hoursNum(g.hoursPlayed)))}</strong>`);
     const text = finished && g.review ? g.review : (g.journalNotes || g.note);
+    // Barra de progresso: horas jogadas até o tempo estimado (igual ao modo cards)
+    let progress = '';
+    if (g.meta && g.hoursPlayed) {
+        let total = parseFloat(String(g.meta).replace(',', '.')) || 0;
+        if (String(g.meta).includes('m')) total /= 60;
+        const played = parseFloat(g.hoursPlayed) || 0;
+        if (total > 0) {
+            const pct = Math.min(100, Math.round(played / total * 100));
+            const left = total - played;
+            progress = `<div class="gi-progress"><div class="gi-bar"><span style="width:${pct}%"></span></div><small>${played}h de ${total % 1 ? total.toFixed(1) : total}h · ${left > 0 ? `faltam ~${left.toFixed(1)}h` : 'meta atingida'}</small></div>`;
+        }
+    }
     const btn = (label, fn, primary, danger) => `<button type="button" class="pill-btn ${primary ? 'primary' : ''} ${danger ? 'danger-link' : ''}" onclick="shelfDo('${fn}', '${g.id}')">${label}</button>`;
     const actions = [];
     if (isWish) {
@@ -1018,7 +1030,7 @@ export function openShelfDetail(id, isWish = false) {
     document.getElementById('shelf-detail-body').innerHTML = `
         <div class="sd-top">
             ${g.image ? `<img class="sd-cover" src="${esc(g.image)}" alt="">` : `<div class="sd-cover sd-empty">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
-            <div class="sd-info"><h3>${esc(g.title)}</h3><div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div><div class="gi-chips">${chips.join('')}</div></div>
+            <div class="sd-info"><h3>${esc(g.title)}</h3><div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div><div class="gi-chips">${chips.join('')}</div>${progress}</div></div>
         </div>
         ${facts.length ? `<div class="sd-facts">${facts.join('<span class="dot">·</span>')}</div>` : ''}
         ${text ? `<div class="sd-text">${esc(text)}</div>` : ''}

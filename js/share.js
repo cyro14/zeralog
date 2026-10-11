@@ -158,7 +158,9 @@ function header(ctx, p, title, subtitle, light) {
 
 // ---------- informações de cada jogo conforme a tela de origem ----------
 const DIFF = { easy: 'Fácil', normal: 'Normal', hard: 'Difícil', extreme: 'Extremo' };
-function chipsFor(item, mode, p) {
+function chipsFor(item, rawMode, p) {
+    // No modo franquia cada jogo mostra o próprio status: zerado, jogando, na fila ou desejo
+    const mode = rawMode === 'franchise' ? (item.state === 'finished' ? 'finished' : item.state === undefined ? 'wish' : 'home') : rawMode;
     const chips = [];
     if (mode === 'finished' || item.state === 'finished') {
         if (item.is100) chips.push({ t: '100%', bg: p.star, fg: '#241a00' });
@@ -242,7 +244,7 @@ export async function renderGameCard(game) {
 }
 
 // ---------- 2) prateleira de cartuchos ----------
-async function drawCart(ctx, item, x, y, w, h, p, showBadges) {
+async function drawCart(ctx, item, x, y, w, h, p, showBadges, dim) {
     const img = await loadImg(item.image);
     ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 8;
     rr(ctx, x, y, w, h, [w * 0.1, w * 0.1, w * 0.04, w * 0.04]);
@@ -250,14 +252,18 @@ async function drawCart(ctx, item, x, y, w, h, p, showBadges) {
     if (item.is100) { rr(ctx, x, y, w, h, [w * 0.1, w * 0.1, w * 0.04, w * 0.04]); ctx.lineWidth = Math.max(3, w * 0.03); ctx.strokeStyle = p.star; ctx.stroke(); }
     ctx.fillStyle = 'rgba(0,0,0,0.38)'; rr(ctx, x + w * 0.32, y + w * 0.035, w * 0.36, w * 0.03, w * 0.015); ctx.fill();
     const lx = x + w * 0.07, ly = y + w * 0.11, lw = w * 0.86, lh = h - w * 0.11 - w * 0.2;
-    if (img) coverFit(ctx, img, lx, ly, lw, lh, w * 0.03);
-    else {
+    if (img) {
+        if (dim) { ctx.save(); try { ctx.filter = 'grayscale(1)'; } catch (e) {} coverFit(ctx, img, lx, ly, lw, lh, w * 0.03); ctx.restore(); }
+        else coverFit(ctx, img, lx, ly, lw, lh, w * 0.03);
+    } else {
         rr(ctx, lx, ly, lw, lh, w * 0.03); ctx.fillStyle = '#16161a'; ctx.fill();
         ctx.fillStyle = '#d5d9e2'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `700 ${Math.max(13, w * 0.12)}px ${FONT}`;
         wrap(ctx, item.title, lw - 12, 5).forEach((l, i, a) => ctx.fillText(l, lx + lw / 2, ly + lh / 2 + (i - (a.length - 1) / 2) * w * 0.15));
     }
     ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = Math.max(2, w * 0.012);
     for (let i = 0; i < 9; i++) { const gx = x + w * 0.14 + i * (w * 0.72 / 8); ctx.beginPath(); ctx.moveTo(gx, y + h - w * 0.16); ctx.lineTo(gx, y + h - w * 0.05); ctx.stroke(); }
+    // Ainda não zerado: cartucho apagado (cinza) por cima de tudo
+    if (dim) { rr(ctx, x, y, w, h, [w * 0.1, w * 0.1, w * 0.04, w * 0.04]); ctx.fillStyle = 'rgba(12,12,18,0.52)'; ctx.fill(); }
     if (showBadges) {
         let bx = lx + 6; const by = ly + lh - 8 - Math.max(24, w * 0.2);
         if (item.is100) { const r = pill(ctx, bx, by, '★100%', { size: Math.max(12, w * 0.11), padX: 8, bg: 'rgba(0,0,0,0.78)', fg: p.star }); bx += r.w + 6; }
@@ -289,8 +295,9 @@ export async function renderShelf(items, o) {
         for (let k = 0; k < cols; k++) {
             const it = items[r * cols + k]; if (!it) break;
             const x = pad + k * (cartW + gap);
-            await drawCart(ctx, it, x, top, cartW, cartH, p, cols <= 7);
-            if (showTitles) { ctx.font = `600 ${cols <= 5 ? 20 : 17}px ${FONT}`; ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ellipsis(ctx, it.title, cartW + gap - 8), x + cartW / 2, by + 24 + (boardH - 44) / 2 + 10); }
+            const dim = !!(o.gray && it.state !== 'finished');
+            await drawCart(ctx, it, x, top, cartW, cartH, p, cols <= 7, dim);
+            if (showTitles) { ctx.font = `600 ${cols <= 5 ? 20 : 17}px ${FONT}`; ctx.fillStyle = dim ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.92)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ellipsis(ctx, it.title, cartW + gap - 8), x + cartW / 2, by + 24 + (boardH - 44) / 2 + 10); }
         }
     }
     footer(ctx, H - 70, p, false);
@@ -313,8 +320,11 @@ export async function renderCards(items, o) {
         ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8; rr(ctx, x, y, cw, chh, 22); ctx.fillStyle = p.card; ctx.fill(); ctx.restore();
         rr(ctx, x, y, cw, chh, 22); ctx.lineWidth = it.is100 ? 3 : 1.5; ctx.strokeStyle = it.is100 ? p.star : p.border; ctx.stroke();
         const img = await loadImg(it.image), iw = 118, ih = chh - 36, ix = x + 18, iy = y + 18;
-        if (img) coverFit(ctx, img, ix, iy, iw, ih, 12);
-        else { rr(ctx, ix, iy, iw, ih, 12); ctx.fillStyle = rgba(p.muted, 0.2); ctx.fill(); ctx.fillStyle = p.muted; ctx.font = `800 54px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText((it.title.trim()[0] || '?').toUpperCase(), ix + iw / 2, iy + ih / 2); }
+        const dim = !!(o.gray && it.state !== 'finished');
+        if (img) {
+            if (dim) { ctx.save(); try { ctx.filter = 'grayscale(1)'; } catch (e) {} coverFit(ctx, img, ix, iy, iw, ih, 12); ctx.restore(); }
+            else coverFit(ctx, img, ix, iy, iw, ih, 12);
+        } else { rr(ctx, ix, iy, iw, ih, 12); ctx.fillStyle = rgba(p.muted, 0.2); ctx.fill(); ctx.fillStyle = p.muted; ctx.font = `800 54px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText((it.title.trim()[0] || '?').toUpperCase(), ix + iw / 2, iy + ih / 2); }
         const tx = ix + iw + 18, tw = cw - iw - 18 * 3;
         ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = `800 29px ${FONT}`; ctx.fillStyle = p.text;
         const tl = wrap(ctx, it.title, tw - (it.state === 'finished' && it.userRating ? 70 : 0), 2);
@@ -332,7 +342,7 @@ export async function renderCards(items, o) {
             const bx = x + cw - 46, by = y + 44;
             ctx.beginPath(); ctx.arc(bx, by, 30, 0, Math.PI * 2); ctx.fillStyle = p.star; ctx.fill();
             ctx.fillStyle = '#241a00'; ctx.textAlign = 'center'; ctx.font = `900 28px ${FONT}`; ctx.fillText(String(it.userRating), bx, by + 1);
-        }
+        } else if (dim) { rr(ctx, x, y, cw, chh, 22); ctx.fillStyle = 'rgba(12,12,18,0.45)'; ctx.fill(); }
     }
     footer(ctx, H - 66, p, false);
     return c;
@@ -360,7 +370,7 @@ async function build() {
             S.page = Math.min(S.page, pages - 1);
             const slice = S.items.slice(S.page * per, (S.page + 1) * per);
             const title = S.title + (pages > 1 ? ` · parte ${S.page + 1}/${pages}` : '');
-            const o = { title, subtitle: S.subtitle, titles: $('sh-titles').checked, mode: S.mode };
+            const o = { title, subtitle: S.subtitle, titles: $('sh-titles').checked, mode: S.mode, gray: S.gray };
             canvas = S.style === 'shelf' ? await renderShelf(slice, o) : await renderCards(slice, o);
             $('sh-pages').style.display = pages > 1 ? '' : 'none';
             $('sh-page-label').textContent = `Parte ${S.page + 1} de ${pages}`;
@@ -376,8 +386,8 @@ async function build() {
 }
 const rebuildSoon = () => { clearTimeout(timer); timer = setTimeout(build, 260); };
 
-export function openShare({ items, mode, title, subtitle, style }) {
-    S = { kind: 'list', items, mode, title, subtitle, style: style || 'shelf', page: 0, blob: null };
+export function openShare({ items, mode, title, subtitle, style, gray }) {
+    S = { kind: 'list', items, mode, title, subtitle, style: style || 'shelf', gray: gray || null, page: 0, blob: null };
     $('sh-style-row').style.display = '';
     $('sh-title').value = title; $('sh-title').style.display = ''; $('sh-titles-row').style.display = '';
     $('sh-titles').checked = items.length <= 24;
