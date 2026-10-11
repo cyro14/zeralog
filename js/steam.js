@@ -11,7 +11,7 @@
 // 4. Os jogos entram na categoria "Steam" (criada automaticamente), plataforma "Steam",
 //    com as horas jogadas; as capas verticais são baixadas e salvas no app em segundo plano.
 import { appData, saveData } from './store.js';
-import { esc, blobToSmallJpeg } from './gameApi.js';
+import { esc, blobToSmallJpeg, searchGames } from './gameApi.js';
 import { icon } from './icons.js';
 
 const $ = id => document.getElementById(id);
@@ -171,13 +171,25 @@ export async function steamSync() {
         fetchPersona().catch(() => {});   // nome/avatar: bônus, não bloqueia a importação
         hooks.undo();
         let added = 0, updated = 0;
+        // Casa os jogos da Steam com os que o usuário já tem: pelo appid ou pelo título.
+        // Se o jogo já existir no ZeraLog, só as horas são atualizadas — o resto não é tocado.
         const byApp = new Map();
-        appData.games.forEach(g => { if (g.steamAppId) byApp.set(g.steamAppId, g); });
+        const byName = new Map();
+        appData.games.forEach(g => {
+            if (g.steamAppId) byApp.set(g.steamAppId, g);
+            const n = normName(g.title);
+            if (n && !byName.has(n)) byName.set(n, g);
+        });
+        const newGames = [];
         for (const gm of games) {
             const hours = String(Math.round((gm.playtime_forever || 0) / 6) / 10);   // minutos → horas com 1 casa decimal
-            const ex = byApp.get(gm.appid);
-            if (ex) { if ((ex.hoursPlayed || '') !== hours) { ex.hoursPlayed = hours; updated++; } continue; }
-            appData.games.push({
+            const ex = byApp.get(gm.appid) || byName.get(normName(gm.name || ''));
+            if (ex) {
+                if (!ex.steamAppId) { ex.steamAppId = gm.appid; byApp.set(gm.appid, ex); }   // vincula para as próximas sincronizações
+                if ((ex.hoursPlayed || '') !== hours) { ex.hoursPlayed = hours; updated++; }
+                continue;
+            }
+            const g = {
                 id: `g${Date.now()}_${gm.appid}`,
                 catId: cat.id,
                 title: String(gm.name || '').trim() || `Steam ${gm.appid}`,
@@ -187,14 +199,17 @@ export async function steamSync() {
                 continuous: false, emulated: false, originalConsole: '', difficulty: '', isPortable: false,
                 image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${gm.appid}/library_600x900.jpg`,
                 state: null, userRating: null, dateFinished: null, is100: false, review: ''
-            });
+            };
+            appData.games.push(g);
+            newGames.push(g);
+            byName.set(normName(g.title), g);
             added++;
         }
         appData.settings.steam = { ...st(), lastSync: Date.now(), lastCount: games.length };
         saveData(() => hooks.render());
-        steamStatus(`Sincronizado agora: ${games.length} ${games.length === 1 ? 'jogo' : 'jogos'} · ${added} ${added === 1 ? 'novo' : 'novos'}, ${updated} com horas atualizadas.${added ? ' Capas sendo salvas em segundo plano...' : ''}`);
+        steamStatus(`Sincronizado agora: ${games.length} ${games.length === 1 ? 'jogo' : 'jogos'} · ${added} ${added === 1 ? 'novo' : 'novos'}, ${updated} com horas atualizadas.${added ? ' Capas e dados sendo buscados em segundo plano...' : ''}`);
         hooks.toast(games.length ? `Steam: ${added} ${added === 1 ? 'novo' : 'novos'}, ${updated} atualizados.` : 'A conta não tem jogos para importar.', added > 0);
-        if (added) embedSteamCovers();
+        if (added) { embedSteamCovers(); enrichSteamGames(newGames); }
     } catch (e) {
         if (e && e.status === 403) steamStatus('A Steam recusou (403): confira a chave (steamcommunity.com/dev/apikey) e se os "Detalhes do jogo" do seu perfil estão públicos (Privacidade da Steam).');
         else if (e && e.empty) steamStatus('A Steam respondeu vazio. Deixe os "Detalhes do jogo" do seu perfil públicos nas configurações de privacidade da Steam e tente de novo.');
@@ -254,6 +269,44 @@ async function embedSteamCovers() {
     await Promise.all([worker(), worker(), worker(), worker()]);
     saveData(() => hooks.render());
     steamStatus(`Pronto: ${targets.length} ${targets.length === 1 ? 'capa' : 'capas'} conferidas · ${saved} salvas no app.`);
+}
+
+// ---------- dados da RAWG para os jogos importados (gêneros, ano, nota, descrição) ----------
+// Só preenche campos vazios — nunca sobrescreve o que o usuário editou. Roda em segundo plano.
+async function enrichSteamGames(newGames) {
+    if (!newGames.length) return;
+    const queue = [...newGames];
+    let done = 0, hit = 0, stopped = false;
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const paint = () => steamStatus(`Dados dos jogos (RAWG): ${done}/${newGames.length}...`);
+    const worker = async () => {
+        while (queue.length && !stopped) {
+            const g = queue.shift();
+            try {
+                const results = await searchGames(g.title, 4);
+                const want = normName(g.title);
+                const d = (results || []).find(r => normName(r.title) === want) || (results || [])[0];
+                if (d) {
+                    if (!g.rawgId) g.rawgId = d.rawgId;
+                    if ((!g.genres || !g.genres.length) && d.genres.length) g.genres = d.genres;
+                    if (!g.released && d.released) g.released = d.released;
+                    if (g.metacritic == null && d.metacritic) g.metacritic = d.metacritic;
+                    if (!g.description && d.description) g.description = d.description;
+                    hit++;
+                }
+                done++;
+                if (done % 3 === 0) { paint(); saveData(null); }
+                await sleep(250);   // respeita o limite de requisições da RAWG
+            } catch (e) {
+                done++;
+                // chave recusada ou limite atingido: para a busca de dados, mas os jogos já estão importados
+                if (e && e.kind === 'http' && (e.status === 401 || e.status === 403 || e.status === 429)) stopped = true;
+            }
+        }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    saveData(() => hooks.render());
+    steamStatus(`Dados dos jogos: ${hit}/${newGames.length} encontrados na RAWG${stopped ? ' (parado antes do fim: limite da chave RAWG — use uma chave própria em Capas e Busca)' : ''}.`);
 }
 
 // ---------- painel nas Configurações ----------

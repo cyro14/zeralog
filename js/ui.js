@@ -1599,6 +1599,12 @@ export function backToSettingsHub() {
     document.getElementById('modal-settings').scrollTop = 0;
 }
 
+export function welcomeSteam() {
+    closeWelcome();
+    openSettings();
+    openSettingsSection('steam');
+}
+
 export function openSettings() {
     backToSettingsHub();
     document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
