@@ -12,7 +12,7 @@
 //    com as horas jogadas; as capas verticais são baixadas e salvas no app em segundo plano.
 import { appData, saveData } from './store.js';
 import { esc, blobToSmallJpeg, searchGames } from './gameApi.js';
-import { icon } from './icons.js';
+import { platformIcons } from './icons.js';
 
 const $ = id => document.getElementById(id);
 const ID_RE = /^\d{17}$/;
@@ -153,7 +153,7 @@ function ensureSteamRefs() {
     let cat = appData.categories.find(c => c.id === st().catId) || appData.categories.find(c => normName(c.name) === 'steam');
     if (!cat) { cat = { id: 'c' + Date.now(), name: 'Steam', icon: { name: 'steam-logo', weight: 'fill' } }; appData.categories.unshift(cat); }   // categorias novas entram primeiro na ordem
     if (!cat.icon) cat.icon = { name: 'steam-logo', weight: 'fill' };
-    if (!appData.platforms.some(p => p.name === 'Steam')) appData.platforms.push({ name: 'Steam', icon: icon('steam') });
+    if (!appData.platforms.some(p => p.name === 'Steam')) appData.platforms.push({ name: 'Steam', icon: platformIcons['Steam'] });
     appData.settings.steam = { ...st(), catId: cat.id };
     return cat;
 }

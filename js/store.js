@@ -66,10 +66,10 @@ export function migrateData(data) {
     data.games = data.games.filter(isObj).map(g => fixItem(g, 'g'));
     data.wishlist = data.wishlist.filter(isObj).map(g => fixItem(g, 'w'));
 
-    // Troca emojis e ícones antigos pelos ícones SVG (mantém imagens e ícones personalizados)
+    // Troca emojis e ícones SVG antigos pelos ícones atuais (mantém imagens e ícones Phosphor personalizados)
     data.platforms.forEach(p => {
         const cur = String(p.icon || '');
-        if (cur.startsWith('<img') || cur.includes('class="ic') || cur.includes('class="ph-ico')) return;
+        if (cur.startsWith('<img') || cur.includes('class="ph-ico')) return;   // personalizado do usuário: não mexe
         const key = Object.keys(defaultPlatformsIcons).find(k => k !== 'default' && k.toLowerCase() === p.name.toLowerCase());
         p.icon = key ? defaultPlatformsIcons[key] : defaultPlatformsIcons.default;
     });

@@ -1019,14 +1019,14 @@ export function openShelfDetail(id, isWish = false) {
     if (isWish) {
         actions.push(btn('Para a fila', 'wishToBacklog', true));
         if (!g.continuous) actions.push(btn('Jogar agora', 'wishToPlaying'));
-        actions.push(btn('Wiki', 'openWiki'), btn('Trocar capa', 'openImageModal'), btn('Editar', 'openEditWishModal'), btn('Remover', 'askDeleteWish', false, true));
+        actions.push(btn('Wiki', 'openWiki'), btn(`${icon('cart', { size: '1em' })} Comprar`, 'buyOnAmazon'), btn('Trocar capa', 'openImageModal'), btn('Editar', 'openEditWishModal'), btn('Remover', 'askDeleteWish', false, true));
     } else {
         if (g.continuous || g.state === 'playing') actions.push(btn('Iniciar sessão', 'startSession', true));
         if (!finished && !g.continuous && g.state !== 'playing') actions.push(btn('Jogar agora', 'playNow', true));
         if (finished) actions.push(btn('Compartilhar', 'openCardGenerator', true));
         if (!finished && !g.continuous) actions.push(btn(g.state === 'playing' ? 'Parar de jogar' : 'Marcar como jogando', 'markPlaying'), btn('Marcar como zerado', 'markFinished'));
         if (g.continuous) actions.push(btn('Anotar no diário', 'openJournalEntry'));
-        actions.push(btn('Wiki', 'openWiki'), btn('Dados do jogo', 'openEditGameModal'), btn('Trocar capa', 'openImageModal'));
+        actions.push(btn('Wiki', 'openWiki'), btn(`${icon('cart', { size: '1em' })} Comprar`, 'buyOnAmazon'), btn('Dados do jogo', 'openEditGameModal'), btn('Trocar capa', 'openImageModal'));
         if (finished) actions.push(btn('Editar conclusão', 'openEditFinishedModal'));
         else actions.push(btn('Voltar à wishlist', 'backlogToWish'));
         actions.push(btn('Remover', 'askDeleteGame', false, true));
@@ -1588,19 +1588,13 @@ export function importBackup(event) {
 
 export function saveRawgKey(value) { setRawgKey(value); triggerToast(value.trim() ? 'Chave da RAWG salva.' : 'Voltou para a chave padrão.'); }
 
-// ---------- Loja: link de afiliado da Amazon ----------
-export function saveAmazonTag(v) {
-    const tag = String(v || '').trim();
-    appData.settings.amazonTag = tag;
-    saveData(null);
-    triggerToast(tag ? 'Tag de afiliado salva. Os botões "Comprar" já usam seu link.' : 'Tag removida — os botões "Comprar" abrem uma busca comum.');
-}
+// ---------- Loja: link de afiliado da Amazon (fixo, não configurável pelo usuário) ----------
+const AMAZON_TAG = 'superyugioh-20';
 export function buyOnAmazon(id) {
     const g = appData.games.find(x => x.id === id) || (appData.wishlist || []).find(x => x.id === id);
     if (!g) return;
     const q = `${g.title} ${g.platform || ''} game`.replace(/\s+/g, ' ').trim();
-    const tag = String(appData.settings.amazonTag || '').trim() || 'superyugioh-20';
-    const url = `https://www.amazon.com.br/s?k=${encodeURIComponent(q)}${tag ? `&linkCode=ll2&tag=${encodeURIComponent(tag)}` : ''}`;
+    const url = `https://www.amazon.com.br/s?k=${encodeURIComponent(q)}&linkCode=ll2&tag=${AMAZON_TAG}`;
     window.open(url, '_blank', 'noopener');
 }
 
@@ -1626,7 +1620,6 @@ export function welcomeSteam() {
 export function openSettings() {
     backToSettingsHub();
     document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
-    document.getElementById('amazon-tag-input').value = appData.settings.amazonTag || '';
     renderThemePicker();
     paintPlatformDisplay();
     updateStorageMeter();

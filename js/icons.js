@@ -70,14 +70,16 @@ export function icon(name, { size = '1.15em', color = 'currentColor', cls = '' }
     return `<svg class="ic ${cls}" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 }
 
-// Ícones padrão das plataformas (guardados como HTML no appData)
+// Ícones padrão das plataformas (guardados como HTML no appData).
+// PC, Nintendo, Playstation, Xbox e Steam usam os arquivos da pasta /icons.
+const platformImg = src => `<img src="${src}" alt="" style="width: 1.2em; height: 1.2em; vertical-align: middle; border-radius: 4px; object-fit: contain; flex-shrink: 0;">`;
 export const platformIcons = {
-    'PC': icon('monitor'),
-    'Nintendo': icon('switch'),
-    'Playstation': icon('ps'),
-    'Xbox': icon('xbox'),
+    'PC': platformImg('icons/PC.png'),
+    'Nintendo': platformImg('icons/nintendo.webp'),
+    'Playstation': platformImg('icons/Playstation.webp'),
+    'Xbox': platformImg('icons/xbox.svg'),
+    'Steam': platformImg('icons/Steam.webp'),
     'Mobile': icon('phone'),
-    'Steam': icon('steam'),
     'default': icon('gamepad')
 };
 
