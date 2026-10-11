@@ -28,10 +28,13 @@ const normName = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-
 
 // ---------- chamadas à Steam Web API (via proxy CORS) ----------
 const PROXIES = [
-    u => `https://cors.isomorphic-git.org/${u}`,                                     // simples e estável (sem encoding)
-    u => `https://api.cors.lol/?url=${encodeURIComponent(u)}`,
+    u => `https://cors-proxy.htmldriven.com/?url=${encodeURIComponent(u)}`,
+    u => `https://test.cors.workers.dev/?${u}`,
+    u => `https://cors-get-proxy.sirjosh.workers.dev/?url=${encodeURIComponent(u)}`,
     u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u => `https://api.cors.lol/?url=${encodeURIComponent(u)}`,
     u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    u => `https://cors.isomorphic-git.org/${u}`,
     u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`
 ];
 function proxyMakers() {
@@ -189,7 +192,7 @@ export async function steamSync() {
     } catch (e) {
         if (e && e.status === 403) steamStatus('A Steam recusou (403): confira a chave (steamcommunity.com/dev/apikey) e se os "Detalhes do jogo" do seu perfil estão públicos (Privacidade da Steam).');
         else if (e && e.empty) steamStatus('A Steam respondeu vazio. Deixe os "Detalhes do jogo" do seu perfil públicos nas configurações de privacidade da Steam e tente de novo.');
-        else steamStatus('Não consegui falar com a Steam (rede/CORS). Tente de novo; se persistir, configure um proxy próprio nas opções avançadas abaixo.');
+        else steamStatus(`Todos os proxies públicos falharam (limites de uso deles, é temporário). Tente de novo em alguns minutos. Se for sempre assim, confira se a chave tem 32 caracteres e se os "Detalhes do jogo" do perfil estão públicos.`);
         hooks.toast('A sincronização com a Steam falhou — detalhe em Configurações › Steam.', false);
     } finally {
         syncing = false;
