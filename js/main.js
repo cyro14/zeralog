@@ -17,7 +17,7 @@ import { openWiki, wikiChangeSource, wikiSearch, wikiBack, wikiLinkGame, wikiTog
 import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSync } from './steam.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
-    changeTheme, toggleCompact, saveStateForUndo, undoAction, switchTab, 
+    changeTheme, toggleCompact, toggleShelfPlain, saveStateForUndo, undoAction, switchTab, 
     filterGames, setPlatformFilter, togglePortableFilter, setHomeSort,
     setFinishedSort, toggleCollapse, renderFinishedTab, saveGame,
     openCatModal, openEditCatModal, saveCategory, askDeleteCategory, moveCategory,
@@ -25,7 +25,7 @@ import {
     openRatingModal, openEditFinishedModal, cancelRating, skipRating, saveRating, saveFinishedEdit,
     spinRoulette, acceptRoulette, quickSearch, openImageModal, searchCoverOnGoogle, previewImageEdit, saveEditedImage,
     openBackupModal, exportBackup, importBackup, openSettings, openFactoryReset, confirmFactoryReset,
-    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey, openSettingsSection, backToSettingsHub, welcomeSteam, buyOnAmazon
+    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey, openSettingsSection, backToSettingsHub, welcomeSteam, buyOnAmazon, checkAppUpdate
 } from './ui.js';
 
 // Anexando ao escopo global para que o index.html possa ler os onlicks
@@ -50,6 +50,7 @@ window.welcomeSteam = welcomeSteam;
 window.closeModal = closeModal;
 window.changeTheme = changeTheme;
 window.toggleCompact = toggleCompact;
+window.toggleShelfPlain = toggleShelfPlain;
 window.undoAction = undoAction;
 window.switchTab = switchTab;
 window.filterGames = filterGames;
@@ -88,6 +89,7 @@ window.openSettings = openSettings;
 window.openSettingsSection = openSettingsSection;
 window.backToSettingsHub = backToSettingsHub;
 window.buyOnAmazon = buyOnAmazon;
+window.checkAppUpdate = checkAppUpdate;
 window.openFactoryReset = openFactoryReset;
 window.confirmFactoryReset = confirmFactoryReset;
 window.previewPlatformIcon = previewPlatformIcon;
@@ -140,6 +142,7 @@ function startReleaseWatch() {
 async function start() {
     try { await initStore(); } catch (e) { console.error('Falha ao abrir o banco:', e); }
     if (appData.settings.compact) document.body.classList.add('compact-mode');
+    if (appData.settings.shelfPlain) document.body.classList.add('shelf-plain');
     applyTheme(currentTheme());
     ensureForData(appData);
     hydrateIcons();

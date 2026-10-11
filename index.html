@@ -315,6 +315,11 @@
                 </details>
                 <button type="button" class="pill-btn" id="legacy-clear" onclick="clearLegacyCopy()" style="display: none; align-self: flex-start;">Apagar cópia antiga (armazenamento do navegador)</button>
             </div>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                <label style="font-weight: bold;">Atualização do app:</label>
+                <button type="button" class="pill-btn" id="app-update-btn" onclick="checkAppUpdate()" style="align-self: flex-start;"><span data-icon="refresh" data-size="0.95em"></span> Buscar atualização agora</button>
+                <small style="color: var(--text-muted);">Recarrega o app buscando a versão mais nova, sem apagar seus dados nem o cache de imagens.</small>
+            </div>
                 <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
             </div>
 
@@ -330,6 +335,13 @@
                 </div>
             </div>
             <div class="setting-row"><label style="font-weight: bold;">Modo Compacto:</label><input type="checkbox" id="compact-toggle" onchange="toggleCompact(this.checked)" style="width: 20px; height: 20px; accent-color: var(--accent-playing);"></div>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                    <label for="shelf-plain-toggle" style="font-weight: bold;">Prateleira limpa (sem caixinha):</label>
+                    <input type="checkbox" id="shelf-plain-toggle" onchange="toggleShelfPlain(this.checked)" style="width: 20px; height: 20px; accent-color: var(--accent-playing);">
+                </div>
+                <small style="color: var(--text-muted);">Remove o desenho do cartucho/casca no modo prateleira — fica só a capa do jogo com sombra.</small>
+            </div>
                 <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
             </div>
 
@@ -452,6 +464,16 @@
 
             <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Plataforma:</label>
             <select id="game-platform"></select>
+
+            <div id="game-cat-row" style="display: flex; flex-direction: column; gap: 4px;">
+                <label for="game-cat-move" style="font-size: 0.85em; color: var(--text-muted);">Categoria:</label>
+                <select id="game-cat-move"></select>
+            </div>
+
+            <label class="flag-row">
+                <input type="checkbox" id="game-wide-cover">
+                <span><strong>Capa horizontal</strong><small>Mostra a capa em formato largo na lista — bom para jogos antigos que só têm capa widescreen.</small></span>
+            </label>
 
             <div id="game-time-fields" class="modal-form">
                 <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Tempo Estimado:</label>

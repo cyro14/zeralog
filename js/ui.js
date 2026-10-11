@@ -50,6 +50,12 @@ export function toggleCompact(val) {
     saveData(); 
 }
 
+export function toggleShelfPlain(val) {
+    appData.settings.shelfPlain = !!val;
+    document.body.classList.toggle('shelf-plain', !!val);
+    saveData();
+}
+
 export function saveStateForUndo() { setBackupData(JSON.stringify(appData)); }
 
 export function undoAction() { 
@@ -500,9 +506,10 @@ export function createGameElement(game) {
     const isFinished = finished ? 'checked' : '';
     const title = esc(game.title);
 
+    const coverCls = `gi-cover${game.wideCover ? ' wide' : ''}`;
     const cover = game.image
-        ? `<img src="${esc(game.image)}" alt="" class="gi-cover" onclick="openImageModal('${game.id}')" title="Trocar capa">`
-        : `<div class="gi-cover gi-cover-empty" onclick="openImageModal('${game.id}')" title="Adicionar capa">${esc((game.title.trim()[0] || '?').toUpperCase())}</div>`;
+        ? `<img src="${esc(game.image)}" alt="" class="${coverCls}" onclick="openImageModal('${game.id}')" title="Trocar capa">`
+        : `<div class="${coverCls} gi-cover-empty" onclick="openImageModal('${game.id}')" title="Adicionar capa">${esc((game.title.trim()[0] || '?').toUpperCase())}</div>`;
 
     // Linha secundária: plataforma · ano · gênero · tempo estimado
     const sub = [platformLabel(game.platform)];
@@ -766,6 +773,8 @@ function prepareGameModal(mode) {
     document.getElementById('game-wish-fields').style.display = wish ? '' : 'none';
     document.getElementById('franchise-list').innerHTML = franchiseNames().map(f => `<option value="${esc(f)}"></option>`).join('');
     document.getElementById('game-wish-cat').innerHTML = appData.categories.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    document.getElementById('game-cat-move').innerHTML = appData.categories.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    document.getElementById('game-cat-row').style.display = wish ? 'none' : '';
     document.getElementById('game-platform').innerHTML = appData.platforms.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
     document.getElementById('console-list').innerHTML = [...new Set([...CONSOLES, ...appData.platforms.map(p => p.name)])].map(c => `<option value="${esc(c)}"></option>`).join('');
     document.getElementById('game-continuous').disabled = false;
@@ -800,6 +809,9 @@ export function openGameModal(catId) {
     prepareGameModal(wish ? 'wish' : 'game');
     resetFlagFields();
     document.getElementById('game-continuous').checked = catId === 'continuous';
+    document.getElementById('game-wide-cover').checked = false;
+    const firstCat = appData.categories.some(c => c.id === catId) ? catId : (appData.categories[0] && appData.categories[0].id) || '';
+    document.getElementById('game-cat-move').value = firstCat;
     toggleModalFlags();
     document.getElementById('modal-game').showModal();
 }
@@ -823,6 +835,10 @@ export function openEditGameModal(gameId, isWish = false) {
     document.getElementById('game-emulated').checked = !!game.emulated;
     document.getElementById('game-orig-console').value = game.originalConsole || '';
     document.getElementById('game-difficulty').value = game.difficulty || '';
+    document.getElementById('game-wide-cover').checked = !!game.wideCover;
+    document.getElementById('game-cat-move').value = isWish
+        ? (appData.categories[0] && appData.categories[0].id) || ''
+        : (game.catId === 'continuous' ? (game.homeCatId || '') : game.catId);
     toggleModalFlags();
     document.getElementById('game-hours-played').value = game.hoursPlayed || '';
     document.getElementById('game-journal-notes').value = game.journalNotes || '';
@@ -877,7 +893,8 @@ export function saveGame() {
         genres: val('game-genres').split(',').map(x => x.trim()).filter(Boolean),
         released: val('game-released'),
         metacritic: val('game-metacritic') === '' ? null : Number(val('game-metacritic')),
-        franchise: canonicalFranchise(val('game-franchise'))
+        franchise: canonicalFranchise(val('game-franchise')),
+        wideCover: document.getElementById('game-wide-cover').checked
     };
     if (continuous && gameId && !wish) {
         const cur = appData.games.find(g => g.id === gameId);
@@ -908,11 +925,16 @@ export function saveGame() {
         if (continuous) {
             if (cat !== 'continuous') homeCatId = cat;
             else if (!homeCatId && appData.categories[0]) homeCatId = appData.categories[0].id;
+            const selCat = val('game-cat-move');
+            if (selCat && appData.categories.some(c => c.id === selCat)) homeCatId = selCat;   // categoria de origem escolhida no modal
             cat = 'continuous';
         } else if (cat === 'continuous') {
             const back = appData.categories.find(c => c.id === homeCatId) || appData.categories[0];
             if (!back) { triggerToast('Crie uma categoria na aba Fila antes de desmarcar "Jogo Contínuo".', false); return; }
             cat = back.id;
+        } else {
+            const selCat = val('game-cat-move');
+            if (selCat && appData.categories.some(c => c.id === selCat)) cat = selCat;   // troca de categoria pelo modal
         }
         if (gameId) {
             const game = existing;
@@ -951,7 +973,7 @@ export function createShelfItem(g, kind = 'game') {
     const li = document.createElement('li');
     const sess = getSession();
     const live = !!(sess && sess.gameId === g.id);
-    li.className = `shelf-item${g.is100 ? ' is100' : ''}`;
+    li.className = `shelf-item${g.is100 ? ' is100' : ''}${g.wideCover ? ' wide' : ''}`;
     li.dataset.platform = g.platform;
     li.dataset.portable = g.isPortable ? 'true' : 'false';
     li.dataset.franchise = (g.franchise || '').toLowerCase();
@@ -971,10 +993,22 @@ export function createShelfItem(g, kind = 'game') {
         if (st === 'future' || st === 'today') badges.push(`<span class="shelf-badge gold">${esc(fmtDate(g.released).replace(/ de /g, ' '))}</span>`);
         else if (st === 'tba') badges.push('<span class="shelf-badge">TBA</span>');
     }
+    // Barra de progresso na base do cartucho (horas jogadas vs. tempo estimado), igual ao modo cards
+    let prog = '';
+    if (kind !== 'wish' && g.meta && g.hoursPlayed) {
+        let total = parseFloat(String(g.meta).replace(',', '.')) || 0;
+        if (String(g.meta).includes('m')) total /= 60;
+        const played = parseFloat(g.hoursPlayed) || 0;
+        if (total > 0) {
+            const pct = Math.min(100, Math.round(played / total * 100));
+            prog = `<span class="shelf-prog" title="${played}h de ${total % 1 ? total.toFixed(1) : total}h (${pct}%)"><i style="width:${pct}%"></i></span>`;
+        }
+    }
     li.innerHTML = `
         <div class="cart">
             <div class="cart-label">${g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : `<span class="cart-empty">${esc(g.title)}</span>`}</div>
             ${badges.length ? `<div class="shelf-badges">${badges.join('')}</div>` : ''}
+            ${prog}
             ${kind === 'wish' ? (g.notifyRelease ? `<span class="shelf-bell" title="Aviso de lançamento ligado">${icon('bell', { size: '11px' })}</span>` : '') : (live ? '<span class="shelf-live" title="Em sessão"></span>' : (g.state === 'playing' ? '<span class="shelf-playing" title="Jogando"></span>' : ''))}
         </div>
         <span class="game-title sr-only">${esc(g.title)}</span>`;
@@ -1013,27 +1047,32 @@ export function openShelfDetail(id, isWish = false) {
             const left = total - played;
             progress = `<div class="gi-progress"><div class="gi-bar"><span style="width:${pct}%"></span></div><small>${played}h de ${total % 1 ? total.toFixed(1) : total}h · ${left > 0 ? `faltam ~${left.toFixed(1)}h` : 'meta atingida'}</small></div>`;
         }
+    } else if (g.continuous) {
+        progress = `<div class="gi-hours"><strong>${fmtHours(hoursNum(g.hoursPlayed))}</strong> jogadas</div>`;
+    } else if (g.hoursPlayed) {
+        progress = `<div class="gi-progress"><small>${esc(g.hoursPlayed)}h jogadas</small></div>`;
     }
     const btn = (label, fn, primary, danger) => `<button type="button" class="pill-btn ${primary ? 'primary' : ''} ${danger ? 'danger-link' : ''}" onclick="shelfDo('${fn}', '${g.id}')">${label}</button>`;
+    const ic = n => icon(n, { size: '1em' });
     const actions = [];
     if (isWish) {
-        actions.push(btn('Para a fila', 'wishToBacklog', true));
-        if (!g.continuous) actions.push(btn('Jogar agora', 'wishToPlaying'));
-        actions.push(btn('Wiki', 'openWiki'), btn(`${icon('cart', { size: '1em' })} Comprar`, 'buyOnAmazon'), btn('Trocar capa', 'openImageModal'), btn('Editar', 'openEditWishModal'), btn('Remover', 'askDeleteWish', false, true));
+        actions.push(btn(`${ic('bookmark')} Para a fila`, 'wishToBacklog', true));
+        if (!g.continuous) actions.push(btn(`${ic('play')} Jogar agora`, 'wishToPlaying'));
+        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('image')} Trocar capa`, 'openImageModal'), btn(`${ic('edit')} Editar`, 'openEditWishModal'), btn(`${ic('trash')} Remover`, 'askDeleteWish', false, true));
     } else {
-        if (g.continuous || g.state === 'playing') actions.push(btn('Iniciar sessão', 'startSession', true));
-        if (!finished && !g.continuous && g.state !== 'playing') actions.push(btn('Jogar agora', 'playNow', true));
-        if (finished) actions.push(btn('Compartilhar', 'openCardGenerator', true));
-        if (!finished && !g.continuous) actions.push(btn(g.state === 'playing' ? 'Parar de jogar' : 'Marcar como jogando', 'markPlaying'), btn('Marcar como zerado', 'markFinished'));
-        if (g.continuous) actions.push(btn('Anotar no diário', 'openJournalEntry'));
-        actions.push(btn('Wiki', 'openWiki'), btn(`${icon('cart', { size: '1em' })} Comprar`, 'buyOnAmazon'), btn('Dados do jogo', 'openEditGameModal'), btn('Trocar capa', 'openImageModal'));
-        if (finished) actions.push(btn('Editar conclusão', 'openEditFinishedModal'));
-        else actions.push(btn('Voltar à wishlist', 'backlogToWish'));
-        actions.push(btn('Remover', 'askDeleteGame', false, true));
+        if (g.continuous || g.state === 'playing') actions.push(btn(`${ic('play')} Iniciar sessão`, 'startSession', true));
+        if (!finished && !g.continuous && g.state !== 'playing') actions.push(btn(`${ic('play')} Jogar agora`, 'playNow', true));
+        if (finished) actions.push(btn(`${ic('share')} Compartilhar`, 'openCardGenerator', true));
+        if (!finished && !g.continuous) actions.push(btn(g.state === 'playing' ? `${ic('stop')} Parar de jogar` : `${ic('play')} Marcar como jogando`, 'markPlaying'), btn(`${ic('check')} Marcar como zerado`, 'markFinished'));
+        if (g.continuous) actions.push(btn(`${ic('pen')} Anotar no diário`, 'openJournalEntry'));
+        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('info')} Dados do jogo`, 'openEditGameModal'), btn(`${ic('image')} Trocar capa`, 'openImageModal'));
+        if (finished) actions.push(btn(`${ic('edit')} Editar conclusão`, 'openEditFinishedModal'));
+        else actions.push(btn(`${ic('bookmark')} Voltar à wishlist`, 'backlogToWish'));
+        actions.push(btn(`${ic('trash')} Remover`, 'askDeleteGame', false, true));
     }
     document.getElementById('shelf-detail-body').innerHTML = `
         <div class="sd-top">
-            ${g.image ? `<img class="sd-cover" src="${esc(g.image)}" alt="">` : `<div class="sd-cover sd-empty">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
+            ${g.image ? `<img class="sd-cover${g.wideCover ? ' wide' : ''}" src="${esc(g.image)}" alt="">` : `<div class="sd-cover sd-empty">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
             <div class="sd-info"><h3>${esc(g.title)}</h3><div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div><div class="gi-chips">${chips.join('')}</div>${progress}</div></div>
         </div>
         ${facts.length ? `<div class="sd-facts">${facts.join('<span class="dot">·</span>')}</div>` : ''}
@@ -1078,9 +1117,10 @@ export function createWishElement(w) {
     li.dataset.franchise = (w.franchise || '').toLowerCase();
     li.dataset.tags = tagsOf(w);
 
+    const wishCoverCls = `gi-cover${w.wideCover ? ' wide' : ''}`;
     const cover = w.image
-        ? `<img src="${esc(w.image)}" alt="" class="gi-cover" onclick="openImageModal('${w.id}')" title="Trocar capa">`
-        : `<div class="gi-cover gi-cover-empty" onclick="openImageModal('${w.id}')" title="Adicionar capa">${esc((w.title.trim()[0] || '?').toUpperCase())}</div>`;
+        ? `<img src="${esc(w.image)}" alt="" class="${wishCoverCls}" onclick="openImageModal('${w.id}')" title="Trocar capa">`
+        : `<div class="${wishCoverCls} gi-cover-empty" onclick="openImageModal('${w.id}')" title="Adicionar capa">${esc((w.title.trim()[0] || '?').toUpperCase())}</div>`;
     const sub = [platformLabel(w.platform)];
     if (w.genres && w.genres.length) sub.push(esc(w.genres.slice(0, 2).join(', ')));
     if (w.meta) sub.push(`${esc(fmtTime(w.meta))} p/ zerar`);
@@ -1593,9 +1633,23 @@ const AMAZON_TAG = 'superyugioh-20';
 export function buyOnAmazon(id) {
     const g = appData.games.find(x => x.id === id) || (appData.wishlist || []).find(x => x.id === id);
     if (!g) return;
-    const q = `${g.title} ${g.platform || ''} game`.replace(/\s+/g, ' ').trim();
-    const url = `https://www.amazon.com.br/s?k=${encodeURIComponent(q)}&linkCode=ll2&tag=${AMAZON_TAG}`;
+    const url = `https://www.amazon.com.br/s?k=${encodeURIComponent(g.title)}&linkCode=ll2&tag=${AMAZON_TAG}`;
     window.open(url, '_blank', 'noopener');
+}
+
+// Atualiza o app sem apagar dados nem cache: pede a versão nova ao servidor e recarrega
+export async function checkAppUpdate() {
+    const btn = document.getElementById('app-update-btn');
+    if (btn) btn.disabled = true;
+    triggerToast('Buscando atualização...', false);
+    try {
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.update().catch(() => {})));
+        }
+    } catch (e) {}
+    triggerToast('Recarregando o app...', false);
+    setTimeout(() => location.reload(), 500);
 }
 
 export function openSettingsSection(id) {
@@ -1626,6 +1680,7 @@ export function openSettings() {
     paintNotifySettings();
     renderSteamSettings();   // painel da Steam (status, botões, chave)
     document.getElementById('compact-toggle').checked = appData.settings.compact;
+    document.getElementById('shelf-plain-toggle').checked = !!appData.settings.shelfPlain;
     cancelEditPlatform();
     renderPlatformAdmin();
     document.getElementById('modal-settings').showModal();

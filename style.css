@@ -2,7 +2,7 @@
 :root, html[data-theme="dark"] {
     color-scheme: dark;
     --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff; --text-muted: #aaaaaa; --border-color: #333333;
-    --accent-finished: #4caf50; --accent-playing: #2196f3; --accent-add: #ff9800; --danger: #f44336; --star-color: #ffd700; --accent-live: #a77bff;
+    --accent-finished: #4caf50; --accent-playing: #2196f3; --accent-add: #b388ff; --danger: #f44336; --star-color: #ffd700; --accent-live: #a77bff;
     --google-blue: #4285f4; --input-bg: #121212; --input-text: #ffffff; --on-accent: #ffffff;
     /* Cores só do gráfico/estatísticas: cada status sempre distinto, mesmo em temas monocromáticos */
     --chart-backlog: var(--accent-add); --chart-playing: var(--accent-playing); --chart-finished: var(--accent-finished);
@@ -10,7 +10,7 @@
 html[data-theme="gog"] {
     color-scheme: dark;
     --bg-color: #0d0d13; --card-bg: #17171f; --text-main: #e8e6f0; --text-muted: #9b96ad; --border-color: #2a2a38;
-    --accent-finished: #8a5cf0; --accent-playing: #b366f0; --accent-add: #b366f0; --danger: #f44336; --star-color: #ffd700; --accent-live: #c792ea;
+    --accent-finished: #8a5cf0; --accent-playing: #b366f0; --accent-add: #c792ea; --danger: #f44336; --star-color: #ffd700; --accent-live: #c792ea;
     --google-blue: #4285f4; --input-bg: #101018; --input-text: #e8e6f0; --on-accent: #ffffff;
     /* Gráfico e estatísticas continuam legíveis: âmbar / roxo / verde */
     --chart-backlog: #ffb84d; --chart-playing: #b366f0; --chart-finished: #8bc34a;
@@ -18,55 +18,55 @@ html[data-theme="gog"] {
 html[data-theme="amoled"] {
     color-scheme: dark;
     --bg-color: #000000; --card-bg: #0c0c0c; --text-main: #f2f2f2; --text-muted: #9a9a9a; --border-color: #262626;
-    --accent-finished: #3ddc84; --accent-playing: #3ea6ff; --accent-add: #ffa726; --danger: #ff5252; --star-color: #ffd740; --accent-live: #b794ff;
+    --accent-finished: #3ddc84; --accent-playing: #3ea6ff; --accent-add: #b794ff; --danger: #ff5252; --star-color: #ffd740; --accent-live: #b794ff;
     --google-blue: #4285f4; --input-bg: #000000; --input-text: #f2f2f2; --on-accent: #04120a;
 }
 html[data-theme="light"] {
     color-scheme: light;
     --bg-color: #f4f5f7; --card-bg: #ffffff; --text-main: #1a1d23; --text-muted: #5f6673; --border-color: #dfe2e8;
-    --accent-finished: #2e7d32; --accent-playing: #1565c0; --accent-add: #e65100; --danger: #c62828; --star-color: #f5a300; --accent-live: #6f42c1;
+    --accent-finished: #2e7d32; --accent-playing: #1565c0; --accent-add: #6f42c1; --danger: #c62828; --star-color: #f5a300; --accent-live: #6f42c1;
     --google-blue: #4285f4; --input-bg: #ffffff; --input-text: #1a1d23; --on-accent: #ffffff;
 }
 html[data-theme="sepia"] {
     color-scheme: light;
     --bg-color: #f3ead7; --card-bg: #fbf6e9; --text-main: #3b2f1e; --text-muted: #7a6a52; --border-color: #e0d3b8;
-    --accent-finished: #55743a; --accent-playing: #2b6a8a; --accent-add: #b85c1a; --danger: #b3402f; --star-color: #c98a00; --accent-live: #7a4fa3;
+    --accent-finished: #55743a; --accent-playing: #2b6a8a; --accent-add: #8a5a2b; --danger: #b3402f; --star-color: #c98a00; --accent-live: #7a4fa3;
     --google-blue: #4285f4; --input-bg: #fffaf0; --input-text: #3b2f1e; --on-accent: #ffffff;
 }
 html[data-theme="ocean"] {
     color-scheme: dark;
     --bg-color: #0a1520; --card-bg: #102233; --text-main: #e6f1fb; --text-muted: #8ba7bf; --border-color: #1d3a52;
-    --accent-finished: #2ec4a6; --accent-playing: #4aa8ff; --accent-add: #ffb454; --danger: #ff6b6b; --star-color: #ffd166; --accent-live: #a29bfe;
+    --accent-finished: #2ec4a6; --accent-playing: #4aa8ff; --accent-add: #a29bfe; --danger: #ff6b6b; --star-color: #ffd166; --accent-live: #a29bfe;
     --google-blue: #4285f4; --input-bg: #0a1520; --input-text: #e6f1fb; --on-accent: #06121c;
 }
 html[data-theme="forest"] {
     color-scheme: dark;
     --bg-color: #0e1a13; --card-bg: #15271d; --text-main: #e8f3ea; --text-muted: #8fab9a; --border-color: #24402f;
-    --accent-finished: #6fcf7c; --accent-playing: #4fc3c9; --accent-add: #e0a458; --danger: #ef6b6b; --star-color: #e6d36a; --accent-live: #b39ddb;
+    --accent-finished: #6fcf7c; --accent-playing: #4fc3c9; --accent-add: #b39ddb; --danger: #ef6b6b; --star-color: #e6d36a; --accent-live: #b39ddb;
     --google-blue: #4285f4; --input-bg: #0e1a13; --input-text: #e8f3ea; --on-accent: #08160d;
 }
 html[data-theme="sunset"] {
     color-scheme: dark;
     --bg-color: #180f1f; --card-bg: #261633; --text-main: #fdf0e6; --text-muted: #b99cb6; --border-color: #3b2548;
-    --accent-finished: #6bd68f; --accent-playing: #ff8a5c; --accent-add: #f9b233; --danger: #ff5d73; --star-color: #ffd166; --accent-live: #c792ea;
+    --accent-finished: #6bd68f; --accent-playing: #ff8a5c; --accent-add: #e05c8a; --danger: #ff5d73; --star-color: #ffd166; --accent-live: #c792ea;
     --google-blue: #4285f4; --input-bg: #180f1f; --input-text: #fdf0e6; --on-accent: #1c0f14;
 }
 html[data-theme="nord"] {
     color-scheme: dark;
     --bg-color: #2e3440; --card-bg: #3b4252; --text-main: #eceff4; --text-muted: #aab4c7; --border-color: #4c566a;
-    --accent-finished: #a3be8c; --accent-playing: #88c0d0; --accent-add: #ebcb8b; --danger: #bf616a; --star-color: #ebcb8b; --accent-live: #b48ead;
+    --accent-finished: #a3be8c; --accent-playing: #88c0d0; --accent-add: #b48ead; --danger: #bf616a; --star-color: #ebcb8b; --accent-live: #b48ead;
     --google-blue: #4285f4; --input-bg: #2e3440; --input-text: #eceff4; --on-accent: #1f2430;
 }
 html[data-theme="dracula"] {
     color-scheme: dark;
     --bg-color: #1e1f29; --card-bg: #282a36; --text-main: #f8f8f2; --text-muted: #a9b0cf; --border-color: #44475a;
-    --accent-finished: #50fa7b; --accent-playing: #8be9fd; --accent-add: #ffb86c; --danger: #ff5555; --star-color: #f1fa8c; --accent-live: #bd93f9;
+    --accent-finished: #50fa7b; --accent-playing: #8be9fd; --accent-add: #ff79c6; --danger: #ff5555; --star-color: #f1fa8c; --accent-live: #bd93f9;
     --google-blue: #4285f4; --input-bg: #1e1f29; --input-text: #f8f8f2; --on-accent: #1e1f29;
 }
 html[data-theme="pink"] {
     color-scheme: light;
     --bg-color: #fff4f8; --card-bg: #ffffff; --text-main: #4a2c3a; --text-muted: #8a6577; --border-color: #f2cddb;
-    --accent-finished: #3e9c78; --accent-playing: #d94b87; --accent-add: #d96a1f; --danger: #d32f4f; --star-color: #f0a500; --accent-live: #8e5bd1;
+    --accent-finished: #3e9c78; --accent-playing: #d94b87; --accent-add: #8e5bd1; --danger: #d32f4f; --star-color: #f0a500; --accent-live: #8e5bd1;
     --google-blue: #4285f4; --input-bg: #ffffff; --input-text: #4a2c3a; --on-accent: #ffffff;
 }
 html[data-theme="gameboy"] {
@@ -323,6 +323,8 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
 
 /* ===== Card de jogo (visual limpo) ===== */
 .game-item { display: grid; grid-template-columns: 76px 1fr auto; gap: 4px 16px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--border-color); }
+.game-item:has(.gi-cover.wide) { grid-template-columns: 128px 1fr auto; }
+.tl-card:has(.gi-cover.wide) { grid-template-columns: 128px 1fr auto; }
 .game-item:last-child { border-bottom: none; }
 .gi-cover { width: 76px; height: 76px; border-radius: 10px; object-fit: cover; cursor: pointer; border: 1px solid var(--border-color); background: var(--bg-color); }
 .gi-cover-empty { display: flex; align-items: center; justify-content: center; font-size: 1.8em; font-weight: 700; color: var(--text-muted); }
@@ -403,7 +405,9 @@ body.compact-mode .gi-chips, body.compact-mode .gi-progress, body.compact-mode .
         padding: 14px 0;
     }
     .game-item .gi-body { display: contents; }
+    .game-item:has(.gi-cover.wide) { grid-template-columns: 108px 1fr auto; }
     .game-item .gi-cover { grid-area: cover; width: 64px; height: 64px; }
+    .game-item .gi-cover.wide { width: 108px; height: 60px; }
     .game-item .game-title { grid-area: title; }
     .game-item .gi-sub { grid-area: sub; margin-top: 3px; }
     .game-item .gi-chips { grid-area: chips; margin-top: 8px; align-self: start; }
@@ -529,6 +533,7 @@ body.compact-mode .gi-chips, body.compact-mode .gi-progress, body.compact-mode .
 .tl-card { display: grid; grid-template-columns: 76px 1fr auto; gap: 12px; align-items: start; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; }
 .tl-item.is100 .tl-card { border-color: var(--star-color); }
 .tl-card .gi-cover { width: 76px; height: 76px; }
+.tl-card .gi-cover.wide { width: 128px; height: 76px; }
 .tl-body { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .tl-review { font-size: 0.85em; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
 .tl-card .gi-actions { flex-direction: column; }
@@ -872,7 +877,7 @@ html[data-theme="gog"] dialog::backdrop { background: rgba(8, 6, 14, 0.72); back
 .flt-add:focus { outline: none; border-style: solid; }
 
 
-/* ===== Configura��es: hub de se��es ===== */
+/* ===== Configuracoes: hub de secoes ===== */
 .settings-hub-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .set-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-main); cursor: pointer; text-align: left; transition: transform .12s, border-color .12s; font-family: inherit; }
 .set-card:hover { border-color: var(--accent-playing); transform: translateY(-1px); }
@@ -886,3 +891,29 @@ html[data-theme="gog"] dialog::backdrop { background: rgba(8, 6, 14, 0.72); back
 .set-back { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 999px; padding: 5px 12px; font-size: 0.8em; font-weight: 600; cursor: pointer; font-family: inherit; }
 .set-back:hover { color: var(--text-main); background: rgba(128,128,128,0.12); }
 .set-title { margin: 0; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; font-size: 1.05em; }
+
+/* Capa horizontal (jogos antigos) */
+.game-item .gi-cover.wide { width: 128px; height: 76px; }
+.sd-cover.wide { width: 100%; max-width: 260px; height: 150px; object-fit: contain; background: #0a0a0d; }
+/* Na prateleira, capa horizontal ocupa dois espaços do cartucho */
+.shelf-item.wide { grid-column: span 2; }
+
+/* Opção "Prateleira limpa": some o desenho da caixinha, fica só a capa com sombra */
+body.shelf-plain .cart { background: none; box-shadow: none; padding: 0 0 14px; }
+body.shelf-plain .cart::before, body.shelf-plain .cart::after { display: none; }
+body.shelf-plain .cart-label { border-radius: 8px; background: #101014; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); }
+body.shelf-plain .cart-label img { border-radius: 8px; }
+body.shelf-plain .shelf-item:focus-visible .cart { box-shadow: none; }
+body.shelf-plain .shelf-item:focus-visible .cart-label { box-shadow: 0 0 0 2px var(--accent-playing), 0 4px 10px rgba(0, 0, 0, 0.5); }
+body.shelf-plain .shelf-badges { bottom: 22px; left: 6px; }
+body.shelf-plain .shelf-live, body.shelf-plain .shelf-playing { top: 6px; right: 6px; }
+body.shelf-plain .shelf-prog { bottom: 10px; left: 4px; right: 4px; }
+body.shelf-plain .shelf-item.is100 .cart { box-shadow: none; }
+body.shelf-plain .shelf-item.is100 .cart-label { box-shadow: 0 0 0 2px var(--star-color), 0 4px 10px rgba(0, 0, 0, 0.5); }
+
+/* Barra de progresso na base do cartucho (prateleira) */
+.shelf-prog { position: absolute; left: 8px; right: 8px; bottom: 18px; height: 4px; border-radius: 2px; background: rgba(0,0,0,0.55); overflow: hidden; }
+.shelf-prog i { display: block; height: 100%; background: var(--accent-playing); }
+
+/* Icones dentro dos botoes do modal da prateleira */
+.sd-actions .pill-btn { display: inline-flex; align-items: center; gap: 6px; }
