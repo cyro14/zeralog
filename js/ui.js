@@ -551,7 +551,8 @@ export function createGameElement(game) {
         : '';
     if (running) chips.unshift('<span class="chip chip-accent">Em sessão</span>');
     const infoBtn = `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Dados do jogo (editar / buscar automático)" aria-label="Dados do jogo">${icon('info', { size: '18px' })}</button>`;
-    const wikiBtn = playBtn + `<button type="button" class="icon-btn" onclick="openWiki('${game.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>`;
+    const wikiBtn = playBtn + `<button type="button" class="icon-btn" onclick="openWiki('${game.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>
+        <button type="button" class="icon-btn" onclick="buyOnAmazon('${game.id}')" title="Comprar na Amazon" aria-label="Comprar na Amazon">${icon('cart', { size: '18px' })}</button>`;
     const editBtn = wikiBtn + (finished
         ? `<button type="button" class="icon-btn" onclick="openCardGenerator('${game.id}')" title="Compartilhar" aria-label="Compartilhar">${ICONS.share}</button>
            ${infoBtn}
@@ -1105,6 +1106,7 @@ export function createWishElement(w) {
         </div>
         <div class="gi-actions">
             <button type="button" class="icon-btn" onclick="openWiki('${w.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>
+            <button type="button" class="icon-btn" onclick="buyOnAmazon('${w.id}')" title="Comprar na Amazon" aria-label="Comprar na Amazon">${icon('cart', { size: '18px' })}</button>
             <button type="button" class="icon-btn" onclick="openEditWishModal('${w.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>
             <button type="button" class="icon-btn danger" onclick="askDeleteWish('${w.id}')" title="Remover" aria-label="Remover">${ICONS.trash}</button>
         </div>
@@ -1586,6 +1588,22 @@ export function importBackup(event) {
 
 export function saveRawgKey(value) { setRawgKey(value); triggerToast(value.trim() ? 'Chave da RAWG salva.' : 'Voltou para a chave padrão.'); }
 
+// ---------- Loja: link de afiliado da Amazon ----------
+export function saveAmazonTag(v) {
+    const tag = String(v || '').trim();
+    appData.settings.amazonTag = tag;
+    saveData(null);
+    triggerToast(tag ? 'Tag de afiliado salva. Os botões "Comprar" já usam seu link.' : 'Tag removida — os botões "Comprar" abrem uma busca comum.');
+}
+export function buyOnAmazon(id) {
+    const g = appData.games.find(x => x.id === id) || (appData.wishlist || []).find(x => x.id === id);
+    if (!g) return;
+    const q = `${g.title} ${g.platform || ''} game`.replace(/\s+/g, ' ').trim();
+    const tag = String(appData.settings.amazonTag || '').trim() || 'superyugioh-20';
+    const url = `https://www.amazon.com.br/s?k=${encodeURIComponent(q)}${tag ? `&linkCode=ll2&tag=${encodeURIComponent(tag)}` : ''}`;
+    window.open(url, '_blank', 'noopener');
+}
+
 export function openSettingsSection(id) {
     document.getElementById('settings-hub').hidden = true;
     const page = document.getElementById('settings-page-' + id);
@@ -1608,6 +1626,7 @@ export function welcomeSteam() {
 export function openSettings() {
     backToSettingsHub();
     document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
+    document.getElementById('amazon-tag-input').value = appData.settings.amazonTag || '';
     renderThemePicker();
     paintPlatformDisplay();
     updateStorageMeter();

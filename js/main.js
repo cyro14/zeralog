@@ -25,7 +25,7 @@ import {
     openRatingModal, openEditFinishedModal, cancelRating, skipRating, saveRating, saveFinishedEdit,
     spinRoulette, acceptRoulette, quickSearch, openImageModal, searchCoverOnGoogle, previewImageEdit, saveEditedImage,
     openBackupModal, exportBackup, importBackup, openSettings, openFactoryReset, confirmFactoryReset,
-    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey, openSettingsSection, backToSettingsHub, welcomeSteam
+    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey, openSettingsSection, backToSettingsHub, welcomeSteam, saveAmazonTag, buyOnAmazon
 } from './ui.js';
 
 // Anexando ao escopo global para que o index.html possa ler os onlicks
@@ -87,6 +87,8 @@ window.importBackup = importBackup;
 window.openSettings = openSettings;
 window.openSettingsSection = openSettingsSection;
 window.backToSettingsHub = backToSettingsHub;
+window.saveAmazonTag = saveAmazonTag;
+window.buyOnAmazon = buyOnAmazon;
 window.openFactoryReset = openFactoryReset;
 window.confirmFactoryReset = confirmFactoryReset;
 window.previewPlatformIcon = previewPlatformIcon;

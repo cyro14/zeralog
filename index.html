@@ -274,6 +274,11 @@
                         <strong>Conexões</strong>
                         <small>Conta Steam e importação</small>
                     </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('store')">
+                        <span class="set-card-ic" data-icon="cart" data-size="1.5em"></span>
+                        <strong>Loja</strong>
+                        <small>Link de afiliado Amazon</small>
+                    </button>
                     <button type="button" class="set-card" onclick="openSettingsSection('platforms')">
                         <span class="set-card-ic" data-icon="gamepad" data-size="1.5em"></span>
                         <strong>Plataformas</strong>
@@ -395,6 +400,21 @@
                     <small>A Steam não aceita chamadas diretas do navegador, então o app tenta vários proxies públicos automaticamente — em geral <strong>não precisa mexer aqui</strong>. Se os cinco falharem de novo, cole um proxy próprio no formato https://meu-proxy.com/?url=%s (%s vira a URL da Steam).</small>
                     <input type="text" id="steam-proxy-input" placeholder="Proxy personalizado (opcional), com %s no lugar da URL" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="steamSaveProxy(this.value)">
                 </details>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Loja (afiliado Amazon) -->
+            <div id="settings-page-store" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="cart"></span>Loja</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                <label for="amazon-tag-input" style="font-weight: bold;">Sua tag de afiliado da Amazon:</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="amazon-tag-input" placeholder="Ex: sualoja-20" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="saveAmazonTag(this.value)" style="flex: 1;">
+                    <a class="pill-btn" href="https://associados.amazon.com.br/" target="_blank" rel="noopener" title="Criar conta no programa de associados da Amazon" style="display: inline-flex; align-items: center; gap: 5px; text-decoration: none; white-space: nowrap;"><span data-icon="external" data-size="0.95em"></span>Criar conta</a>
+                </div>
+                <small style="color: var(--text-muted);">Com a tag salva, cada jogo ganha um botão "Comprar" que abre a busca da Amazon já com o seu link de afiliado. Você encontra a tag no painel do Amazon Associados (o trecho depois de "tag=" nos links gerados lá). Sem a tag, o botão abre uma busca comum, sem afiliação.</small>
             </div>
                 <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
             </div>
