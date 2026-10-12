@@ -1105,3 +1105,8 @@ body.gm-tab .search-container, body.gm-tab #platform-chips-container { display: 
 .gm-info-btn { position: absolute; right: 14px; bottom: 14px; z-index: 2; pointer-events: auto; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); color: #fff; border: 1px solid rgba(255,255,255,0.35); backdrop-filter: blur(4px); cursor: pointer; transition: transform 0.15s, background 0.15s; }
 .gm-info-btn:hover { background: rgba(0,0,0,0.8); transform: scale(1.1); }
 .gm-info { padding-right: 60px; }
+
+/* Explorar: capas pequenas e uniformes (algumas imagens esticavam o card) */
+.gm-x-cover { height: 96px; aspect-ratio: auto; flex-shrink: 0; overflow: hidden; }
+.gm-x-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gm-x-body strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

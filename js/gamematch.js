@@ -491,6 +491,7 @@ export const GM_EXPLORE_CATS = [
 ];
 const exploreCache = {};   // categoria -> { items, more }
 let exploreById = new Map();   // id -> objeto de jogo (p/ os botões de ação)
+let classicDecade = '';   // '' | '1980' | '1990' | '2000' | '2010'
 
 function exploreParams(cat) {
     const today = new Date().toISOString().slice(0, 10);
@@ -500,14 +501,28 @@ function exploreParams(cat) {
         case 'hot': return { ordering: '-added', dates: `${y - 2}-01-01,${today}`, page_size: 20, exclude_additions: 'true' };
         case 'releases': return { ordering: 'released', dates: `${today},2030-12-31`, page_size: 20 };
         case 'gems': return { ordering: '-rating', genres: 'indie', page_size: 40, exclude_additions: 'true' };
-        case 'classics': return { ordering: '-rating', dates: '1980-01-01,2012-12-31', page_size: 20, exclude_additions: 'true' };
+        case 'classics': {
+            // submenu de décadas: '1980' -> 1980-1989, etc.
+            const start = classicDecade ? +classicDecade : 1980;
+            const end = classicDecade ? start + 9 : 2012;
+            return { ordering: '-rating', dates: `${start}-01-01,${end}-12-31`, page_size: 20, exclude_additions: 'true' };
+        }
         case 'free': return { ordering: '-popularity', tags: 'free-to-play', page_size: 20 };
         case 'top': default: return { ordering: '-metacritic', page_size: 20, exclude_additions: 'true' };
     }
 }
 
+// Submenu de épocas dentro de "Clássicos"
+export function gmClassicDecade(dec) {
+    classicDecade = dec;
+    document.querySelectorAll('#gm-classic-decades .gm-chip').forEach(c => c.classList.toggle('active', c.dataset.dec === dec));
+    gmExplore('classics');
+}
+
 export async function gmExplore(cat = 'you') {
     document.querySelectorAll('#gm-explore-cats .gm-chip').forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
+    const decBar = document.getElementById('gm-classic-decades');
+    if (decBar) decBar.hidden = cat !== 'classics';
     const grid = document.getElementById('gm-explore-grid');
     if (!grid) return;
     grid.innerHTML = '<div class="gm-loading">Carregando...</div>';
