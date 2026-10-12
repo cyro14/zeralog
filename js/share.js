@@ -352,12 +352,12 @@ export async function renderCards(items, o) {
         tl.forEach((l, k) => ctx.fillText(l, tx, y + 42 + k * 34));
         const my = y + 42 + tl.length * 34 + 8;
         await metaLine(ctx, tx, my, it, { size: 21, color: p.muted, maxW: tw });
-        // selos
-        let cx2 = tx, cy2 = my + 22; const chips = chipsFor(it, o.mode, p).slice(0, 4);
+        // selos (opcionais: podem ser desligados na janela de compartilhamento)
+        let cx2 = tx, cy2 = my + 16; const chips = o.chips === false ? [] : chipsFor(it, o.mode, p).slice(0, 4);
         for (const ch of chips) {
-            ctx.font = `700 19px ${FONT}`; const w2 = ctx.measureText(ch.t).width + 24;
-            if (cx2 + w2 > tx + tw) { cx2 = tx; cy2 += 38; if (cy2 > y + chh - 36) break; }
-            const r = pill(ctx, cx2, cy2, ch.t, { size: 19, padX: 12, bg: ch.bg, border: ch.border, fg: ch.fg || '#fff' }); cx2 += r.w + 8;
+            ctx.font = `700 16px ${FONT}`; const w2 = Math.min(ctx.measureText(ch.t).width + 18, tw);
+            if (cx2 + w2 > tx + tw) { cx2 = tx; cy2 += 30; if (cy2 > y + chh - 32) break; }
+            const r = pill(ctx, cx2, cy2, ellipsis(ctx, ch.t, w2 - 18), { size: 16, padX: 9, bg: ch.bg, border: ch.border, fg: ch.fg || '#fff' }); cx2 += r.w + 6;
         }
         if (it.state === 'finished' && it.userRating) {
             const bx = x + cw - 46, by = y + 44;
@@ -391,7 +391,7 @@ async function build() {
             S.page = Math.min(S.page, pages - 1);
             const slice = S.items.slice(S.page * per, (S.page + 1) * per);
             const title = S.title + (pages > 1 ? ` · parte ${S.page + 1}/${pages}` : '');
-            const o = { title, subtitle: S.subtitle, titles: $('sh-titles').checked, mode: S.mode, gray: S.gray, plain: !!appData.settings.shelfPlain };
+            const o = { title, subtitle: S.subtitle, titles: $('sh-titles').checked, mode: S.mode, gray: S.gray, plain: !!appData.settings.shelfPlain, chips: $('sh-chips').checked };
             canvas = S.style === 'shelf' ? await renderShelf(slice, o) : await renderCards(slice, o);
             $('sh-pages').style.display = pages > 1 ? '' : 'none';
             $('sh-page-label').textContent = `Parte ${S.page + 1} de ${pages}`;

@@ -1,6 +1,6 @@
-﻿// Franquias: progresso, lista de jogos (sanfona) e sugestão de mais jogos da série via RAWG.
+// Franquias: progresso, lista de jogos (sanfona) e sugestão de mais jogos da série via RAWG.
 import { appData } from './store.js';
-import { esc, searchGames, getGameSeries, resizeUrl, describeError } from './gameApi.js';
+import { esc, searchGames, searchFranchiseGames, getGameSeries, resizeUrl, describeError } from './gameApi.js';
 import { icon } from './icons.js';
 import { platformLabel } from './platforms.js';
 import { openShare } from './share.js';
@@ -54,18 +54,28 @@ function wishRow(w) {
     </li>`;
 }
 
+const SUG_PAGE = 6;   // quantos jogos novos aparecem por página
+
 function suggestionHtml(k) {
     const s = suggestions.get(k);
     if (!s) return '';
     if (s.status === 'loading') return '<div class="rawg-msg">Procurando mais jogos da série...</div>';
     if (s.status === 'error') return `<div class="rawg-msg rawg-err">${esc(s.msg)}</div>`;
     if (!s.items.length) return '<div class="rawg-msg">Nenhum jogo novo encontrado para essa franquia. Tente adicionar manualmente.</div>';
-    return `<div class="fr-sug-title">Toque em um jogo para adicionar</div><ul class="fr-sug-list">${s.items.map((it, i) => `
-        <li class="fr-sug" data-act="add" data-i="${i}" role="button" tabindex="0">
+    const pages = Math.max(1, Math.ceil(s.items.length / SUG_PAGE));
+    const page = Math.min(s.page || 0, pages - 1);
+    const slice = s.items.slice(page * SUG_PAGE, (page + 1) * SUG_PAGE);
+    const nav = (pages > 1 || s.more) ? `<div class="fr-sug-nav">
+        <button type="button" class="pill-btn" data-act="sugprev" ${page === 0 ? 'disabled' : ''} aria-label="Página anterior">‹</button>
+        <small>${page + 1}/${s.more ? pages + '…' : pages}</small>
+        <button type="button" class="pill-btn" data-act="sugnext" ${(!s.more && page >= pages - 1) ? 'disabled' : ''} aria-label="Próxima página">›</button>
+    </div>` : '';
+    return `<div class="fr-sug-title">Toque em um jogo para adicionar</div><ul class="fr-sug-list">${slice.map((it, i) => `
+        <li class="fr-sug" data-act="add" data-i="${page * SUG_PAGE + i}" role="button" tabindex="0">
             <span class="fr-thumb">${it.image ? `<img src="${esc(resizeUrl(it.image, 200))}" alt="" loading="lazy">` : '<span>?</span>'}</span>
             <span class="fr-info"><strong>${esc(it.title)}</strong><small>${[it.released ? it.released.slice(0, 4) : '', (it.genres || []).slice(0, 2).join(', ')].filter(Boolean).map(esc).join(' · ')}</small></span>
-            <button type="button" class="pill-btn" data-act="wish" data-i="${i}">+ Desejo</button>
-        </li>`).join('')}</ul>`;
+            <button type="button" class="pill-btn" data-act="wish" data-i="${page * SUG_PAGE + i}">+ Desejo</button>
+        </li>`).join('')}</ul>${nav}`;
 }
 
 function panelHtml(f) {
@@ -125,21 +135,51 @@ async function search(k) {
         const ids = f.games.map(g => g.rawgId).filter(Boolean).slice(0, 2);
         const [series, found] = await Promise.all([
             Promise.all(ids.map(id => getGameSeries(id).catch(() => []))).then(r => r.flat()),
-            searchGames(f.name, 15)
+            searchFranchiseGames(f.name, 1, 10)   // exclude_additions: sem DLCs/complementos
         ]);
         const have = new Set([...appData.games, ...(appData.wishlist || [])].map(g => norm(g.title)));
         const haveIds = new Set([...appData.games, ...(appData.wishlist || [])].map(g => g.rawgId).filter(Boolean));
         const seen = new Set();
-        const items = [...series, ...found.filter(x => norm(x.title).includes(f.key))].filter(x => {
-            if (seen.has(x.rawgId) || haveIds.has(x.rawgId) || have.has(norm(x.title))) return false;
+        const keep = x => {
+            if (!x || seen.has(x.rawgId) || haveIds.has(x.rawgId) || have.has(norm(x.title))) return false;
             seen.add(x.rawgId);
             return true;
-        }).slice(0, 15);
-        suggestions.set(k, { status: 'done', items });
+        };
+        const items = [...series.filter(keep), ...(found.items || []).filter(x => norm(x.title).includes(f.key)).filter(keep)];
+        suggestions.set(k, { status: 'done', items, page: 0, rawgPage: 1, more: !!found.more });
     } catch (e) {
         console.error(e);
         suggestions.set(k, { status: 'error', msg: describeError(e) });
     }
+    if (openKey === k) renderFranchiseStats();
+}
+
+// Paginação das sugestões: avança nas já carregadas e baixa mais páginas da RAWG quando precisa
+async function sugPage(k, dir) {
+    const s = suggestions.get(k);
+    if (!s || s.status !== 'done') return;
+    const next = (s.page || 0) + dir;
+    if (next < 0) return;
+    const totalPages = Math.ceil(s.items.length / SUG_PAGE);
+    if (next >= totalPages) {
+        if (!s.more || s.loadingMore) return;
+        const f = getFranchiseStats().find(x => x.key === k);
+        if (!f) return;
+        s.loadingMore = true;
+        renderFranchiseStats();
+        try {
+            const more = await searchFranchiseGames(f.name, s.rawgPage + 1, 10);
+            const have = new Set([...appData.games, ...(appData.wishlist || [])].map(g => norm(g.title)));
+            const haveIds = new Set([...appData.games, ...(appData.wishlist || [])].map(g => g.rawgId).filter(Boolean));
+            const seen = new Set(s.items.map(x => x.rawgId));
+            const fresh = (more.items || []).filter(x => norm(x.title).includes(f.key) && !seen.has(x.rawgId) && !haveIds.has(x.rawgId) && !have.has(norm(x.title)));
+            s.items = s.items.concat(fresh);
+            s.rawgPage++;
+            s.more = !!more.more;
+            s.loadingMore = false;
+        } catch (e) { s.loadingMore = false; }
+    }
+    s.page = next;
     if (openKey === k) renderFranchiseStats();
 }
 
@@ -151,6 +191,8 @@ function onAction(t, ev) {
         case 'game': window.openShelfDetail(t.dataset.id); break;
         case 'wishitem': window.openEditWishModal(t.dataset.id); break;
         case 'search': search(k); break;
+        case 'sugprev': sugPage(k, -1); break;
+        case 'sugnext': sugPage(k, 1); break;
         case 'filter': { const f = getFranchiseStats().find(x => x.key === k); if (f) window.filterByFranchise(f.name); break; }
         case 'share': {
             const f = getFranchiseStats().find(x => x.key === k);

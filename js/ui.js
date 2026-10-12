@@ -1189,10 +1189,15 @@ export function wishSections(items) {
     const sort = appData.settings.wishSort;
     const byAdded = (a, b) => (b.addedAt || 0) - (a.addedAt || 0);
     const cmp = { release: byAdded, added: byAdded, az: (a, b) => a.title.localeCompare(b.title), meta: (a, b) => (b.metacritic || 0) - (a.metacritic || 0) }[sort] || byAdded;
-    const upcoming = items.filter(w => ['future', 'today'].includes(releaseState(w))).sort((a, b) => a.released.localeCompare(b.released));
-    const released = items.filter(w => releaseState(w) === 'released').sort(sort === 'release' ? (a, b) => b.released.localeCompare(a.released) : cmp);
-    const nodate = items.filter(w => ['tba', 'unknown'].includes(releaseState(w))).sort(cmp);
-    return [{ key: 'soon', title: 'Em breve', list: upcoming }, { key: 'out', title: 'Já lançados', list: released }, { key: 'nodate', title: 'Sem data', list: nodate }].filter(s => s.list.length);
+    // Jogos sem data ficam na mesma seção do "Em breve" (por último dentro dela)
+    const st = w => releaseState(w);
+    const dated = w => st(w) === 'future' || st(w) === 'today';
+    const upcoming = items.filter(w => st(w) !== 'released').sort((a, b) => {
+        const da = dated(a) ? a.released : '9999', db = dated(b) ? b.released : '9999';
+        return da.localeCompare(db) || cmp(a, b);
+    });
+    const released = items.filter(w => st(w) === 'released').sort(sort === 'release' ? (a, b) => b.released.localeCompare(a.released) : cmp);
+    return [{ key: 'soon', title: 'Em breve', list: upcoming }, { key: 'out', title: 'Já lançados', list: released }].filter(s => s.list.length);
 }
 
 function renderWishSummary(all) {

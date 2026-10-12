@@ -700,7 +700,11 @@ body.session-on { padding-top: calc(20px + 42px + env(safe-area-inset-top, 0px))
 
 
 /* ===== Franquias (cards expansíveis) ===== */
-.fr-item { padding: 0; border: 1px solid var(--border-color); border-radius: 14px; margin-bottom: 12px; cursor: default; background: var(--card-bg); overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
+#franchise-stats { display: flex; flex-direction: column; gap: 14px; }
+.fr-item { padding: 0 0 12px; border: 1px solid var(--border-color); border-radius: 14px; cursor: default; background: var(--card-bg); overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
+.fr-sug-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; }
+.fr-sug-nav small { color: var(--text-muted); font-weight: 600; }
+.fr-sug-nav .pill-btn[disabled] { opacity: 0.35; cursor: default; }
 .fr-item:hover { border-color: rgba(128, 128, 128, 0.55); }
 .fr-item.open { border-color: var(--accent-playing); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); }
 .fr-item.complete { border-color: rgba(255, 215, 0, 0.45); }

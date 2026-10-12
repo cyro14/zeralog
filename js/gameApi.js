@@ -63,6 +63,12 @@ export async function searchGames(query, pageSize = 6) {
     return (data.results || []).map(normalize);
 }
 
+// Busca paginada sem DLCs/complementos (usada nas sugestões de franquia)
+export async function searchFranchiseGames(query, page = 1, pageSize = 10) {
+    const data = await rawg('/games', { search: query, page_size: pageSize, page, exclude_additions: 'true' });
+    return { items: (data.results || []).map(normalize), more: !!data.next, count: data.count || 0 };
+}
+
 // Jogos da mesma série/franquia (RAWG /games/{id}/game-series)
 export async function getGameSeries(id) {
     const data = await rawg(`/games/${id}/game-series`, { page_size: 20 });
