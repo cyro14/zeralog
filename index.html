@@ -71,6 +71,7 @@
 
     <div class="tabs">
         <button class="tab-btn active" id="btn-tab-home" onclick="switchTab('home')"><span class="ic-lead" data-icon="list"></span>Fila</button>
+        <button class="tab-btn" id="btn-tab-gamematch" onclick="switchTab('gamematch')"><span class="ic-lead" data-icon="gamepad"></span><span class="tab-label">GameMatch</span></button>
         <button class="tab-btn" id="btn-tab-wish" onclick="switchTab('wish')"><span class="ic-lead" data-icon="bookmark"></span><span class="tab-label">Desejos (<span id="count-wish">0</span>)</span></button>
         <button class="tab-btn" id="btn-tab-finished" onclick="switchTab('finished')"><span class="ic-lead" data-icon="trophy"></span><span class="tab-label">Zerados (<span id="count-finished">0</span>)</span></button>
         <button class="tab-btn" id="btn-tab-stats" onclick="switchTab('stats')"><span class="ic-lead" data-icon="chart"></span>Status</button>
@@ -106,6 +107,48 @@
 
         <div id="app-container"></div>
         <button class="btn-add-cat" onclick="openCatModal()">+ Adicionar Categoria</button>
+    </div>
+
+    <!-- GAMEMATCH TAB: o "Tinder de jogos" -->
+    <div id="tab-gamematch" class="tab-content">
+        <div class="subnav gm-subnav" id="gm-subnav" role="tablist" aria-label="Seções do GameMatch">
+            <button type="button" role="tab" data-sub="swipe" class="active" onclick="gmSubShow('swipe')"><span data-icon="flame" data-size="1em"></span>Descobrir</button>
+            <button type="button" role="tab" data-sub="explore" onclick="gmSubShow('explore')"><span data-icon="compass" data-size="1em"></span>Explorar</button>
+            <button type="button" role="tab" data-sub="profile" onclick="gmSubShow('profile')"><span data-icon="crown" data-size="1em"></span>Perfil</button>
+        </div>
+
+        <!-- Descobrir: deck de swipe -->
+        <section class="gm-sub active" data-sub="swipe">
+            <div class="gm-stage">
+                <div id="gm-deck" class="gm-deck"><div class="gm-loading">Preparando seu deck...</div></div>
+                <div class="gm-actions">
+                    <button type="button" class="gm-act gm-act-nope" onclick="gmSwipe('reject')" title="Passar (←)"><span data-icon="x" data-size="1.4em"></span></button>
+                    <button type="button" class="gm-act gm-act-up" onclick="gmSwipe('backlog')" title="Salvar no backlog (↑)"><span data-icon="archive" data-size="1.4em"></span></button>
+                    <button type="button" class="gm-act gm-act-fav" onclick="gmSwipe('favorite')" title="Favoritar (F)"><span data-icon="star" data-size="1.4em"></span></button>
+                    <button type="button" class="gm-act gm-act-like" onclick="gmSwipe('like')" title="Match! (→)"><span data-icon="heart" data-size="1.4em"></span></button>
+                </div>
+                <small class="gm-hint">Arraste o card ou use os botões. → Match (wishlist) · ← Passar · ↑ Backlog · F Favorito <span id="gm-deck-hint"></span></small>
+            </div>
+        </section>
+
+        <!-- Explorar: descoberta sem swipe -->
+        <section class="gm-sub" data-sub="explore">
+            <div class="gm-explore-cats" id="gm-explore-cats">
+                <button type="button" class="gm-chip active" data-cat="you" onclick="gmExplore('you')">Combina com você</button>
+                <button type="button" class="gm-chip" data-cat="hot" onclick="gmExplore('hot')">Em alta</button>
+                <button type="button" class="gm-chip" data-cat="releases" onclick="gmExplore('releases')">Lançamentos</button>
+                <button type="button" class="gm-chip" data-cat="gems" onclick="gmExplore('gems')">Joias escondidas</button>
+                <button type="button" class="gm-chip" data-cat="classics" onclick="gmExplore('classics')">Clássicos</button>
+                <button type="button" class="gm-chip" data-cat="free" onclick="gmExplore('free')">Grátis / Ofertas</button>
+                <button type="button" class="gm-chip" data-cat="top" onclick="gmExplore('top')">Mais bem avaliados</button>
+            </div>
+            <div class="gm-explore-grid" id="gm-explore-grid"><div class="gm-loading">Carregando...</div></div>
+        </section>
+
+        <!-- Perfil gamer -->
+        <section class="gm-sub" data-sub="profile">
+            <div id="gm-profile"></div>
+        </section>
     </div>
 
     <!-- WISHLIST TAB -->
@@ -203,6 +246,13 @@
             <div class="achievements-grid" id="achievements-grid"></div>
         </section>
     </div>
+
+    <!-- Onboarding do GameMatch (perfil gamer) -->
+    <dialog id="modal-gamematch-onboard" class="gm-onboard">
+        <div class="modal-form">
+            <div id="gm-ob-body"></div>
+        </div>
+    </dialog>
 
     <!-- Toast Undo -->
     <div id="undo-toast"><span id="undo-message">Ação realizada.</span><button class="btn-undo" onclick="undoAction()">Desfazer</button></div>

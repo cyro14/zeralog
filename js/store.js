@@ -25,7 +25,8 @@ export const defaultData = {
     savedFilters: [],
     counters: { sessions: 0, sessionMinutes: 0, wishMoved: 0 },
     achSeeded: false,
-    unlockedAchievements: [] 
+    unlockedAchievements: [],
+    gamematch: {}
 };
 
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -52,6 +53,16 @@ export function migrateData(data) {
     ['home', 'finished', 'wish'].forEach(t => { if (!Array.isArray(data.settings.filters[t])) data.settings.filters[t] = []; });
     data.counters = { sessions: 0, sessionMinutes: 0, wishMoved: 0, ...(isObj(data.counters) ? data.counters : {}) };
     if (data.achSeeded === undefined) data.achSeeded = false;
+
+    // GameMatch: perfil, swipes e aprendizado de recomendação
+    if (!isObj(data.gamematch)) data.gamematch = {};
+    const gm = data.gamematch;
+    if (gm.profile === undefined) gm.profile = null;
+    ['likes', 'favorites', 'rejects', 'backlogAdds', 'swipeLog'].forEach(k => { if (!Array.isArray(gm[k])) gm[k] = []; });
+    if (!isObj(gm.genreBoost)) gm.genreBoost = {};
+    if (!isObj(gm.platformBoost)) gm.platformBoost = {};
+    if (!isObj(gm.franchiseBoost)) gm.franchiseBoost = {};
+    if (gm.totalSwipes === undefined) gm.totalSwipes = 0;
 
     data.categories = data.categories.filter(isObj).map(c => ({ ...c, id: str(c.id, 'c' + Math.random().toString(36).slice(2, 8)), name: str(c.name, 'Categoria') }));
     data.platforms = data.platforms.filter(isObj).map(p => ({ ...p, name: str(p.name) })).filter(p => p.name);

@@ -75,6 +75,8 @@ export function switchTab(tabId) {
     document.getElementById(`tab-${tabId}`).classList.add('active');
     if(tabId === 'stats') updateStatsAndCharts();
     else filterGames();
+    document.body.classList.toggle('gm-tab', tabId === 'gamematch');
+    document.dispatchEvent(new CustomEvent('zeralog:tab-changed', { detail: { tab: tabId } }));
 }
 
 // ================= BUSCA AUTOMÁTICA (RAWG) =================

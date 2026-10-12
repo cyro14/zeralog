@@ -15,6 +15,7 @@ import { cropApply, cropCancel, cropReset, cropFit } from './crop.js';
 import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, setHomeView, shelfDo, openShelfDetail, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
 import { openWiki, wikiChangeSource, wikiSearch, wikiSearchFab, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
 import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSync } from './steam.js';
+import { initGameMatch, gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject } from './gamematch.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleCompact, toggleShelfPlain, saveStateForUndo, undoAction, switchTab, 
@@ -121,6 +122,9 @@ Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEd
 // Steam: login, sincronização e configurações
 Object.assign(window, { steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSyncUI: steamSync });
 
+// GameMatch: aba de descoberta estilo Tinder
+Object.assign(window, { gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject });
+
 // Inicialização Principal (o banco é aberto de forma assíncrona antes de desenhar a tela)
 window.restoreSnapshotUI = restoreSnapshotUI;
 window.clearLegacyCopy = clearLegacyCopyUI;
@@ -155,6 +159,7 @@ async function start() {
     initFilters({ render });
     initSteam({ render, toast: (msg, undo) => triggerToast(msg, undo === true), undo: saveStateForUndo, openSteamSettings: () => { openSettings(); openSettingsSection('steam'); } });
     initShare({ toast: msg => triggerToast(msg, false) });
+    initGameMatch({ toast: msg => triggerToast(msg, false), hydrateIcons });
     if (!canShareFiles()) document.getElementById('sh-share-btn').style.display = 'none';
     startReleaseWatch();
     const tabParam = new URLSearchParams(location.search).get('tab');

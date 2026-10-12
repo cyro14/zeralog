@@ -8,7 +8,7 @@ export const getRawgKey = () => { try { return (localStorage.getItem(KEY_STORAGE
 export const setRawgKey = k => { try { k ? localStorage.setItem(KEY_STORAGE, k.trim()) : localStorage.removeItem(KEY_STORAGE); } catch (e) {} };
 export const hasCustomRawgKey = () => { try { return !!localStorage.getItem(KEY_STORAGE); } catch (e) { return false; } };
 
-const GENRES_PT = {
+export const GENRES_PT = {
     'Action': 'Ação', 'Indie': 'Indie', 'Adventure': 'Aventura', 'RPG': 'RPG',
     'Strategy': 'Estratégia', 'Shooter': 'Tiro', 'Casual': 'Casual', 'Simulation': 'Simulação',
     'Puzzle': 'Quebra-cabeça', 'Arcade': 'Arcade', 'Platformer': 'Plataforma', 'Racing': 'Corrida',
@@ -85,6 +85,25 @@ export async function getGameStores(id) {
 export async function getGameDetails(id) {
     return normalize(await rawg(`/games/${id}`));
 }
+
+// Dados extras usados pelo GameMatch e pela busca avançada (plataformas, tags, avaliações)
+function normalizeFull(g) {
+    const base = normalize(g);
+    return {
+        ...base,
+        rating: g.rating || 0,
+        ratingsCount: g.ratings_count || 0,
+        platforms: (g.platforms || []).map(p => p.platform && p.platform.name).filter(Boolean),
+        tags: (g.tags || []).map(t => t.name).filter(Boolean),
+        esrb: (g.esrb_rating && g.esrb_rating.name) || ''
+    };
+}
+// Lista genérica da RAWG com os campos completos
+export async function listGames(params) {
+    const data = await rawg('/games', params);
+    return { items: (data.results || []).map(normalizeFull), more: !!data.next, count: data.count || 0 };
+}
+export const normText = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 // ---------- fontes diretas (fallback quando a RAWG falha ou não tem o dado) ----------
 // HLTB e Metacritic não têm CORS aberto; as chamadas passam por proxies públicos.
