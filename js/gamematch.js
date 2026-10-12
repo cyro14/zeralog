@@ -372,6 +372,7 @@ function cardHtml(g, idx) {
             </div>
             <div class="gm-genres">${(g.genres || []).slice(0, 3).map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>
             <div class="gm-plats">${esc(gmPlatLabel(g))}</div>
+            <button type="button" class="gm-info-btn" data-t="${esc(g.title)}" title="Pesquisar no Google"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
         </div>
     </article>`;
 }
@@ -395,7 +396,17 @@ export async function renderDeck() {
     }
     deck.innerHTML = plannedDeck.slice(0, 3).map((g, i) => cardHtml(g, i)).join('');
     deck.querySelectorAll('.gm-card').forEach((el, i) => { el.style.zIndex = 10 - i; });
+    // botão de pesquisa no Google: não pode iniciar o arrasto do card
+    deck.querySelectorAll('.gm-info-btn').forEach(b => {
+        b.addEventListener('pointerdown', e => e.stopPropagation());
+        b.addEventListener('click', e => {
+            e.stopPropagation();
+            const q = encodeURIComponent((b.dataset.t || '') + ' jogo');
+            window.open(`https://www.google.com/search?q=${q}`, '_blank', 'noopener');
+        });
+    });
     attachDrag(deck.querySelector('.gm-top'));
+    if (DEPS.hydrateIcons) DEPS.hydrateIcons(deck);
     const h = document.getElementById('gm-deck-hint');
     if (h) h.textContent = usingDemo ? `${plannedDeck.length} jogos de demonstração (modo offline)` : `Restam ${plannedDeck.length} jogos no seu deck`;
 }
