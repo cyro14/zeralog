@@ -470,21 +470,18 @@
                 <button type="button" class="btn-quick-link" style="background:#ffcc33; color:black;" onclick="quickSearch('meta')">Buscar no Metacritic</button>
             </div>
 
-            <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Plataforma:</label>
+            <label class="lbl">Plataforma:</label>
             <select id="game-platform"></select>
 
-            <div id="game-cat-row" style="display: flex; flex-direction: column; gap: 4px;">
-                <label for="game-cat-move" style="font-size: 0.85em; color: var(--text-muted);">Categoria:</label>
+            <div id="game-cat-row">
+                <label for="game-cat-move" class="lbl">Categoria:</label>
                 <select id="game-cat-move"></select>
             </div>
 
-            <label class="flag-row">
-                <input type="checkbox" id="game-wide-cover">
-                <span><strong>Capa horizontal</strong><small>Mostra a capa em formato largo na lista — bom para jogos antigos que só têm capa widescreen.</small></span>
-            </label>
+
 
             <div id="game-time-fields" class="modal-form">
-                <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Tempo Estimado:</label>
+                <label class="lbl">Tempo Estimado:</label>
             <div style="display:flex; gap:10px;">
                 <input type="number" id="game-time-val" placeholder="Ex: 10" min="0" step="0.5" style="flex: 2;">
                 <select id="game-time-unit" style="flex: 1;">
@@ -494,7 +491,7 @@
             </div>
             </div>
 
-            <label for="game-franchise" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Franquia / coleção (opcional):</label>
+            <label for="game-franchise" class="lbl">Franquia / coleção (opcional):</label>
             <input type="text" id="game-franchise" list="franchise-list" placeholder="Ex: Zelda, Dark Souls, Metroid" autocomplete="off">
             <datalist id="franchise-list"></datalist>
 
@@ -513,7 +510,7 @@
                 </div>
             </div>
 
-            <label for="game-difficulty" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Dificuldade:</label>
+            <label for="game-difficulty" class="lbl">Dificuldade:</label>
             <select id="game-difficulty">
                 <option value="">Não definida</option>
                 <option value="easy">Fácil</option>
@@ -535,7 +532,7 @@
             </details>
 
             <div id="game-play-fields" class="modal-form">
-                <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Horas jogadas:</label>
+                <label class="lbl">Horas jogadas:</label>
             <input type="number" id="game-hours-played" placeholder="Ex: 3.5" min="0" step="0.5">
             <textarea id="game-journal-notes" rows="2" placeholder="Diário de bordo (opcional)"></textarea>
             </div>
@@ -546,14 +543,14 @@
             </div>
 
             <div id="game-wish-fields" class="modal-form" style="display: none;">
-                <label for="game-wish-released" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Data de lançamento:</label>
+                <label for="game-wish-released" class="lbl">Data de lançamento:</label>
                 <input type="date" id="game-wish-released" oninput="paintWishNotify()" onchange="paintWishNotify()">
                 <small id="game-wish-release-hint" style="color: var(--text-muted); margin-top: -8px;"></small>
                 <label class="flag-row" id="game-wish-notify-row" style="display: none;">
                     <input type="checkbox" id="game-wish-notify">
                     <span><strong>Avisar quando lançar</strong><small>Você recebe uma notificação no dia do lançamento (o app confere ao abrir e, no Android instalado, também em segundo plano).</small></span>
                 </label>
-                <label for="game-wish-cat" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Categoria ao mover para a fila:</label>
+                <label for="game-wish-cat" class="lbl">Categoria ao mover para a fila:</label>
                 <select id="game-wish-cat"></select>
                 <input type="text" id="game-wish-note" placeholder="Observação (preço, loja, link...)">
             </div>
@@ -638,10 +635,7 @@
                 <input type="text" id="cv-title" placeholder="Nome do jogo (em inglês ajuda)" autocomplete="off" enterkeyhint="search">
                 <button type="button" class="cv-btn" onclick="coversSearch()" title="Buscar capas" aria-label="Buscar capas"><span data-icon="search" data-size="1em"></span>Buscar</button>
             </div>
-            <label class="cv-hrow" for="cv-horizontal">
-                <input type="checkbox" id="cv-horizontal">
-                <span><strong>Capa horizontal</strong><small>Usa a imagem inteira, sem recorte — ideal para jogos antigos.</small></span>
-            </label>
+            <button type="button" class="cv-google" onclick="coversSearchGoogle()" title="Buscar capas no Google Imagens dentro do app"><span data-icon="search" data-size="1em"></span>Buscar no Google</button>
             <div id="cv-status" class="rawg-msg"></div>
             <div id="cv-grid" class="cv-grid"></div>
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-covers')">Fechar</button></div>
@@ -721,7 +715,7 @@
         <div class="modal-form">
             <h3 style="margin-top: 0;">Fim da sessão</h3>
             <p id="session-summary" style="margin: 0; font-weight: bold;"></p>
-            <label for="session-minutes" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Minutos a somar (ajuste se fez pausas):</label>
+            <label for="session-minutes" class="lbl">Minutos a somar (ajuste se fez pausas):</label>
             <input type="number" id="session-minutes" min="0" step="1" oninput="sessionPreview()">
             <small id="session-preview" style="color: var(--text-muted);"></small>
             <textarea id="session-note" rows="2" placeholder="Anotar no diário (opcional): feitos, mods, saves..."></textarea>
@@ -813,7 +807,23 @@
         </div>
     </dialog>
 
-    <dialog id="modal-image"><div class="modal-form"><h3 style="margin-top: 0; margin-bottom: 0;">Editar Capa</h3><p style="font-size: 0.85em; color: var(--text-muted); margin-top: 0;" id="edit-game-name"></p><input type="hidden" id="edit-img-game-id"><div id="image-preview" class="image-preview-box" style="text-align:center; font-size:3em; margin: 10px 0;"><span data-icon="gamepad" data-size="1em"></span></div><button type="button" class="btn-search-google" style="background-color: var(--accent-playing); width:100%; margin-bottom: 8px;" onclick="coverPickFromImageModal()"><span class="ic-lead" data-icon="image"></span>Buscar capas automaticamente</button><button type="button" class="btn-search-google" style="background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color); width:100%; margin-bottom: 8px;" onclick="cropEditImage()"><span class="ic-lead" data-icon="image"></span>Recortar a capa</button><button type="button" class="btn-search-google" style="background-color: var(--google-blue); width:100%;" onclick="searchCoverOnGoogle()"><span class="ic-lead" data-icon="search"></span>Buscar Capa no Google</button><div style="position: relative; overflow: hidden; display: block; width: 100%;"><span class="btn-upload" style="background-color: var(--bg-color); color: var(--text-main); display: block; text-align: center; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: bold; width: 100%; margin-top: 10px;">Escolher Foto</span><input type="file" id="edit-game-icon" accept="image/*" style="font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%;" onchange="previewImageEdit(this)"></div><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-image')">Cancelar</button><button onclick="saveEditedImage()">Salvar</button></div></div></dialog>
+    <dialog id="modal-image">
+        <div class="modal-form">
+            <h3 style="margin-top: 0; margin-bottom: 0;">Editar Capa</h3>
+            <p style="font-size: 0.85em; color: var(--text-muted); margin-top: 0;" id="edit-game-name"></p>
+            <input type="hidden" id="edit-img-game-id">
+            <div id="image-preview" class="image-preview-box" style="text-align:center; font-size:3em; margin: 10px 0;"><span data-icon="gamepad" data-size="1em"></span></div>
+            <label class="flag-row" style="background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px;">
+                <input type="checkbox" id="edit-img-wide">
+                <span><strong>Capa horizontal</strong><small>Exibe a capa em formato largo na lista — ideal para jogos antigos que só têm arte widescreen.</small></span>
+            </label>
+            <button type="button" class="btn-search-google" style="background-color: var(--accent-playing); width:100%; margin-bottom: 8px;" onclick="coverPickFromImageModal()"><span class="ic-lead" data-icon="image"></span>Buscar capas automaticamente</button>
+            <button type="button" class="btn-search-google" style="background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color); width:100%; margin-bottom: 8px;" onclick="cropEditImage()"><span class="ic-lead" data-icon="image"></span>Recortar a capa</button>
+            <button type="button" class="btn-search-google" style="background-color: var(--google-blue); width:100%;" onclick="searchCoverOnGoogle()"><span class="ic-lead" data-icon="search"></span>Buscar Capa no Google</button>
+            <div style="position: relative; overflow: hidden; display: block; width: 100%;"><span class="btn-upload" style="background-color: var(--bg-color); color: var(--text-main); display: block; text-align: center; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: bold; width: 100%; margin-top: 10px;">Escolher Foto</span><input type="file" id="edit-game-icon" accept="image/*" style="font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%;" onchange="previewImageEdit(this)"></div>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-image')">Cancelar</button><button onclick="saveEditedImage()">Salvar</button></div>
+        </div>
+    </dialog>
 
     <!-- O Módulo Maestro -->
     <script type="module" src="js/main.js"></script>

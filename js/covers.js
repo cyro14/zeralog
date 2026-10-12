@@ -111,14 +111,19 @@ export async function upgradeAllCovers({ games, onProgress, onGame }) {
 
 // ---------- buscador manual ----------
 function paint() {
-    const horizontal = $('cv-horizontal') && $('cv-horizontal').checked;
     $('cv-grid').innerHTML = state.cands.map((c, i) => `
         <button type="button" class="cv-item ${c.vertical ? 'v' : 'h'}" data-i="${i}" title="${esc(c.source + ' · ' + c.label)}">
             <img src="${esc(c.url)}" alt="" loading="lazy" referrerpolicy="no-referrer">
             <span class="cv-src">${esc(c.source)}</span>
-            ${c.vertical || horizontal ? '' : '<span class="cv-badge h">recortar</span>'}
-            ${horizontal && !c.vertical ? '<span class="cv-badge wide">horizontal</span>' : ''}
+            ${c.vertical ? '' : '<span class="cv-badge h">recortar</span>'}
         </button>`).join('');
+}
+
+// Busca capas no Google Imagens sem sair do app (navegador embutido)
+export function coversSearchGoogle() {
+    const t = $('cv-title').value.trim();
+    if (!t) { $('cv-status').textContent = 'Digite o nome do jogo primeiro.'; return; }
+    window.openBrowser(`https://www.google.com/search?tbm=isch&igu=1&q=${encodeURIComponent(t + ' cover')}&tbs=isz:i`, `Capas: ${t}`);
 }
 
 export async function coversSearch() {
@@ -159,15 +164,7 @@ async function pick(i) {
     const blob = await fetchImageBlob(c.url);
     if (!blob) { $('cv-status').textContent = 'Essa imagem foi bloqueada pelo site. Tente outra.'; return; }
     const onPick = state.onPick;
-    const horizontal = $('cv-horizontal') && $('cv-horizontal').checked;
     $('modal-covers').close();
-    if (horizontal) {
-        // Sem recorte: usa a capa na horizontal e já marca isso no formulário do jogo
-        const w = document.getElementById('game-wide-cover');
-        if (w) w.checked = true;
-        onPick(await blobToSmallJpeg(blob, 640));
-        return;
-    }
     const size = await imageSize(blob);
     if (isVerticalSize(size)) onPick(await blobToSmallJpeg(blob));
     else openCropper({ blob, onDone: onPick });   // arte horizontal: recorta para vertical
@@ -179,6 +176,5 @@ function init() {
     grid.addEventListener('click', e => { const b = e.target.closest('.cv-item'); if (b) pick(+b.dataset.i); });
     grid.addEventListener('error', e => { const b = e.target.closest && e.target.closest('.cv-item'); if (b && e.target.tagName === 'IMG') b.remove(); }, true);
     $('cv-title').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); coversSearch(); } });
-    const hz = $('cv-horizontal'); if (hz) hz.addEventListener('change', () => paint());
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

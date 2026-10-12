@@ -837,7 +837,6 @@ export function openGameModal(catId) {
     prepareGameModal(wish ? 'wish' : 'game');
     resetFlagFields();
     document.getElementById('game-continuous').checked = catId === 'continuous';
-    document.getElementById('game-wide-cover').checked = false;
     const firstCat = appData.categories.some(c => c.id === catId) ? catId : (appData.categories[0] && appData.categories[0].id) || '';
     document.getElementById('game-cat-move').value = firstCat;
     toggleModalFlags();
@@ -863,7 +862,6 @@ export function openEditGameModal(gameId, isWish = false) {
     document.getElementById('game-emulated').checked = !!game.emulated;
     document.getElementById('game-orig-console').value = game.originalConsole || '';
     document.getElementById('game-difficulty').value = game.difficulty || '';
-    document.getElementById('game-wide-cover').checked = !!game.wideCover;
     document.getElementById('game-cat-move').value = isWish
         ? (appData.categories[0] && appData.categories[0].id) || ''
         : (game.catId === 'continuous' ? (game.homeCatId || '') : game.catId);
@@ -921,8 +919,7 @@ export function saveGame() {
         genres: val('game-genres').split(',').map(x => x.trim()).filter(Boolean),
         released: val('game-released'),
         metacritic: val('game-metacritic') === '' ? null : Number(val('game-metacritic')),
-        franchise: canonicalFranchise(val('game-franchise')),
-        wideCover: document.getElementById('game-wide-cover').checked
+        franchise: canonicalFranchise(val('game-franchise'))
     };
     if (continuous && gameId && !wish) {
         const cur = appData.games.find(g => g.id === gameId);
@@ -1572,6 +1569,7 @@ export function openImageModal(gameId) {
     document.getElementById('edit-game-name').innerText = game.title;
     editImageSrc = game.image || null; editImageDirty = false;
     document.getElementById('edit-game-icon').value = '';
+    document.getElementById('edit-img-wide').checked = !!game.wideCover;
     paintEditImage(editImageSrc);
     document.getElementById('modal-image').showModal();
 }
@@ -1605,10 +1603,13 @@ export function cropEditImage() {
 export async function saveEditedImage() {
     const gameId = document.getElementById('edit-img-game-id').value;
     const game = findItemAny(gameId);
-    if (editImageDirty && editImageSrc && game) {
-        const data = await blobToSmallJpeg(await (await fetch(editImageSrc)).blob()).catch(() => editImageSrc);
+    if (!game) { closeModal('modal-image'); return; }
+    const wide = document.getElementById('edit-img-wide').checked;
+    const wideChanged = wide !== !!game.wideCover;
+    if ((editImageDirty && editImageSrc) || wideChanged) {
         saveStateForUndo();
-        game.image = data;
+        game.wideCover = wide;
+        if (editImageDirty && editImageSrc) game.image = await blobToSmallJpeg(await (await fetch(editImageSrc)).blob()).catch(() => editImageSrc);
         closeModal('modal-image');
         saveData(() => render());
         triggerToast('Capa atualizada.');
