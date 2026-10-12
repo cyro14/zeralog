@@ -635,6 +635,10 @@
                 <input type="text" id="cv-title" placeholder="Nome do jogo (em inglês ajuda)" autocomplete="off" enterkeyhint="search">
                 <button type="button" class="cv-btn" onclick="coversSearch()" title="Buscar capas" aria-label="Buscar capas"><span data-icon="search" data-size="1em"></span>Buscar</button>
             </div>
+            <label class="cv-hrow" for="cv-horizontal">
+                <input type="checkbox" id="cv-horizontal">
+                <span><strong>Usar a capa na horizontal</strong><small>Usa a imagem inteira, sem recorte — ideal para jogos antigos que só têm arte widescreen.</small></span>
+            </label>
             <button type="button" class="cv-google" onclick="coversSearchGoogle()" title="Buscar capas no Google Imagens dentro do app"><span data-icon="search" data-size="1em"></span>Buscar no Google</button>
             <div id="cv-status" class="rawg-msg"></div>
             <div id="cv-grid" class="cv-grid"></div>

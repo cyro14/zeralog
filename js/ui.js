@@ -79,6 +79,7 @@ export function switchTab(tabId) {
 
 // ================= BUSCA AUTOMÁTICA (RAWG) =================
 let pendingCover = null;   // capa baixada, aguardando o "Salvar"
+let pendingWideCover = false;   // capa veio marcada como horizontal no seletor
 let pendingRawgId = null;  // id da RAWG do jogo escolhido na busca automática
 let pendingTba = false;     // RAWG informou lançamento "a confirmar"
 let lastResults = [];
@@ -95,6 +96,7 @@ function updateCoverPreview(src) {
 
 function resetAutoFill() {
     pendingCover = null;
+    pendingWideCover = false;
     pendingRawgId = null;
     pendingTba = false;
     document.getElementById('game-wish-released').value = '';
@@ -224,7 +226,7 @@ export function coverPickFromGameModal() {
     openCoverPicker({
         title: document.getElementById('game-title').value.trim(),
         rawgId: pendingRawgId,
-        onPick: src => { pendingCover = src; updateCoverPreview(src); }
+        onPick: (src, horizontal) => { pendingCover = src; pendingWideCover = !!horizontal; updateCoverPreview(src); }
     });
 }
 export function coverCropFromGameModal() {
@@ -243,9 +245,10 @@ export function coverPickFromImageModal() {
     openCoverPicker({
         title: game.title,
         rawgId: game.rawgId,
-        onPick: src => {
+        onPick: (src, horizontal) => {
             saveStateForUndo();
             game.image = src;
+            game.wideCover = !!horizontal;   // opção veio do seletor de capas
             closeModal('modal-image');
             saveData(() => render());
             triggerToast('Capa atualizada.');
@@ -937,9 +940,9 @@ export function saveGame() {
         { const old = gameId ? appData.wishlist.find(g => g.id === gameId) : null; if (!old || old.released !== wd || !old.notifyRelease) extra.releaseNotified = false; }
         if (gameId) {
             const item = appData.wishlist.find(g => g.id === gameId);
-            if (item) { Object.assign(item, extra, { title }); if (pendingCover !== null) item.image = pendingCover || null; }
+            if (item) { Object.assign(item, extra, { title }); if (pendingCover !== null) { item.image = pendingCover || null; if (pendingCover) item.wideCover = pendingWideCover; } }
         } else {
-            appData.wishlist.push({ id: 'w' + Date.now(), title, ...extra, image: pendingCover || null, addedAt: Date.now() });
+            appData.wishlist.push({ id: 'w' + Date.now(), title, ...extra, image: pendingCover || null, wideCover: pendingCover ? pendingWideCover : false, addedAt: Date.now() });
         }
     } else {
         const extra = { ...base, ...idPatch, hoursPlayed: val('game-hours-played'), journalNotes: val('game-journal-notes') };
@@ -966,17 +969,18 @@ export function saveGame() {
             if (game) {
                 Object.assign(game, extra, { title, catId: cat, homeCatId });
                 if (continuous && game.state !== 'finished') game.state = null;
-                if (pendingCover !== null) game.image = pendingCover || null;
+                if (pendingCover !== null) { game.image = pendingCover || null; if (pendingCover) game.wideCover = pendingWideCover; }
             }
         } else {
             appData.games.push({
-                id: 'g' + Date.now(), catId: cat, homeCatId, title, ...extra,
+                id: 'g' + Date.now(), catId: cat, homeCatId, title, ...extra, wideCover: pendingCover ? pendingWideCover : false,
                 state: null, image: pendingCover || null, userRating: null, dateFinished: null,
                 is100: false, review: ''
             });
         }
     }
     pendingCover = null;
+    pendingWideCover = false;
     pendingRawgId = null;
     closeModal('modal-game'); saveData(() => render());
     triggerToast(gameId ? 'Informações atualizadas.' : (wish ? 'Adicionado à wishlist.' : 'Jogo adicionado com sucesso!'));
