@@ -159,7 +159,7 @@ async function start() {
     initFilters({ render });
     initSteam({ render, toast: (msg, undo) => triggerToast(msg, undo === true), undo: saveStateForUndo, openSteamSettings: () => { openSettings(); openSettingsSection('steam'); } });
     initShare({ toast: msg => triggerToast(msg, false) });
-    initGameMatch({ toast: msg => triggerToast(msg, false), hydrateIcons });
+    initGameMatch({ toast: msg => triggerToast(msg, false), hydrateIcons, render });
     if (!canShareFiles()) document.getElementById('sh-share-btn').style.display = 'none';
     startReleaseWatch();
     const tabParam = new URLSearchParams(location.search).get('tab');

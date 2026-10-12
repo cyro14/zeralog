@@ -6,8 +6,9 @@ import { appData, saveData } from './store.js';
 import { listGames, esc, normText, resizeUrl } from './gameApi.js';
 
 const gm = () => appData.gamematch || (appData.gamematch = {});
-let DEPS = { toast: (m) => console.log(m) };   // injetado por initGameMatch (main.js)
+let DEPS = { toast: (m) => console.log(m), render: null };   // injetado por initGameMatch (main.js)
 const toast = (m) => DEPS.toast(m);
+const renderApp = () => { if (DEPS.render) DEPS.render(); };   // atualiza Fila/Desejos sem reiniciar o app
 
 // ---------- Opções do perfil (onboarding) ----------
 export const GM_PLATFORMS = ['PC', 'PlayStation', 'Xbox', 'Nintendo Switch', 'Mobile', 'Steam Deck'];
@@ -318,6 +319,7 @@ function applySwipe(g, action) {
         saveData();
         toast('Talvez na próxima...');
     }
+    renderApp();   // Fila e Wishlist atualizam na hora, sem precisar reabrir o app
 }
 
 // ---------- Microanimações de feedback ----------
@@ -380,6 +382,13 @@ export async function renderDeck() {
     if (!gmHasProfile()) { deck.innerHTML = `<div class="gm-empty"><p>Configure seu perfil gamer para começar a descobrir jogos.</p><button type="button" class="gm-cta" onclick="gmOnboardOpen(true)">Criar meu perfil</button></div>`; return; }
     deck.innerHTML = `<div class="gm-loading">Buscando jogos que combinam com você...</div>`;
     await ensureDeck();
+    // re-filtra na hora de mostrar: remove jogos que entraram na biblioteca/wishlist depois de montar o deck
+    const { ids, names } = knownGameKeys();
+    for (let i = plannedDeck.length - 1; i >= 0; i--) {
+        const g = plannedDeck[i];
+        if (ids.has(g.rawgId) || names.has(normText(g.title))) plannedDeck.splice(i, 1);
+    }
+    if (plannedDeck.length < 6) await ensureDeck();
     if (!plannedDeck.length) {
         deck.innerHTML = `<div class="gm-empty"><p>Você já viu tudo por aqui! Ajuste seu perfil ou volte mais tarde.</p><button type="button" class="gm-cta" onclick="gmOnboardOpen(true)">Editar perfil</button></div>`;
         return;
@@ -524,7 +533,7 @@ export async function gmExplore(cat = 'you') {
 export function gmExploreWish(rawgId) {
     const g = exploreById.get(rawgId);
     if (!g) return;
-    const ok = addToWishlist(g); saveData();
+    const ok = addToWishlist(g); saveData(); renderApp();
     toast(ok ? `${g.title} foi para a sua Wishlist!` : `${g.title} já estava na Wishlist.`);
 }
 
