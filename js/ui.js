@@ -1575,7 +1575,22 @@ export function openImageModal(gameId) {
     paintEditImage(editImageSrc);
     document.getElementById('modal-image').showModal();
 }
-export function searchCoverOnGoogle() { const gameId = document.getElementById('edit-img-game-id').value; const game = findItemAny(gameId); if (game) window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, '_blank'); }
+// Navegador embutido (o parâmetro igu=1 libera o Google dentro do iframe do app)
+export function openBrowser(url, title = 'Busca no Google') {
+    const frame = document.getElementById('browser-frame');
+    document.getElementById('browser-title').textContent = title;
+    const ext = document.getElementById('browser-ext');
+    ext.href = url;
+    frame.src = url;
+    document.getElementById('modal-browser').showModal();
+}
+export function closeBrowser() {
+    const frame = document.getElementById('browser-frame');
+    frame.src = 'about:blank';
+    document.getElementById('modal-browser').close();
+}
+
+export function searchCoverOnGoogle() { const gameId = document.getElementById('edit-img-game-id').value; const game = findItemAny(gameId); if (game) openBrowser(`https://www.google.com/search?tbm=isch&igu=1&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, `Capas: ${game.title}`); }
 export function previewImageEdit(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -1750,7 +1765,7 @@ export function paintPlatformDisplay() {
     document.getElementById('plat-disp-icon').classList.toggle('active', m === 'icon');
     document.getElementById('plat-disp-name').classList.toggle('active', m === 'name');
 }
-export function searchPlatformIconOnGoogle() { const name = document.getElementById('new-platform-name').value; const query = name ? `${name} logo icon transparent png` : 'video game console platform logo icon transparent png'; window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}&tbs=ic:trans`, '_blank'); }
+export function searchPlatformIconOnGoogle() { const name = document.getElementById('new-platform-name').value; const query = name ? `${name} logo icon transparent png` : 'video game console platform logo icon transparent png'; openBrowser(`https://www.google.com/search?tbm=isch&igu=1&q=${encodeURIComponent(query)}&tbs=ic:trans`, `Ícones: ${name || 'plataformas'}`); }
 export function editPlatform(index) { state.editPlatformIndex = index; const p = appData.platforms[index]; document.getElementById('new-platform-name').value = p.name; state.tempPlatformIcon = p.icon; document.getElementById('new-platform-icon-preview').innerHTML = p.icon; document.getElementById('btn-save-platform').innerText = 'Salvar'; document.getElementById('btn-cancel-platform').style.display = 'inline-block'; }
 export function cancelEditPlatform() { state.editPlatformIndex = -1; document.getElementById('new-platform-name').value = ''; state.tempPlatformIcon = ''; document.getElementById('new-platform-icon-preview').innerHTML = platformIcons.default; document.getElementById('btn-save-platform').innerText = 'Add'; document.getElementById('btn-cancel-platform').style.display = 'none'; }
 export function savePlatform() {

@@ -23,7 +23,7 @@ import {
     openCatModal, openEditCatModal, saveCategory, askDeleteCategory, moveCategory,
     openGameModal, openEditGameModal, askDeleteGame, toggleState,
     openRatingModal, openEditFinishedModal, cancelRating, skipRating, saveRating, saveFinishedEdit,
-    spinRoulette, acceptRoulette, quickSearch, openImageModal, searchCoverOnGoogle, previewImageEdit, saveEditedImage,
+    spinRoulette, acceptRoulette, quickSearch, openImageModal, searchCoverOnGoogle, previewImageEdit, saveEditedImage, openBrowser, closeBrowser,
     openBackupModal, exportBackup, importBackup, openSettings, openFactoryReset, confirmFactoryReset,
     renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey, openSettingsSection, backToSettingsHub, welcomeSteam, buyOnAmazon, checkAppUpdate
 } from './ui.js';
@@ -80,6 +80,8 @@ window.acceptRoulette = acceptRoulette;
 window.quickSearch = quickSearch;
 window.openImageModal = openImageModal;
 window.searchCoverOnGoogle = searchCoverOnGoogle;
+window.openBrowser = openBrowser;
+window.closeBrowser = closeBrowser;
 window.previewImageEdit = previewImageEdit;
 window.saveEditedImage = saveEditedImage;
 window.openBackupModal = openBackupModal;
