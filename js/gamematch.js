@@ -269,10 +269,22 @@ function addToWishlist(g) {
     return true;
 }
 
+// Categoria própria para os jogos vindos do swipe: criada uma única vez
+function gmBacklogCatId() {
+    const name = 'GameMatch';
+    let cat = appData.categories.find(c => normText(c.name) === normText(name));
+    if (!cat) {
+        cat = { id: 'cat-gm', name };
+        if (appData.categories.some(c => c.id === cat.id)) cat.id = 'cat-gm-' + Math.random().toString(36).slice(2, 6);
+        appData.categories.push(cat);
+    }
+    return cat.id;
+}
+
 function addToBacklog(g) {
     const t = normText(g.title);
     if (appData.games.some(x => normText(x.title) === t)) return false;
-    const cat = appData.categories[0] && appData.categories[0].id;
+    const cat = gmBacklogCatId();
     appData.games.push({
         id: 'g' + Date.now(), catId: cat || '', title: g.title,
         platform: (g.platforms && g.platforms[0]) || '', rawgId: g.rawgId || undefined,
