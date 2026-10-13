@@ -194,7 +194,17 @@ function knownGameKeys() {
     return { ids, names };
 }
 const plannedDeck = [];        // fila de cartas (objetos de jogo)
+// Deck procedural: cada sessão começa numa página e ordenação diferentes,
+// então abrir o app mostra sempre jogos novos (o score de match ainda ordena dentro do lote)
 let poolPage = 1, poolExhausted = false, poolLoading = null, usingDemo = false;
+const POOL_ORDERS = ['-rating', '-added', '-popularity', '-metacritic', '-released'];
+let poolOrder = POOL_ORDERS[0];
+function reseedPool() {
+    poolPage = 1 + Math.floor(Math.random() * 8);   // páginas 1..8 do catálogo
+    poolOrder = POOL_ORDERS[Math.floor(Math.random() * POOL_ORDERS.length)];
+    poolExhausted = false; usingDemo = false;
+}
+reseedPool();
 
 // Melhor recomendação primeiro, com leve embaralhado entre os melhores p/ variar
 function insertDeck(items) {
@@ -219,7 +229,7 @@ async function ensureDeck(min = 6) {
     poolLoading = (async () => {
         try {
             while (plannedDeck.length < min + 5 && !poolExhausted && poolPage <= 40) {
-                const res = await listGames(deckParams(poolPage));
+                const res = await listGames({ ...deckParams(poolPage), ordering: gm().profile && gm().profile.upcomingOnly ? 'released' : poolOrder });
                 poolPage++;
                 if (!res.items.length || !res.more) poolExhausted = true;
                 insertDeck(res.items);
@@ -235,9 +245,9 @@ async function ensureDeck(min = 6) {
     await poolLoading;
 }
 
-export function gmResetPool() {   // chamado quando o perfil muda
+export function gmResetPool() {   // chamado quando o perfil muda — novo sorteio também
     plannedDeck.length = 0;
-    poolPage = 1; poolExhausted = false; usingDemo = false;
+    reseedPool();
 }
 
 // ---------- Aprendizado: cada swipe ajusta gostos, gêneros e franquias ----------
@@ -496,16 +506,17 @@ let classicDecade = '';   // '' | '1980' | '1990' | '2000' | '2010'
 function exploreParams(cat) {
     const today = new Date().toISOString().slice(0, 10);
     const y = new Date().getFullYear();
+    const rp = n => 1 + Math.floor(Math.random() * n);   // página aleatória: variedade a cada visita
     switch (cat) {
-        case 'you': { const p = deckParams(1); return { ...p, ordering: '-rating' }; }
-        case 'hot': return { ordering: '-added', dates: `${y - 2}-01-01,${today}`, page_size: 20, exclude_additions: 'true' };
-        case 'releases': return { ordering: 'released', dates: `${today},2030-12-31`, page_size: 20 };
-        case 'gems': return { ordering: '-rating', genres: 'indie', page_size: 40, exclude_additions: 'true' };
+        case 'you': { const p = deckParams(rp(4)); return { ...p, ordering: poolOrder }; }
+        case 'hot': return { ordering: '-added', dates: `${y - 2}-01-01,${today}`, page_size: 20, page: rp(2), exclude_additions: 'true' };
+        case 'releases': return { ordering: 'released', dates: `${today},2030-12-31`, page_size: 20, page: rp(3) };
+        case 'gems': return { ordering: '-rating', genres: 'indie', page_size: 40, page: rp(4), exclude_additions: 'true' };
         case 'classics': {
             // submenu de décadas: '1980' -> 1980-1989, etc.
             const start = classicDecade ? +classicDecade : 1980;
             const end = classicDecade ? start + 9 : 2012;
-            return { ordering: '-rating', dates: `${start}-01-01,${end}-12-31`, page_size: 20, exclude_additions: 'true' };
+            return { ordering: '-rating', dates: `${start}-01-01,${end}-12-31`, page_size: 20, page: rp(3), exclude_additions: 'true' };
         }
         case 'free': return { ordering: '-popularity', tags: 'free-to-play', page_size: 20 };
         case 'top': default: return { ordering: '-metacritic', page_size: 20, exclude_additions: 'true' };
@@ -522,7 +533,10 @@ export function gmClassicDecade(dec) {
 export async function gmExplore(cat = 'you') {
     document.querySelectorAll('#gm-explore-cats .gm-chip').forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
     const decBar = document.getElementById('gm-classic-decades');
-    if (decBar) decBar.hidden = cat !== 'classics';
+    if (decBar) {
+        decBar.hidden = cat !== 'classics';
+        if (cat === 'classics') decBar.querySelectorAll('.gm-chip').forEach(c => c.classList.toggle('active', c.dataset.dec === classicDecade));
+    }
     const grid = document.getElementById('gm-explore-grid');
     if (!grid) return;
     grid.innerHTML = '<div class="gm-loading">Carregando...</div>';
