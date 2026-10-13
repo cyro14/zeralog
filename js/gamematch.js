@@ -206,11 +206,23 @@ function reseedPool() {
 }
 reseedPool();
 
+// ---------- Filtro de conteúdo adulto (bloqueado por padrão em todo o GameMatch) ----------
+// Cobre tags do catálogo, ESRB "Adults Only" e palavras explícitas no título.
+const ADULT_TAGS = ['nsfw', 'hentai', 'eroge', 'erotic', 'sexual-content', 'nudity', 'lewd', 'adult', 'porn', 'mature-content'];
+const ADULT_TITLE_RE = /\b(hentai|porn|porno|eroge|erotic|erotica|nude|nudity|nsfw|sexual|lewd|ecchi|oppai|18\+|xxx|sex)\b/i;
+export function gmIsClean(g) {
+    const tags = (g.tags || []).map(t => String(t).toLowerCase());
+    if (tags.some(t => ADULT_TAGS.some(b => t === b || t.includes(b)))) return false;
+    if (String(g.esrb || '').toLowerCase().includes('adults only')) return false;
+    if (ADULT_TITLE_RE.test(String(g.title || ''))) return false;
+    return true;
+}
+
 // Melhor recomendação primeiro, com leve embaralhado entre os melhores p/ variar
 function insertDeck(items) {
     const { ids, names } = knownGameKeys();
     const fresh = items.map(g => ({ ...g, _match: matchScore(g) }))
-        .filter(g => !ids.has(g.rawgId) && !names.has(normText(g.title)) && g._match >= 20)
+        .filter(g => gmIsClean(g) && !ids.has(g.rawgId) && !names.has(normText(g.title)) && g._match >= 20)
         .sort((a, b) => b._match - a._match);
     // embaralha janelas de 5 para não ficar sempre do maior pro menor match
     for (let i = 0; i < fresh.length; i += 5) {
@@ -542,7 +554,7 @@ export async function gmExplore(cat = 'you') {
     grid.innerHTML = '<div class="gm-loading">Carregando...</div>';
     try {
         const res = await listGames(exploreParams(cat));
-        let items = res.items;
+        let items = res.items.filter(gmIsClean);   // conteúdo adulto nunca aparece
         if (cat === 'gems') items = items.filter(g => (g.ratingsCount || 0) > 300 && (g.ratingsCount || 0) < 25000).slice(0, 20);
         if (cat === 'you') items = items.map(g => ({ ...g, _match: matchScore(g) })).sort((a, b) => b._match - a._match);
         exploreById = new Map(items.map(g => [g.rawgId, g]));
