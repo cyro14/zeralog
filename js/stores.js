@@ -35,7 +35,7 @@ async function storeFetch(url, { method = 'GET', token = null, body = null, publ
             clearTimeout(timer);
             const txt = await res.text();
             if (res.status === 401 || res.status === 403) throw Object.assign(new Error('auth'), { status: res.status });
-            if (!res.ok) { last = Object.assign(new Error(`HTTP ${res.status}`), { status: res.status }); continue; }
+            if (!res.ok) { last = Object.assign(new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`), { status: res.status, detail: txt }); continue; }
             return txt ? JSON.parse(txt) : {};
         } catch (e) {
             clearTimeout(timer);
@@ -211,11 +211,12 @@ export function gogLogin() {
 }
 
 async function gogExchange(params) {
-    const qs = new URLSearchParams({
+    // A troca de tokens da GOG é POST com os campos no corpo (form-urlencoded)
+    const body = new URLSearchParams({
         client_id: GOG_CLIENT_ID, client_secret: GOG_CLIENT_SECRET,
         redirect_uri: GOG_REDIRECT, ...params
-    });
-    return storeFetch(`https://auth.gog.com/token?${qs}`, { publicFallback: false });
+    }).toString();
+    return storeFetch('https://auth.gog.com/token', { method: 'POST', body, publicFallback: false });
 }
 
 export async function gogSaveCode() {
@@ -236,7 +237,8 @@ export async function gogSaveCode() {
         hooks.toast('GOG conectada! Baixando sua biblioteca...', false);
         gogSync();
     } catch (e) {
-        gogStatus('Não deu para concluir o login agora. Confira se o Worker do projeto está atualizado (docs/steam-proxy.md) ou use a importação por lista logo abaixo.');
+        const det = e && e.detail ? ` (resposta da GOG: ${String(e.detail).slice(0, 120)})` : ` (${e && e.message})`;
+        gogStatus('Não deu para concluir o login agora.' + (e && e.status ? det + ' — se o login estava certo, o código pode ter expirado (dura poucos minutos): clique em "Entrar com a GOG" de novo e cole o novo endereço.' : ' Confirme se o Worker está atualizado (docs/steam-proxy.md) e tente de novo — ou use a importação por lista abaixo.'));
     }
 }
 

@@ -1135,3 +1135,6 @@ body.gm-tab .search-container, body.gm-tab #platform-chips-container { display: 
 
 /* Dropdown de ordenação por tempo: sempre acima dos cards de jogos */
 .sort-menu { z-index: 900; }
+
+/* Mesmo bug do hidden x flex: menu precisa respeitar o atributo hidden */
+.sort-menu[hidden] { display: none !important; }
