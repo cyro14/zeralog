@@ -500,11 +500,21 @@
                 </div>
                 <div class="store-box">
                     <div class="store-head"><strong>Epic Games</strong><small id="store-status-epic"></small></div>
-                    <textarea id="store-import-epic" rows="3" placeholder="Fortnite&#10;Alan Wake 2&#10;Control"></textarea>
                     <div class="store-actions">
-                        <button type="button" class="pill-btn primary" onclick="storeImport('epic')">Importar da lista</button>
-                        <a class="pill-btn" href="https://store.epicgames.com/pt-BR/library" target="_blank" rel="noopener">Abrir minha biblioteca Epic</a>
+                        <button type="button" class="pill-btn primary" id="epic-login-btn" onclick="epicLogin()">Entrar com a Epic</button>
+                        <button type="button" class="pill-btn" id="epic-sync-btn" onclick="epicSync()" style="display:none">Sincronizar agora</button>
+                        <button type="button" class="pill-btn" id="epic-out-btn" onclick="epicDisconnect()" style="display:none">Desconectar</button>
                     </div>
+                    <div class="steam-manual">
+                        <input type="text" id="epic-code-input" placeholder="depois de logar, cole aqui o código (32 caracteres) ou o endereço da página" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter'){event.preventDefault();epicSaveCode();}">
+                        <button type="button" onclick="epicSaveCode()">Vincular</button>
+                    </div>
+                    <small id="epic-sync-status" style="color: var(--text-muted);">Como usar: clique em "Entrar com a Epic", faça login no site que abrir. Depois do login a Epic exibe um código de 32 caracteres (ou redireciona com ?code=... no endereço) — cole aqui o código ou o endereço completo. Atenção: cada código serve uma vez só e expira em poucos minutos. Seus jogos entram na categoria "Epic Games". A API da Epic não informa horas jogadas.</small>
+                    <details class="steam-adv">
+                        <summary>Importar sem login (colar lista de títulos)</summary>
+                        <textarea id="store-import-epic" rows="3" placeholder="Fortnite&#10;Alan Wake 2&#10;Control"></textarea>
+                        <button type="button" class="pill-btn" onclick="storeImport('epic')">Importar da lista</button>
+                    </details>
                 </div>
                 <div class="store-box">
                     <div class="store-head"><strong>Itch.io</strong><small id="store-status-itch"></small></div>

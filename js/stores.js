@@ -18,12 +18,13 @@ const PUBLIC_PROXIES = [   // só servem para GET simples (sem login)
     u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`
 ];
 
-// Busca com o login (Authorization) e/ou POST; o Worker é obrigatório nesses casos
-async function storeFetch(url, { method = 'GET', token = null, body = null, publicFallback = true } = {}) {
+// Busca com o login (Authorization: Bearer/Basic) e/ou POST; o Worker é obrigatório nesses casos
+async function storeFetch(url, { method = 'GET', token = null, basic = null, body = null, publicFallback = true } = {}) {
     const headers = {};
     if (token) headers['Authorization'] = 'Bearer ' + token;
+    if (basic) headers['Authorization'] = 'Basic ' + btoa(basic);
     if (body != null) headers['Content-Type'] = 'application/x-www-form-urlencoded';
-    const needsWorker = method !== 'GET' || token || body != null;
+    const needsWorker = method !== 'GET' || token || basic || body != null;
     const makers = needsWorker && STORE_PROXY ? [u => `${STORE_PROXY}?url=${encodeURIComponent(u)}`]
         : [u => `${STORE_PROXY}?url=${encodeURIComponent(u)}`, ...(publicFallback ? PUBLIC_PROXIES : [])];
     let last = null;
@@ -313,6 +314,107 @@ export function gogDisconnect() {
     appData.settings.stores.gog = { catId: gog().catId };
     saveData(() => renderStoreStatus('gog'));
     hooks.toast('GOG desconectada.', false);
+}
+
+// ================= Epic Games: login OAuth + biblioteca =================
+// Mesmo fluxo do aplicativo oficial: o usuário entra no site da Epic, copia o endereço
+// com ?code=... depois do login, e o app troca pelo token. A senha nunca passa pelo app.
+const EPIC_CLIENT = '34a02cf8f4414e29b15921876da36f9a:daafbccc737745039dffe53d94fc76cf';   // cliente público oficial do launcher Epic
+const EPIC_AUTH_URL = `https://www.epicgames.com/id/api/redirect?clientId=${EPIC_CLIENT.split(':')[0]}&responseType=code`;
+const epic = () => st('epic');
+function epicStatus(msg) { const el = $('epic-sync-status'); if (el) el.textContent = msg; }
+
+export function epicLogin() {
+    epicStatus('Abrindo o login da Epic em outra aba... Entre na sua conta; depois de logar, a Epic mostra um código (ou redireciona com ?code=... no endereço). Copie o código ou o endereço completo e cole aqui.');
+    window.open(EPIC_AUTH_URL, '_blank', 'noopener');
+}
+
+async function epicExchange(form) {
+    return storeFetch('https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/token', {
+        method: 'POST', basic: EPIC_CLIENT, body: new URLSearchParams(form).toString(), publicFallback: false
+    });
+}
+
+export async function epicSaveCode() {
+    const raw = String(($('epic-code-input') && $('epic-code-input').value) || '').trim();
+    let code = null;
+    const m = raw.match(/[?&#]code=([A-Za-z0-9]+)/);
+    if (m) code = m[1];
+    else if (/^[A-Za-z0-9]{32}$/.test(raw)) code = raw;
+    if (!code) { epicStatus('Não achei o código nesse texto. Ele é um bloco de 32 letras/números — copie o endereço completo da página após o login (tem ?code=...) ou só o código, e cole aqui.'); return; }
+    epicStatus('Trocando o código pelo acesso à conta...');
+    try {
+        const t = await epicExchange({ grant_type: 'authorization_code', code, token_type: 'eg1' });
+        if (!t.access_token) throw new Error('sem token');
+        appData.settings.stores.epic = { ...epic(), token: t.access_token, refresh: t.refresh_token, expiresAt: Date.now() + (t.expires_in || 7200) * 1000, user: t.displayName || '' };
+        if ($('epic-code-input')) $('epic-code-input').value = '';
+        saveData(null);
+        hooks.toast(`Epic conectada${t.displayName ? ' como ' + t.displayName : ''}! Baixando sua biblioteca...`, false);
+        epicSync();
+    } catch (e) {
+        epicStatus('Não deu para concluir o login.' + (e && e.status ? ' O código é único e expira rápido: clique em "Entrar com a Epic" de novo e cole o novo código imediatamente.' : ' Confere sua internet (ou o Worker atualizado) e tente de novo.'));
+        renderStoreStatus('epic');
+    }
+}
+
+async function epicToken() {
+    const g = epic();
+    if (!g.token) throw new Error('desconectado');
+    if (g.expiresAt && Date.now() > g.expiresAt - 60000 && g.refresh) {
+        const t = await epicExchange({ grant_type: 'refresh_token', refresh_token: g.refresh, token_type: 'eg1' });
+        if (!t.access_token) throw new Error('sem token');
+        appData.settings.stores.epic = { ...g, token: t.access_token, refresh: t.refresh_token || g.refresh, expiresAt: Date.now() + (t.expires_in || 7200) * 1000 };
+        saveData(null);
+    }
+    return epic().token;
+}
+
+export async function epicSync() {
+    if (!epic().token && !epic().refresh) { epicStatus('Conecte sua conta Epic primeiro (botão acima).'); return; }
+    const btn = $('epic-sync-btn'); if (btn) btn.disabled = true;
+    epicStatus('Buscando sua biblioteca Epic...');
+    try {
+        const token = await epicToken();
+        const data = await storeFetch('https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata=true', { token, publicFallback: false });
+        const list = (data && (data.records || data.items)) || [];
+        const names = [...new Set(list.map(it => {
+            const meta = it.metadata || {};
+            const title = it.title || meta.title || meta.developer && meta.title;
+            const cats = (meta.categories || []).map(c => String(c.path || c));
+            if (cats.some(c => /plugin|addon|engine|editor|asset/i.test(c))) return null;   // DLC/ferramenta, não jogo
+            return title || it.appName ? String(title || it.appName) : null;
+        }).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        if (!names.length) { epicStatus('A conta respondeu, mas sem jogos na biblioteca.'); renderStoreStatus('epic'); return; }
+        const cat = ensureRefs('epic');
+        hooks.undo();
+        const have = new Set(appData.games.map(g => normText(g.title)));
+        const fresh = [];
+        for (const t of names) {
+            if (have.has(normText(t))) continue;
+            const g = newGame('epic', t, cat.id);
+            appData.games.push(g); fresh.push(g);
+        }
+        appData.settings.stores.epic = { ...epic(), lastSync: Date.now(), lastCount: names.length };
+        saveData(() => hooks.render());
+        epicStatus(`Sincronizado: ${names.length} jogos na conta Epic · ${fresh.length} novos na categoria "Epic Games".${fresh.length ? ' Dados e capas sendo buscados em segundo plano...' : ''}`);
+        hooks.toast(`Epic: ${fresh.length} novos, ${names.length - fresh.length} já cadastrados.`, fresh.length > 0);
+        renderStoreStatus('epic');
+        if (fresh.length) enrichStoreGames(fresh);
+    } catch (e) {
+        epicStatus(e && (e.status === 401 || e.status === 403) ? 'Sua sessão da Epic expirou. Entre de novo e cole o novo código.' : 'A sincronização falhou. Veja sua internet (ou o Worker) e tente de novo.');
+    } finally {
+        if (btn) btn.disabled = false;
+        renderStoreStatus('epic');
+        renderAllStoreStatus();
+    }
+}
+
+export function epicDisconnect() {
+    if (!epic().token && !epic().refresh) return;
+    if (!confirm('Desconectar a Epic Games? Os jogos já importados continuam na categoria Epic Games.')) return;
+    appData.settings.stores.epic = { catId: epic().catId };
+    saveData(() => renderStoreStatus('epic'));
+    hooks.toast('Epic desconectada.', false);
 }
 
 export function initStores(h) {

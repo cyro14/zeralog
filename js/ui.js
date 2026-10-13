@@ -353,6 +353,11 @@ export function toggleTimeSortMenu(ev) {
     const m = document.getElementById('sort-time-menu');
     if (m) m.hidden = !m.hidden;
 }
+// Reforço: se o click inline falhar em qualquer navegador, a delegação cobre o chip
+document.addEventListener('click', e => {
+    if (e.target && e.target.id === 'sort-home-time') toggleTimeSortMenu(e);
+    if (e.target && e.target.dataset && e.target.dataset.tsort) setTimeSort(e.target.dataset.tsort);
+});
 export function setTimeSort(kind) {
     const m = document.getElementById('sort-time-menu');
     if (m) m.hidden = true;
