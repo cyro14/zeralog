@@ -1,6 +1,7 @@
 // Franquias: progresso, lista de jogos (sanfona) e sugestão de mais jogos da série via RAWG.
-import { appData } from './store.js';
+import { appData, saveData } from './store.js';
 import { esc, searchGames, searchFranchiseGames, getGameSeries, resizeUrl, describeError } from './gameApi.js';
+import { autoVerticalCover } from './covers.js';
 import { icon } from './icons.js';
 import { platformLabel } from './platforms.js';
 import { openShare } from './share.js';
@@ -26,6 +27,7 @@ export function getFranchiseStats() {
     (appData.wishlist || []).forEach(w => {
         if (!w.franchise || !w.franchise.trim()) return;
         const f = touch(w.franchise);
+        f.total++;   // o total da franquia conta também os jogos que estão na wishlist
         f.wish++; f.wishItems.push(w);
     });
     const pct = f => f.total ? f.done / f.total : 0;
@@ -206,11 +208,38 @@ function onAction(t, ev) {
             openShare({ items, mode: 'franchise', title: `Franquia ${f.name}`, subtitle: sub, style: 'shelf', gray: 'todo' });
             break;
         }
-        case 'add': case 'wish': {
+        case 'add': {
             const f = getFranchiseStats().find(x => x.key === k);
             const s = suggestions.get(k);
             const it = s && s.items && s.items[+t.dataset.i];
-            if (f && it) window.openAddFromSuggestion(t.dataset.act === 'wish' ? 'wish' : 'game', it, f.name);
+            if (f && it) window.openAddFromSuggestion('game', it, f.name);
+            break;
+        }
+        case 'wish': {
+            // Cadastro direto, estilo GameMatch: entra na wishlist já com a franquia
+            // e na mesma categoria dos outros jogos da franquia (abertas pelo usuário no filtro depois)
+            const f = getFranchiseStats().find(x => x.key === k);
+            const s = suggestions.get(k);
+            const it = s && s.items && s.items[+t.dataset.i];
+            if (!f || !it) break;
+            if (appData.wishlist.some(w => norm(w.title) === norm(it.title))) { window.triggerToast && window.triggerToast('Esse jogo já está na wishlist.'); break; }
+            const counts = {};
+            f.games.forEach(g => { if (g.catId) counts[g.catId] = (counts[g.catId] || 0) + 1; });
+            const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+            const catId = best ? best[0] : (appData.categories[0] && appData.categories[0].id) || '';
+            const item = {
+                id: 'w' + Date.now(), title: it.title, platform: (it.platforms && it.platforms[0]) || '',
+                rawgId: it.rawgId, genres: it.genres || [], released: it.released || '', tba: !!it.tba,
+                metacritic: it.metacritic || null, image: resizeUrl(it.image, 640) || null, wideCover: true,
+                catId, franchise: f.name, note: `Sugestão da franquia ${f.name}`, addedAt: Date.now(), notifyRelease: false
+            };
+            appData.wishlist.push(item);
+            saveData();
+            window.triggerToast && window.triggerToast(`${it.title} adicionado à wishlist na franquia ${f.name}!`);
+            // some da lista de sugestões e tenta trocar a arte pela capa retrato
+            s.items.splice(+t.dataset.i, 1);
+            autoVerticalCover(it.title, it.rawgId).then(r => { if (r && r.data) { item.image = r.data; item.wideCover = false; saveData(); } }).catch(() => {});
+            renderFranchiseStats();
             break;
         }
     }

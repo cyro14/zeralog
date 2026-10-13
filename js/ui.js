@@ -9,7 +9,7 @@ import { applyTheme, renderThemePicker } from './themes.js';
 import { phHtml, openIconPicker } from './phosphor.js';
 import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
-import { searchGames, getGameDetails, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime } from './gameApi.js';
+import { searchGames, getGameDetails, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
 import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade } from './covers.js';
 import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
@@ -158,6 +158,14 @@ export async function applyRawgGame(base) {
     pendingTba = !!g.tba && !g.released;
     paintWishNotify();
     document.getElementById('game-metacritic').value = g.metacritic ?? '';
+    // Franquia detectada automaticamente: primeiro casa com as franquias já cadastradas
+    // ("Halo Infinite" -> "Halo"), depois deduz do título ("The Witcher 3: Wild Hunt" -> "The Witcher")
+    const frEl = document.getElementById('game-franchise');
+    if (frEl && !frEl.value.trim()) {
+        const tnorm = normKey(g.title);
+        const known = franchiseNames().find(f => tnorm.startsWith(normKey(f)) && tnorm !== normKey(f));
+        frEl.value = known || guessFranchise(g.title) || '';
+    }
     if (g.playtime && !document.getElementById('game-time-val').value) {
         document.getElementById('game-time-val').value = g.playtime;
         document.getElementById('game-time-unit').value = 'h';

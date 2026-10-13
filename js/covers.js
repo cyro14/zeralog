@@ -2,7 +2,7 @@
 //  1) automática: autoVerticalCover() tenta Steam (capa 600x900) e Wikipédia (capa do artigo);
 //  2) manual: o buscador mostra as candidatas e, se a escolhida for horizontal, abre o recorte.
 // Fontes sem chave: Wikipédia (pageimages, licença "any"), Steam (via link da loja na RAWG) e artes da RAWG.
-import { searchGames, getGameStores, getGameDetails, fetchImageBlob, blobToSmallJpeg, imageSize, isVerticalSize, esc } from './gameApi.js';
+import { searchGames, getGameStores, getGameDetails, fetchImageBlob, blobToSmallJpeg, imageSize, isVerticalSize, esc, scrapeUrl } from './gameApi.js';
 import { openCropper } from './crop.js';
 
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
@@ -47,13 +47,26 @@ async function findRawgId(title, rawgId) {
 
 async function steam(title, rawgId) {
     const id = await findRawgId(title, rawgId);
-    if (!id) return { id: null, list: [] };
-    const stores = await getGameStores(id);
     const list = [];
-    stores.forEach(s => {
-        const m = String(s.url || '').match(/store\.steampowered\.com\/app\/(\d+)/);
-        if (m) list.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${m[1]}/library_600x900.jpg`, source: 'Steam', label: 'Capa vertical 600×900', vertical: true });
-    });
+    if (id) {
+        try {
+            const stores = await getGameStores(id);
+            stores.forEach(s => {
+                const m = String(s.url || '').match(/store\.steampowered\.com\/app\/(\d+)/);
+                if (m) list.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${m[1]}/library_600x900.jpg`, source: 'Steam', label: 'Capa vertical 600×900', vertical: true });
+            });
+        } catch (e) { /* sem link da loja: tenta a busca direta */ }
+    }
+    // Fallback: a RAWG às vezes não tem o link da loja; pergunta direto à Steam
+    if (!list.length) {
+        try {
+            const txt = await scrapeUrl(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(title)}&cc=us&l=en`);
+            const js = txt && JSON.parse(txt);
+            const want = norm(title);
+            const hit = (js && js.items || []).find(i => norm(i.name) === want) || (js && js.items || []).find(i => norm(i.name).includes(want) || want.includes(norm(i.name)));
+            if (hit) list.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${hit.id}/library_600x900.jpg`, source: 'Steam', label: 'Capa vertical 600×900', vertical: true });
+        } catch (e) { /* segue sem */ }
+    }
     return { id, list };
 }
 

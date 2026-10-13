@@ -3,7 +3,8 @@
 // swipe, da página Explorar e da página de Perfil. Os dados vivem em
 // appData.gamematch (persistidos junto com o resto do banco local).
 import { appData, saveData } from './store.js';
-import { listGames, esc, normText, resizeUrl } from './gameApi.js';
+import { listGames, esc, normText, resizeUrl, guessFranchise } from './gameApi.js';
+import { autoVerticalCover } from './covers.js';
 
 const gm = () => appData.gamematch || (appData.gamematch = {});
 let DEPS = { toast: (m) => console.log(m), render: null };   // injetado por initGameMatch (main.js)
@@ -282,14 +283,33 @@ function pushLog(g, action) {
 function addToWishlist(g) {
     const t = normText(g.title);
     if ((appData.wishlist || []).some(x => normText(x.title) === t)) return false;
-    appData.wishlist.push({
+    const item = {
         id: 'w' + Date.now(), title: g.title,
         platform: (g.platforms && g.platforms[0]) || '', rawgId: g.rawgId || undefined,
         genres: g.genres || [], released: g.released || '', tba: !!g.tba,
         metacritic: g.metacritic || null, image: g.image || null, wideCover: true,
+        franchise: gmFranchiseOf(g.title),
         addedAt: Date.now(), notifyRelease: false, note: 'Descoberto no GameMatch'
-    });
+    };
+    appData.wishlist.push(item);
+    upgradeToPortrait(item, g);   // capa vira retrato assim que a fonte responder
     return true;
+}
+
+// Troca a arte horizontal por uma capa retrato (Steam 600×900 / Wikipédia) em segundo plano
+function upgradeToPortrait(item, g) {
+    if (!item) return;
+    autoVerticalCover(g.title, g.rawgId).then(r => {
+        if (r && r.data) { item.image = r.data; item.wideCover = false; saveData(); renderApp(); }
+    }).catch(() => { /* sem retrato: mantém a arte horizontal como fallback */ });
+}
+
+// Franquia do jogo do GameMatch: casa com franquias já cadastradas ou deduz do título
+function gmFranchiseOf(title) {
+    const tn = normText(title);
+    const known = [...new Set([...appData.games, ...(appData.wishlist || [])].map(x => x.franchise).filter(Boolean))]
+        .find(f => normText(f) !== tn && tn.startsWith(normText(f)));
+    return known || guessFranchise(title) || undefined;
 }
 
 // Categoria própria para os jogos vindos do swipe: criada uma única vez
@@ -308,13 +328,16 @@ function addToBacklog(g) {
     const t = normText(g.title);
     if (appData.games.some(x => normText(x.title) === t)) return false;
     const cat = gmBacklogCatId();
-    appData.games.push({
+    const item = {
         id: 'g' + Date.now(), catId: cat || '', title: g.title,
         platform: (g.platforms && g.platforms[0]) || '', rawgId: g.rawgId || undefined,
         genres: g.genres || [], released: g.released || '', meta: g.playtime ? `${g.playtime}h` : '',
         metacritic: g.metacritic || null, image: g.image || null, wideCover: true,
+        franchise: gmFranchiseOf(g.title),
         state: null, userRating: null, dateFinished: null, is100: false, review: '', hoursPlayed: '', journalNotes: ''
-    });
+    };
+    appData.games.push(item);
+    upgradeToPortrait(item, g);
     return true;
 }
 

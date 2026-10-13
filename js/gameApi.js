@@ -105,6 +105,18 @@ export async function listGames(params) {
 }
 export const normText = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
+// Adivinha a franquia a partir do título: corta subtítulo ("The Witcher 3: Wild Hunt" -> "The Witcher"),
+// número final, edição e variações ("Remake", "HD", "GOTY"...). Vazio se não parecer série.
+export function guessFranchise(title) {
+    const t = String(title || '').trim();
+    if (!t) return '';
+    const base = t.split(/\s*[:–—]\s*/)[0]
+        .replace(/\s+(?:Episode\s+\w+|[IVX]{2,}|\d+|HD|Remastered|Remaster|Remake|Definitive Edition|GOTY|Game of the Year.*)$/i, '')
+        .replace(/\s+(?:Collection|Trilogy|Anthology)$/i, '')
+        .trim();
+    return base.length >= 3 && t.length - base.length >= 2 ? base : '';
+}
+
 // ---------- fontes diretas (fallback quando a RAWG falha ou não tem o dado) ----------
 // HLTB e Metacritic não têm CORS aberto; as chamadas passam por proxies públicos.
 const SCRAPE_PROXIES = [
@@ -128,6 +140,7 @@ async function scrape(url, postBody) {
     }
     return null;
 }
+export const scrapeUrl = scrape;
 
 const metaSlug = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/&/g, ' and ').replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
