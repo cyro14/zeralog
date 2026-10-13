@@ -5,7 +5,7 @@ import { planInfo } from './plan.js';
 // Ícones e dados padrão
 export const defaultPlatformsIcons = platformIcons;
 
-export const homeSortLabels = { 'manual': 'Manual', 'az': 'A-Z', 'time': 'Tempo p/ zerar', 'played': 'Tempo jogado', 'close': 'Perto de zerar' };
+export const homeSortLabels = { 'manual': 'Manual', 'az': 'A-Z', 'time': 'Tempo p/ zerar', 'played': 'Tempo jogado', 'close': 'Perto de zerar', 'meta': 'Nota' };
 export const sortLabels = { 'date': 'Data', 'rating': 'Nota', 'time': 'Tempo', 'played': 'Horas Jogadas', 'portable': 'Portátil' };
 
 export const defaultData = {

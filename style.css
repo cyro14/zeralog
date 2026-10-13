@@ -1132,3 +1132,6 @@ body.gm-tab .search-container, body.gm-tab #platform-chips-container { display: 
 .sort-menu button { background: transparent; color: var(--text-main); border: none; text-align: left; padding: 10px 14px; font-size: 0.9em; cursor: pointer; }
 .sort-menu button:hover { background: var(--accent-playing); color: var(--on-accent); }
 .sort-time.active { border-color: var(--accent-playing); color: var(--accent-playing); font-weight: bold; }
+
+/* Dropdown de ordenação por tempo: sempre acima dos cards de jogos */
+.sort-menu { z-index: 900; }

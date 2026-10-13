@@ -290,6 +290,7 @@ export function getSortedGames(gamesArray, sortType, isFinishedTab = false) {
         const hrs = g => { let v = parseFloat((g.meta || '0').replace(',', '.')) || 0; if (g.meta && String(g.meta).includes('m')) v /= 60; return v; };
         return ((hrs(a) - (parseFloat(a.hoursPlayed) || 0)) - (hrs(b) - (parseFloat(b.hoursPlayed) || 0))) * mult;
     });
+    if (sort === 'meta') return arr.sort((a, b) => ((parseFloat(a.metacritic) || 0) - (parseFloat(b.metacritic) || 0)) * mult);
     if (sort === 'portable') return arr.sort((a, b) => {
         let vA = a.isPortable ? 1 : 0; let vB = b.isPortable ? 1 : 0;
         return (vA - vB) * mult;
@@ -390,7 +391,7 @@ export function render() {
     });
     // chip de tempo: mostra a forma atual (zerar/jogado/perto de zerar)
     const timeChip = document.getElementById('sort-home-time');
-    const isTimeKind = ['time', 'played', 'close'].includes(s);
+    const isTimeKind = ['time', 'played', 'close', 'meta'].includes(s);
     if (timeChip) {
         timeChip.classList.toggle('active', !!isTimeKind);
         timeChip.innerText = (isTimeKind ? homeSortLabels[s] : 'Tempo') + ' ▾' + (isTimeKind ? (appData.settings.homeSortDir === 'asc' ? ' ↑' : ' ↓') : '');
@@ -505,6 +506,7 @@ export function renderFinishedTab() {
     });
 
     const sortedGroups = isDateSort ? Object.keys(years).sort((a, b) => { let cmp = b.localeCompare(a); return appData.settings.finishedSortDir === 'asc' ? -cmp : cmp; }) : ["Todos"];
+    finishedContainer.innerHTML = '';   // limpa antes de redesenhar — ao trocar a ordenação nada duplica
     sortedGroups.forEach(year => {
         const yearId = `finished-year-${year.replace(/\s/g, '')}`;
         const yearDiv = document.createElement('div');
