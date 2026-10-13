@@ -200,6 +200,8 @@ export function renderAllStoreStatus() { STORE_KEYS.forEach(renderStoreStatus); 
 const GOG_CLIENT_ID = '46899977096215655';
 const GOG_CLIENT_SECRET = '9d85c43b1482497dbbce61f6e4aa173a433796eeae2ca8c5f6129f2dc4de46d9';
 const GOG_REDIRECT = 'https://embed.gog.com/on_login_success';
+// No OAuth a redirect_uri da troca precisa ser EXATAMENTE a do login (com ?origin=client)
+const GOG_REDIRECT_FULL = GOG_REDIRECT + '?origin=client';
 const GOG_AUTH_URL = `https://login.gog.com/auth?client_id=${GOG_CLIENT_ID}&redirect_uri=${encodeURIComponent(GOG_REDIRECT + '?origin=client')}&response_type=code&layout=client2&brand=gog`;
 
 const gog = () => st('gog');
@@ -214,7 +216,7 @@ async function gogExchange(params) {
     // A troca de tokens da GOG é POST com os campos no corpo (form-urlencoded)
     const body = new URLSearchParams({
         client_id: GOG_CLIENT_ID, client_secret: GOG_CLIENT_SECRET,
-        redirect_uri: GOG_REDIRECT, ...params
+        redirect_uri: GOG_REDIRECT_FULL, ...params
     }).toString();
     return storeFetch('https://auth.gog.com/token', { method: 'POST', body, publicFallback: false });
 }

@@ -381,9 +381,9 @@ export function toggleCollapse(id, event) {
 }
 
 export function render() {
-    // chips simples: Manual e A-Z
+    // chips simples: Manual, A-Z e Nota
     const s = appData.settings.sort;
-    ['manual', 'az'].forEach(k => {
+    ['manual', 'az', 'meta'].forEach(k => {
         const el = document.getElementById(`sort-home-${k}`);
         if (!el) return;
         el.classList.toggle('active', s === k);
@@ -391,7 +391,7 @@ export function render() {
     });
     // chip de tempo: mostra a forma atual (zerar/jogado/perto de zerar)
     const timeChip = document.getElementById('sort-home-time');
-    const isTimeKind = ['time', 'played', 'close', 'meta'].includes(s);
+    const isTimeKind = ['time', 'played', 'close'].includes(s);
     if (timeChip) {
         timeChip.classList.toggle('active', !!isTimeKind);
         timeChip.innerText = (isTimeKind ? homeSortLabels[s] : 'Tempo') + ' ▾' + (isTimeKind ? (appData.settings.homeSortDir === 'asc' ? ' ↑' : ' ↓') : '');
