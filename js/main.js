@@ -16,6 +16,7 @@ import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgrad
 import { openWiki, wikiChangeSource, wikiSearch, wikiSearchFab, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
 import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSync } from './steam.js';
 import { initGameMatch, gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject } from './gamematch.js';
+import { initStores, storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect } from './stores.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleCompact, toggleShelfPlain, saveStateForUndo, undoAction, switchTab, 
@@ -124,6 +125,7 @@ Object.assign(window, { steamLogin, steamLogout, steamSaveKey, steamSaveProxy, s
 
 // GameMatch: aba de descoberta estilo Tinder
 Object.assign(window, { gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject });
+Object.assign(window, { storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect });
 
 // Inicialização Principal (o banco é aberto de forma assíncrona antes de desenhar a tela)
 window.restoreSnapshotUI = restoreSnapshotUI;
@@ -160,6 +162,7 @@ async function start() {
     initSteam({ render, toast: (msg, undo) => triggerToast(msg, undo === true), undo: saveStateForUndo, openSteamSettings: () => { openSettings(); openSettingsSection('steam'); } });
     initShare({ toast: msg => triggerToast(msg, false) });
     initGameMatch({ toast: msg => triggerToast(msg, false), hydrateIcons, render });
+    initStores({ render, toast: (msg, undo) => triggerToast(msg, undo === true), undo: saveStateForUndo });
     if (!canShareFiles()) document.getElementById('sh-share-btn').style.display = 'none';
     startReleaseWatch();
     const tabParam = new URLSearchParams(location.search).get('tab');

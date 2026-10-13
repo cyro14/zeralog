@@ -1,3 +1,9 @@
+# Proxy do ZeraLog para as lojas (Cloudflare Worker)
+
+> **Atualização (GOG, Epic, Itch.io):** o Worker foi estendido para responder também
+> pelas outras lojas (login OAuth + biblioteca) — basta **recolar o `steam-proxy/worker.js`
+> atual** no seu Worker e clicar em Deploy de novo. A URL continua igual.
+
 # Proxy da Steam para o ZeraLog (Cloudflare Worker)
 
 O ZeraLog roda 100% no navegador e a Steam Web API não aceita chamadas diretas de

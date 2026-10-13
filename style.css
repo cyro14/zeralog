@@ -1116,3 +1116,12 @@ body.gm-tab .search-container, body.gm-tab #platform-chips-container { display: 
 
 /* Corrige bug: .gm-explore-cats tem display flex e anulava o atributo hidden */
 .gm-decades[hidden] { display: none !important; }
+
+/* Caixas de importação das lojas (GOG, Epic, Itch.io) nas Configurações › Conexões */
+.store-box { border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.store-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.store-head small { color: var(--text-muted); }
+.store-box textarea { background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; font-size: 0.9em; font-family: inherit; resize: vertical; outline: none; }
+.store-box textarea:focus { border-color: var(--accent-playing); }
+.store-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.store-actions a.pill-btn { text-decoration: none; }

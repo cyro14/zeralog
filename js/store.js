@@ -49,6 +49,7 @@ export function migrateData(data) {
     // Uma única vez: abrir direto no modo Prateleira (novo padrão visual)
     if (!data.settings.vShelfDefault) { data.settings.homeView = 'shelf'; data.settings.wishView = 'shelf'; data.settings.finishedView = 'shelf'; data.settings.vShelfDefault = 1; }
     if (!isObj(data.settings.steam)) data.settings.steam = {};   // login/sync da Steam (id, chave, categoria)
+    if (!isObj(data.settings.stores)) data.settings.stores = {};   // GOG, Epic e Itch.io (importação por lista)
     if (!isObj(data.settings.filters)) data.settings.filters = {};
     ['home', 'finished', 'wish'].forEach(t => { if (!Array.isArray(data.settings.filters[t])) data.settings.filters[t] = []; });
     data.counters = { sessions: 0, sessionMinutes: 0, wishMoved: 0, ...(isObj(data.counters) ? data.counters : {}) };

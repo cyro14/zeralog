@@ -448,7 +448,7 @@
             <!-- PÁGINA: Conexões (Steam) -->
             <div id="settings-page-steam" class="settings-page" hidden>
                 <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
-                <h4 class="set-title"><span data-icon="steam"></span>Conexões (Steam)</h4>
+                <h4 class="set-title"><span data-icon="steam"></span>Conexões</h4>
             <div class="setting-row steam-box" style="flex-direction: column; align-items: stretch; gap: 8px;">
                 <label style="font-weight: bold; display: flex; align-items: center; gap: 6px;"><span data-icon="steam"></span>Steam:</label>
                 <div id="steam-status" class="steam-status"></div>
@@ -472,6 +472,44 @@
                     <small>A Steam não aceita chamadas diretas do navegador, então o app tenta vários proxies públicos automaticamente — em geral <strong>não precisa mexer aqui</strong>. Se os cinco falharem de novo, cole um proxy próprio no formato https://meu-proxy.com/?url=%s (%s vira a URL da Steam).</small>
                     <input type="text" id="steam-proxy-input" placeholder="Proxy personalizado (opcional), com %s no lugar da URL" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="steamSaveProxy(this.value)">
                 </details>
+            </div>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px; margin-top: 10px;">
+                <label style="font-weight: bold;">Outras lojas:</label>
+                <small style="color: var(--text-muted);">Entre na sua conta de cada loja para baixar a biblioteca automaticamente (o login acontece no site oficial da loja — sua senha nunca passa pelo ZeraLog). Em cada uma também há a opção de importar colando a lista de títulos. Horas jogadas estão disponíveis apenas na Steam.</small>
+                <div class="store-box">
+                    <div class="store-head"><strong>GOG</strong><small id="store-status-gog"></small></div>
+                    <div class="store-actions">
+                        <button type="button" class="pill-btn primary" id="gog-login-btn" onclick="gogLogin()">Entrar com a GOG</button>
+                        <button type="button" class="pill-btn" id="gog-sync-btn" onclick="gogSync()" style="display:none">Sincronizar agora</button>
+                        <button type="button" class="pill-btn" id="gog-out-btn" onclick="gogDisconnect()" style="display:none">Desconectar</button>
+                    </div>
+                    <div class="steam-manual">
+                        <input type="text" id="gog-code-input" placeholder="depois de logar, cole aqui o endereço da página (tem ?code=...)" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter'){event.preventDefault();gogSaveCode();}">
+                        <button type="button" onclick="gogSaveCode()">Vincular</button>
+                    </div>
+                    <small id="gog-sync-status" style="color: var(--text-muted);">Como usar: clique em "Entrar com a GOG" e faça login na aba que abrir. Ela redireciona para uma página em branco ou de erro — isso é normal! Copie o endereço COMPLETO da barra do navegador (algo como embed.gog.com/on_login_success?...code=ABC...) e cole no campo acima. Se o navegador tentar abrir o aplicativo GOG, recuse e fique na aba. Seus jogos entram na categoria "GOG". A API da GOG não informa horas jogadas.</small>
+                    <details class="steam-adv">
+                        <summary>Importar sem login (colar lista de títulos)</summary>
+                        <textarea id="store-import-gog" rows="3" placeholder="Baldur's Gate 3&#10;The Witcher 3: Wild Hunt&#10;Cyberpunk 2077"></textarea>
+                        <button type="button" class="pill-btn" onclick="storeImport('gog')">Importar da lista</button>
+                    </details>
+                </div>
+                <div class="store-box">
+                    <div class="store-head"><strong>Epic Games</strong><small id="store-status-epic"></small></div>
+                    <textarea id="store-import-epic" rows="3" placeholder="Fortnite&#10;Alan Wake 2&#10;Control"></textarea>
+                    <div class="store-actions">
+                        <button type="button" class="pill-btn primary" onclick="storeImport('epic')">Importar da lista</button>
+                        <a class="pill-btn" href="https://store.epicgames.com/pt-BR/library" target="_blank" rel="noopener">Abrir minha biblioteca Epic</a>
+                    </div>
+                </div>
+                <div class="store-box">
+                    <div class="store-head"><strong>Itch.io</strong><small id="store-status-itch"></small></div>
+                    <textarea id="store-import-itch" rows="3" placeholder="Celeste&#10;A Short Hike&#10;Butterfly Soup"></textarea>
+                    <div class="store-actions">
+                        <button type="button" class="pill-btn primary" onclick="storeImport('itch')">Importar da lista</button>
+                        <a class="pill-btn" href="https://itch.io/my-purchases" target="_blank" rel="noopener">Abrir minhas compras no Itch.io</a>
+                    </div>
+                </div>
             </div>
                 <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
             </div>
