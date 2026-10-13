@@ -1,4 +1,4 @@
-﻿// Datas de lançamento da wishlist: contagem regressiva, atualização pela RAWG e aviso quando o jogo lança.
+// Datas de lançamento da wishlist: contagem regressiva, atualização pela RAWG e aviso quando o jogo lança.
 // Sem servidor não existe "push" garantido: o app confere ao abrir e a cada hora com ele aberto; em Android
 // com o app instalado, o service worker também confere em segundo plano (Periodic Background Sync), sem rede.
 import { appData, saveData } from './store.js';
@@ -113,10 +113,11 @@ export async function registerPeriodicCheck() {
 
 // ---------- atualizar datas pela RAWG ----------
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
-const needsRefresh = w => (!w.released || daysUntil(w.released) > 0) && (Date.now() - (w.releaseCheckedAt || 0) > DAY);
+// Data colocada à mão pelo usuário nunca é sobrescrita pela busca automática
+const needsRefresh = w => !(w.releaseManual && w.released) && (!w.released || daysUntil(w.released) > 0) && (Date.now() - (w.releaseCheckedAt || 0) > DAY);
 
 export async function refreshReleaseDates({ force = false, onProgress } = {}) {
-    const items = (appData.wishlist || []).filter(w => force || needsRefresh(w));
+    const items = (appData.wishlist || []).filter(w => w.releaseManual && w.released ? false : (force || needsRefresh(w)));
     let changed = 0, done = 0;
     for (const w of items) {
         onProgress && onProgress({ done, total: items.length, title: w.title });

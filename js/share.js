@@ -222,16 +222,16 @@ export async function renderGameCard(game) {
     y += 54;
     // selos
     const chips = chipsFor(game, game.state === 'finished' ? 'finished' : 'home', p).slice(0, 6);
-    ctx.font = `700 24px ${FONT}`;
-    const widths = chips.map(ch2 => ctx.measureText(ch2.t).width + 32), gap = 12;
+    ctx.font = `700 19px ${FONT}`;
+    const widths = chips.map(ch2 => ctx.measureText(ch2.t).width + 26), gap = 10;
     let rowW = 0, row = [], rows = [];
     chips.forEach((ch2, i) => { if (rowW + widths[i] > W - 140 && row.length) { rows.push(row); row = []; rowW = 0; } row.push(i); rowW += widths[i] + gap; });
     if (row.length) rows.push(row);
     rows.slice(0, 2).forEach((r, ri) => {
         const tot = r.reduce((a, i) => a + widths[i] + gap, -gap); let x = (W - tot) / 2;
-        r.forEach(i => { const o = chips[i]; pill(ctx, x, y + ri * 54, o.t, { size: 24, bg: o.bg, border: o.border, fg: o.fg || '#fff' }); x += widths[i] + gap; });
+        r.forEach(i => { const o = chips[i]; pill(ctx, x, y + ri * 44, o.t, { size: 19, bg: o.bg, border: o.border, fg: o.fg || '#fff' }); x += widths[i] + gap; });
     });
-    y += Math.min(rows.length, 2) * 54 + 14;
+    y += Math.min(rows.length, 2) * 44 + 14;
     // resenha
     const quote = game.review && game.review.trim();
     if (quote && y < 1180) {
@@ -355,9 +355,9 @@ export async function renderCards(items, o) {
         // selos (opcionais: podem ser desligados na janela de compartilhamento)
         let cx2 = tx, cy2 = my + 16; const chips = o.chips === false ? [] : chipsFor(it, o.mode, p).slice(0, 4);
         for (const ch of chips) {
-            ctx.font = `700 16px ${FONT}`; const w2 = Math.min(ctx.measureText(ch.t).width + 18, tw);
-            if (cx2 + w2 > tx + tw) { cx2 = tx; cy2 += 30; if (cy2 > y + chh - 32) break; }
-            const r = pill(ctx, cx2, cy2, ellipsis(ctx, ch.t, w2 - 18), { size: 16, padX: 9, bg: ch.bg, border: ch.border, fg: ch.fg || '#fff' }); cx2 += r.w + 6;
+            ctx.font = `700 13px ${FONT}`; const w2 = Math.min(ctx.measureText(ch.t).width + 16, tw);
+            if (cx2 + w2 > tx + tw) { cx2 = tx; cy2 += 24; if (cy2 > y + chh - 28) break; }
+            const r = pill(ctx, cx2, cy2, ellipsis(ctx, ch.t, w2 - 16), { size: 13, padX: 8, bg: ch.bg, border: ch.border, fg: ch.fg || '#fff' }); cx2 += r.w + 5;
         }
         if (it.state === 'finished' && it.userRating) {
             const bx = x + cw - 46, by = y + 44;

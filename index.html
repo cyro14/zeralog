@@ -100,9 +100,12 @@
         <div class="sort-bar" id="home-sort-bar">
             <div class="sort-chip active" id="sort-home-manual" onclick="setHomeSort('manual')">Manual</div>
             <div class="sort-chip" id="sort-home-az" onclick="setHomeSort('az')">A-Z</div>
-            <div class="sort-chip" id="sort-home-time" onclick="setHomeSort('time')">Tempo</div>
-            <div class="sort-chip" id="sort-home-played" onclick="setHomeSort('played')">Horas Jogadas</div>
-            <div class="sort-chip" id="sort-home-portable" onclick="setHomeSort('portable')">Portátil</div>
+            <div class="sort-chip sort-time" id="sort-home-time" onclick="toggleTimeSortMenu(event)">Tempo ▾</div>
+            <div class="sort-menu" id="sort-time-menu" hidden>
+                <button type="button" data-tsort="time" onclick="setTimeSort('time')">Tempo para zerar</button>
+                <button type="button" data-tsort="played" onclick="setTimeSort('played')">Tempo jogado</button>
+                <button type="button" data-tsort="close" onclick="setTimeSort('close')">Mais próximo de zerar</button>
+            </div>
         </div>
 
         <div id="app-container"></div>
@@ -639,7 +642,7 @@
 
             <div id="game-wish-fields" class="modal-form" style="display: none;">
                 <label for="game-wish-released" class="lbl">Data de lançamento:</label>
-                <input type="date" id="game-wish-released" oninput="paintWishNotify()" onchange="paintWishNotify()">
+                <input type="date" id="game-wish-released" oninput="paintWishNotify(); this.dataset.manual = '1';" onchange="paintWishNotify(); this.dataset.manual = '1';">
                 <small id="game-wish-release-hint" style="color: var(--text-muted); margin-top: -8px;"></small>
                 <label class="flag-row" id="game-wish-notify-row" style="display: none;">
                     <input type="checkbox" id="game-wish-notify">

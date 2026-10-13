@@ -223,7 +223,7 @@ export function gmIsClean(g) {
 function insertDeck(items) {
     const { ids, names } = knownGameKeys();
     const fresh = items.map(g => ({ ...g, _match: matchScore(g) }))
-        .filter(g => gmIsClean(g) && !ids.has(g.rawgId) && !names.has(normText(g.title)) && g._match >= 20)
+        .filter(g => gmIsClean(g) && (g.rawgId < 0 || g.image) && !ids.has(g.rawgId) && !names.has(normText(g.title)) && g._match >= 20)
         .sort((a, b) => b._match - a._match);
     // embaralha janelas de 5 para não ficar sempre do maior pro menor match
     for (let i = 0; i < fresh.length; i += 5) {
@@ -577,7 +577,7 @@ export async function gmExplore(cat = 'you') {
     grid.innerHTML = '<div class="gm-loading">Carregando...</div>';
     try {
         const res = await listGames(exploreParams(cat));
-        let items = res.items.filter(gmIsClean);   // conteúdo adulto nunca aparece
+        let items = res.items.filter(g => gmIsClean(g) && g.image);   // sem capa não aparece; conteúdo adulto nunca aparece
         if (cat === 'gems') items = items.filter(g => (g.ratingsCount || 0) > 300 && (g.ratingsCount || 0) < 25000).slice(0, 20);
         if (cat === 'you') items = items.map(g => ({ ...g, _match: matchScore(g) })).sort((a, b) => b._match - a._match);
         exploreById = new Map(items.map(g => [g.rawgId, g]));

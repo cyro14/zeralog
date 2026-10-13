@@ -8,7 +8,7 @@ import { hydrateIcons } from './icons.js';
 import { applyTheme, currentTheme } from './themes.js';
 import { iconSearch, iconWeightChange, iconMore, ensureForData } from './phosphor.js';
 import { initSession, startSession, openEndSession, sessionPreview, sessionFinish, openJournalEntry, saveJournalEntry, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission } from './session.js';
-import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetDiff, qmToggleEmulated } from './quickmatch.js';
+import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetDiff, qmToggleEmulated, qmSetPlatform, qmSetFranchise, qmSetScore } from './quickmatch.js';
 import { genreSetBase, genreSetYear } from './genres.js';
 import { coversSearch } from './covers.js';
 import { cropApply, cropCancel, cropReset, cropFit } from './crop.js';
@@ -20,7 +20,7 @@ import { initStores, storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect 
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleCompact, toggleShelfPlain, saveStateForUndo, undoAction, switchTab, 
-    filterGames, setPlatformFilter, togglePortableFilter, setHomeSort,
+    filterGames, setPlatformFilter, togglePortableFilter, setHomeSort, toggleTimeSortMenu, setTimeSort,
     setFinishedSort, toggleCollapse, renderFinishedTab, saveGame,
     openCatModal, openEditCatModal, saveCategory, askDeleteCategory, moveCategory,
     openGameModal, openEditGameModal, askDeleteGame, toggleState,
@@ -59,6 +59,8 @@ window.filterGames = filterGames;
 window.setPlatformFilter = setPlatformFilter;
 window.togglePortableFilter = togglePortableFilter;
 window.setHomeSort = setHomeSort;
+window.toggleTimeSortMenu = toggleTimeSortMenu;
+window.setTimeSort = setTimeSort;
 window.setFinishedSort = setFinishedSort;
 window.toggleCollapse = toggleCollapse;
 window.saveGame = saveGame;
@@ -118,7 +120,7 @@ window.wikiFindFandom = wikiFindFandom;
 window.wikiFindToggle = wikiFindToggle;
 window.wikiFindStep = wikiFindStep;
 window.wikiFindClose = () => wikiFindClose();
-Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, cropApply, cropCancel, cropReset, cropFit, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, iconSearch, iconWeightChange, iconMore, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, coversSearch, qmSetDiff, qmToggleEmulated, genreSetBase, genreSetYear, setHomeView, shelfDo, openShelfDetail, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
+Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, cropApply, cropCancel, cropReset, cropFit, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, iconSearch, iconWeightChange, iconMore, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, coversSearch, qmSetDiff, qmToggleEmulated, genreSetBase, genreSetYear, setHomeView, shelfDo, openShelfDetail, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetPlatform, qmSetFranchise, qmSetScore, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
 
 // Steam: login, sincronização e configurações
 Object.assign(window, { steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSyncUI: steamSync });

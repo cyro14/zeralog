@@ -101,7 +101,7 @@ function resetAutoFill() {
     pendingWideCover = false;
     pendingRawgId = null;
     pendingTba = false;
-    document.getElementById('game-wish-released').value = '';
+    { const r = document.getElementById('game-wish-released'); r.value = ''; delete r.dataset.manual; }
     document.getElementById('game-wish-notify').checked = false;
     paintWishNotify();
     lastResults = [];
@@ -285,6 +285,11 @@ export function getSortedGames(gamesArray, sortType, isFinishedTab = false) {
         return (vA - vB) * mult;
     });
     if (sort === 'played') return arr.sort((a, b) => ((parseFloat(a.hoursPlayed) || 0) - (parseFloat(b.hoursPlayed) || 0)) * mult);
+    // Mais próximo de zerar: menos tempo faltando primeiro (tempo estimado − jogado)
+    if (sort === 'close') return arr.sort((a, b) => {
+        const hrs = g => { let v = parseFloat((g.meta || '0').replace(',', '.')) || 0; if (g.meta && String(g.meta).includes('m')) v /= 60; return v; };
+        return ((hrs(a) - (parseFloat(a.hoursPlayed) || 0)) - (hrs(b) - (parseFloat(b.hoursPlayed) || 0))) * mult;
+    });
     if (sort === 'portable') return arr.sort((a, b) => {
         let vA = a.isPortable ? 1 : 0; let vB = b.isPortable ? 1 : 0;
         return (vA - vB) * mult;
@@ -298,7 +303,12 @@ export function filterGames() {
         let hasVisibleGames = false;
         cat.querySelectorAll('.game-item, .tl-item, .shelf-item').forEach(item => {
             const titleMatch = item.querySelector('.game-title').innerText.toLowerCase().includes(term) || (item.dataset.franchise || '').includes(term) || (item.dataset.tags || '').includes(term);
-            const platformMatch = state.currentPlatformFilter === 'All' || item.dataset.platform === state.currentPlatformFilter;
+            // Lojas de PC (Steam, GOG, Epic, Itch.io...) contam como a plataforma PC
+            const platVal = (item.dataset.platform || '').toLowerCase();
+            const PC_ALIASES = ['steam', 'gog', 'epic', 'epic games', 'itch.io', 'itch', 'battle.net', 'ea app', 'origin', 'uplay', 'game pass'];
+            const platformMatch = state.currentPlatformFilter === 'All'
+                || item.dataset.platform === state.currentPlatformFilter
+                || (state.currentPlatformFilter === 'PC' && PC_ALIASES.includes(platVal));
             const portableMatch = !state.filterPortableOnly || item.dataset.portable === 'true';
             
             if (titleMatch && platformMatch && portableMatch) { item.style.display = ''; hasVisibleGames = true; } 
@@ -331,10 +341,23 @@ export function setHomeSort(type) {
         appData.settings.homeSortDir = appData.settings.homeSortDir === 'desc' ? 'asc' : 'desc';
     } else {
         appData.settings.sort = type;
-        appData.settings.homeSortDir = (type === 'az' || type === 'time') ? 'asc' : 'desc';
+        appData.settings.homeSortDir = (type === 'az' || type === 'time' || type === 'close') ? 'asc' : 'desc';
     }
     saveData(() => render());
 }
+
+// Chip "Tempo": abre o menu com as 3 formas de ordenação por tempo
+export function toggleTimeSortMenu(ev) {
+    ev && ev.stopPropagation();
+    const m = document.getElementById('sort-time-menu');
+    if (m) m.hidden = !m.hidden;
+}
+export function setTimeSort(kind) {
+    const m = document.getElementById('sort-time-menu');
+    if (m) m.hidden = true;
+    setHomeSort(kind);
+}
+document.addEventListener('click', () => { const m = document.getElementById('sort-time-menu'); if (m && !m.hidden) m.hidden = true; });
 
 export function setFinishedSort(type) {
     if (appData.settings.finishedSort === type) {
@@ -357,14 +380,20 @@ export function toggleCollapse(id, event) {
 }
 
 export function render() {
-    Object.keys(homeSortLabels).forEach(k => {
+    // chips simples: Manual e A-Z
+    const s = appData.settings.sort;
+    ['manual', 'az'].forEach(k => {
         const el = document.getElementById(`sort-home-${k}`);
-        if (el) { el.classList.remove('active'); el.innerText = homeSortLabels[k]; }
+        if (!el) return;
+        el.classList.toggle('active', s === k);
+        el.innerText = homeSortLabels[k] + (s === k && k !== 'manual' ? (appData.settings.homeSortDir === 'asc' ? ' ↑' : ' ↓') : '');
     });
-    const activeHomeChip = document.getElementById(`sort-home-${appData.settings.sort}`);
-    if(activeHomeChip) {
-        activeHomeChip.classList.add('active');
-        if (appData.settings.sort !== 'manual') activeHomeChip.innerText = homeSortLabels[appData.settings.sort] + (appData.settings.homeSortDir === 'asc' ? ' ↑' : ' ↓');
+    // chip de tempo: mostra a forma atual (zerar/jogado/perto de zerar)
+    const timeChip = document.getElementById('sort-home-time');
+    const isTimeKind = ['time', 'played', 'close'].includes(s);
+    if (timeChip) {
+        timeChip.classList.toggle('active', !!isTimeKind);
+        timeChip.innerText = (isTimeKind ? homeSortLabels[s] : 'Tempo') + ' ▾' + (isTimeKind ? (appData.settings.homeSortDir === 'asc' ? ' ↑' : ' ↓') : '');
     }
 
     const containerHome = document.getElementById('app-container'); 
@@ -944,6 +973,10 @@ export function saveGame() {
     if (wish) {
         const extra = { ...base, ...idPatch, catId: val('game-wish-cat') || (appData.categories[0] && appData.categories[0].id) || '', note: val('game-wish-note').trim() };
         const wd = val('game-wish-released') || '';
+        // data alterada à mão fica marcada e o "Atualizar datas" não mexe mais nela
+        const wrel = document.getElementById('game-wish-released');
+        const prev = gameId ? appData.wishlist.find(g => g.id === gameId) : null;
+        extra.releaseManual = wrel.dataset.manual === '1' ? !!wd : !!(prev && prev.releaseManual && (prev.released || '') === wd);
         extra.released = wd;
         extra.tba = !wd && pendingTba;
         extra.notifyRelease = document.getElementById('game-wish-notify').checked && daysUntil(wd) !== null && daysUntil(wd) >= 0;

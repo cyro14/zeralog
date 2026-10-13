@@ -1,4 +1,4 @@
-﻿// Conexão com a Steam: login via OpenID (botão "Entrar com a Steam"), importação
+// Conexão com a Steam: login via OpenID (botão "Entrar com a Steam"), importação
 // da biblioteca com as horas jogadas e sincronização por botão de refresh.
 //
 // Como funciona, na prática:
@@ -11,7 +11,7 @@
 // 4. Os jogos entram na categoria "Steam" (criada automaticamente), plataforma "Steam",
 //    com as horas jogadas; as capas verticais são baixadas e salvas no app em segundo plano.
 import { appData, saveData } from './store.js';
-import { esc, blobToSmallJpeg, searchGames } from './gameApi.js';
+import { esc, blobToSmallJpeg, searchGames, guessFranchise } from './gameApi.js';
 import { platformIcons } from './icons.js';
 
 const $ = id => document.getElementById(id);
@@ -24,7 +24,7 @@ const st = () => appData.settings.steam || {};
 // ---------- helpers ----------
 function steamStatus(msg) { const el = $('steam-sync-status'); if (el) el.textContent = msg; }
 
-const normName = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+const normName = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u00ae\u2122\u00a9]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
 // ---------- chamadas à Steam Web API (via proxy CORS) ----------
 // Cloudflare Worker do projeto (melhor opção): siga docs/steam-proxy.md e cole a URL aqui.
@@ -202,7 +202,7 @@ export async function steamSync() {
                 title: String(gm.name || '').trim() || `Steam ${gm.appid}`,
                 platform: 'Steam', steamAppId: gm.appid, rawgId: null,
                 meta: '', hoursPlayed: hours, journalNotes: '', description: '', genres: [],
-                released: '', metacritic: null, franchise: '',
+                released: '', metacritic: null, franchise: guessFranchise(String(gm.name || '')) || '',
                 continuous: false, emulated: false, originalConsole: '', difficulty: '', isPortable: false,
                 image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${gm.appid}/library_600x900.jpg`,
                 state: null, userRating: null, dateFinished: null, is100: false, review: ''
