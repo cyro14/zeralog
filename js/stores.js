@@ -474,6 +474,7 @@ export function itchSaveKey() {
     if (!v) { itchStatus('Cole sua chave de API. Crie em itch.io/user/settings/api-keys (botão "Generate new API key").'); return; }
     appData.settings.stores.itch = { ...itch(), apiKey: v };
     saveData(null);
+    renderStoreStatus('itch');
     itchStatus('Chave salva! Verificando na Itch.io...');
     itchSync();
 }
@@ -493,16 +494,25 @@ export async function itchSync() {
     const btn = $('itch-sync-btn'); if (btn) btn.disabled = true;
     itchStatus('Verificando sua conta na Itch.io...');
     try {
-        const me = await storeFetch(`https://itch.io/api/1/${encodeURIComponent(key)}/me`);
+        // API atual da Itch.io: api.itch.io com Authorization: Bearer <chave>
+        const me = await storeFetch('https://api.itch.io/profile', { token: key, publicFallback: false });
+        if (me && me.errors) throw Object.assign(new Error('auth'), { status: 403, detail: me.errors.join('; ') });
         const user = me && me.user;
-        if (!user) { appData.settings.stores.itch = { ...itch(), apiKey: '' }; saveData(null); itchStatus('A Itch.io recusou a chave. Gere outra em itch.io/user/settings/api-keys e cole de novo.'); renderStoreStatus('itch'); return; }
-        itchStatus(`Oi, ${user.username}! Baixando seus jogos...`);
-        appData.settings.stores.itch = { ...itch(), user: user.username };
-        const data = await storeFetch(`https://itch.io/api/1/${encodeURIComponent(key)}/my-owned-keys`);
-        if (data && data.errors) throw Object.assign(new Error('auth'), { status: 403, detail: (data.errors || [])[0] || 'erros' });
-        const rawKeys = data && data.owned_keys;
-        // A Itch.io pode devolver array ou objeto indexado — aceita os dois
-        const keys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys || {});
+        if (!user) throw Object.assign(new Error('auth'), { status: 403, detail: 'perfil vazio' });
+        itchStatus(`Oi, ${user.username || user.display_name}! Baixando seus jogos...`);
+        appData.settings.stores.itch = { ...itch(), user: user.username || user.display_name };
+        // Jogos com chave (compras, bundles, resgates): paginado, per_page máximo 500
+        const keys = [];
+        for (let page = 1; page <= 20; page++) {
+            const data = await storeFetch(`https://api.itch.io/profile/owned-keys?page=${page}&per_page=500`, { token: key, publicFallback: false });
+            if (data && data.errors) throw Object.assign(new Error('auth'), { status: 403, detail: (data.errors || []).join('; ') });
+            const got = data && data.owned_keys;
+            const arr = Array.isArray(got) ? got : Object.values(got || {});
+            if (!arr.length) break;
+            keys.push(...arr);
+            if (arr.length < (data.per_page || 500)) break;
+            itchStatus(`Oi, ${user.username}! Baixando seus jogos... (${keys.length})`);
+        }
         const seen = new Set();
         const names = [];
         const coverByTitle = new Map();
