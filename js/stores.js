@@ -320,12 +320,15 @@ export function gogDisconnect() {
 // Mesmo fluxo do aplicativo oficial: o usuário entra no site da Epic, copia o endereço
 // com ?code=... depois do login, e o app troca pelo token. A senha nunca passa pelo app.
 const EPIC_CLIENT = '34a02cf8f4414e29b15921876da36f9a:daafbccc737745039dffe53d94fc76cf';   // cliente público oficial do launcher Epic
-const EPIC_AUTH_URL = `https://www.epicgames.com/id/api/redirect?clientId=${EPIC_CLIENT.split(':')[0]}&responseType=code`;
+// Fluxo do app oficial: authorize → redireciona para localhost/launcher/authorized?code=...
+// (a página dá "erro de conexão" — o código vai no endereço dela)
+const EPIC_REDIRECT = 'https://localhost/launcher/authorized';
+const EPIC_AUTH_URL = `https://www.epicgames.com/id/authorize?response_type=code&client_id=${EPIC_CLIENT.split(':')[0]}&redirect_uri=${encodeURIComponent(EPIC_REDIRECT)}`;
 const epic = () => st('epic');
 function epicStatus(msg) { const el = $('epic-sync-status'); if (el) el.textContent = msg; }
 
 export function epicLogin() {
-    epicStatus('Abrindo o login da Epic em outra aba... Entre na sua conta; a Epic mostra um texto JSON com "authorizationCode". Copie TUDO que a página mostra (pode colar o JSON inteiro) e cole aqui em seguida — o código expira em poucos segundos.');
+    epicStatus('Abrindo o login da Epic em outra aba... Faça login, aperte Autorizar e a página vai dar "erro de conexão" (localhost/launcher/authorized?code=...) — isso é o esperado! Copie o ENDEREÇO COMPLETO dessa página da barra do navegador e cole no campo aqui. O código expira em segundos: cole logo.');
     window.open(EPIC_AUTH_URL, '_blank', 'noopener');
 }
 
