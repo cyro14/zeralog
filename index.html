@@ -100,12 +100,12 @@
         <div class="sort-bar" id="home-sort-bar">
             <div class="sort-chip active" id="sort-home-manual" onclick="setHomeSort('manual')">Manual</div>
             <div class="sort-chip" id="sort-home-az" onclick="setHomeSort('az')">A-Z</div>
-            <div class="sort-chip sort-time" id="sort-home-time" onclick="toggleTimeSortMenu(event)">Tempo ▾</div>
-            <div class="sort-menu" id="sort-time-menu" hidden>
-                <button type="button" data-tsort="time" onclick="setTimeSort('time')">Tempo para zerar</button>
-                <button type="button" data-tsort="played" onclick="setTimeSort('played')">Tempo jogado</button>
-                <button type="button" data-tsort="close" onclick="setTimeSort('close')">Mais próximo de zerar</button>
-            </div>
+            <select class="sort-chip sort-time" id="sort-home-time" onchange="setTimeSort(this.value)" aria-label="Ordenar por tempo">
+                <option value="">Tempo ▾</option>
+                <option value="time">Tempo para zerar</option>
+                <option value="played">Tempo jogado</option>
+                <option value="close">Mais próximo de zerar</option>
+            </select>
             <div class="sort-chip" id="sort-home-meta" onclick="setHomeSort('meta')">Nota</div>
         </div>
 

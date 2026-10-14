@@ -394,12 +394,12 @@ export function render() {
         el.classList.toggle('active', s === k);
         el.innerText = homeSortLabels[k] + (s === k && k !== 'manual' ? (appData.settings.homeSortDir === 'asc' ? ' ↑' : ' ↓') : '');
     });
-    // chip de tempo: mostra a forma atual (zerar/jogado/perto de zerar)
+    // seletor de tempo: mostra a forma atual (zerar/jogado/perto de zerar)
     const timeChip = document.getElementById('sort-home-time');
     const isTimeKind = ['time', 'played', 'close'].includes(s);
     if (timeChip) {
         timeChip.classList.toggle('active', !!isTimeKind);
-        timeChip.innerText = (isTimeKind ? homeSortLabels[s] : 'Tempo') + ' ▾' + (isTimeKind ? (appData.settings.homeSortDir === 'asc' ? ' ↑' : ' ↓') : '');
+        timeChip.value = isTimeKind ? s : '';
     }
 
     const containerHome = document.getElementById('app-container'); 

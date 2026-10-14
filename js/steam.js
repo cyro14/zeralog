@@ -13,6 +13,7 @@
 import { appData, saveData } from './store.js';
 import { esc, blobToSmallJpeg, searchGames, guessFranchise } from './gameApi.js';
 import { platformIcons } from './icons.js';
+import { syncShow, syncHide } from './syncbar.js';
 
 const $ = id => document.getElementById(id);
 const ID_RE = /^\d{17}$/;
@@ -262,7 +263,11 @@ async function embedSteamCovers() {
     if (!targets.length) return;
     const queue = [...targets];
     let done = 0, saved = 0;
-    const paint = () => steamStatus(`Capas da Steam: ${done}/${targets.length} processadas...`);
+    const paint = () => {
+        steamStatus(`Capas da Steam: ${done}/${targets.length} processadas...`);
+        syncShow('Steam: baixando capas dos jogos', done, targets.length);
+    };
+    paint();
     const worker = async () => {
         while (queue.length) {
             const g = queue.shift();
@@ -276,6 +281,7 @@ async function embedSteamCovers() {
     await Promise.all([worker(), worker(), worker(), worker()]);
     saveData(() => hooks.render());
     steamStatus(`Pronto: ${targets.length} ${targets.length === 1 ? 'capa' : 'capas'} conferidas · ${saved} salvas no app.`);
+    syncHide('Steam: capas prontas!');
 }
 
 // ---------- dados da RAWG para os jogos importados (gêneros, ano, nota, descrição) ----------
@@ -285,7 +291,8 @@ async function enrichSteamGames(newGames) {
     const queue = [...newGames];
     let done = 0, hit = 0, stopped = false;
     const sleep = ms => new Promise(r => setTimeout(r, ms));
-    const paint = () => steamStatus(`Dados dos jogos (RAWG): ${done}/${newGames.length}...`);
+    const paint = () => { steamStatus(`Dados dos jogos (RAWG): ${done}/${newGames.length}...`); syncShow('Steam: buscando dados dos jogos', done, newGames.length); };
+    paint();
     const worker = async () => {
         while (queue.length && !stopped) {
             const g = queue.shift();
@@ -314,6 +321,7 @@ async function enrichSteamGames(newGames) {
     await Promise.all([worker(), worker(), worker()]);
     saveData(() => hooks.render());
     steamStatus(`Dados dos jogos: ${hit}/${newGames.length} encontrados na RAWG${stopped ? ' (parado antes do fim: limite da chave RAWG — use uma chave própria em Capas e Busca)' : ''}.`);
+    syncHide(`Steam: dados de ${hit}/${newGames.length} jogos encontrados.`);
 }
 
 // ---------- painel nas Configurações ----------

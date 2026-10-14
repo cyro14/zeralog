@@ -8,6 +8,7 @@ import { appData, saveData } from './store.js';
 import { searchGames, esc, normText, coverToDataURL } from './gameApi.js';
 import { autoVerticalCover } from './covers.js';
 import { platformIcons } from './icons.js';
+import { syncShow, syncHide } from './syncbar.js';
 
 // Mesmo Cloudflare Worker da Steam (js/steam.js): atualize-o com steam-proxy/worker.js novo,
 // que agora também aceita POST e os hosts das outras lojas.
@@ -103,7 +104,9 @@ export async function enrichStoreGames(newGames) {
     enriching = true;
     const queue = [...newGames];
     let done = 0, hit = 0, stopped = false;
+    const storeName = newGames[0] && newGames[0].store ? (STORES[newGames[0].store] || {}).name || 'Loja' : 'Loja';
     const sleep = ms => new Promise(r => setTimeout(r, ms));
+    syncShow(`${storeName}: buscando dados e capas`, 0, newGames.length);
     const worker = async () => {
         while (queue.length && !stopped) {
             const g = queue.shift();
@@ -128,10 +131,12 @@ export async function enrichStoreGames(newGames) {
                     else if (d && d.image) { const wide = await coverToDataURL(d.image).catch(() => d.image); g.image = wide; g.wideCover = true; }
                 }
                 done++;
+                syncShow(`${storeName}: buscando dados e capas`, done, newGames.length);
                 if (done % 3 === 0) saveData(() => hooks.render());
                 await sleep(250);
             } catch (e) {
                 done++;
+                syncShow(`${storeName}: buscando dados e capas`, done, newGames.length);
                 if (e && e.kind === 'http' && (e.status === 401 || e.status === 403 || e.status === 429)) stopped = true;
             }
         }
@@ -139,6 +144,7 @@ export async function enrichStoreGames(newGames) {
     await Promise.all([worker(), worker()]);
     saveData(() => hooks.render());
     enriching = false;
+    syncHide();
     if (!stopped && hit) hooks.toast(`Dados e capas encontrados para ${hit} de ${newGames.length} jogos.`);
 }
 
@@ -351,15 +357,22 @@ export async function epicSaveCode() {
     if (!code) { epicStatus('Não achei o código nesse texto. O JSON precisa ter "authorizationCode" preenchido — se veio null, o login expirou: clique em "Entrar com a Epic" de novo e cole o resultado logo em seguida.'); return; }
     epicStatus('Trocando o código pelo acesso à conta...');
     try {
-        const t = await epicExchange({ grant_type: 'authorization_code', code, token_type: 'eg1' });
-        if (!t.access_token) throw new Error('sem token');
+        // Algumas contas recebem "exchange code" em vez de authorization code: tenta os dois
+        let t;
+        try { t = await epicExchange({ grant_type: 'authorization_code', code, token_type: 'eg1' }); }
+        catch (e1) {
+            if (e1 && e1.status === 400) t = await epicExchange({ grant_type: 'exchange_code', exchange_code: code, token_type: 'eg1' });
+            else throw e1;
+        }
+        if (!t.access_token) throw Object.assign(new Error('sem token'), { detail: JSON.stringify(t).slice(0, 200) });
         appData.settings.stores.epic = { ...epic(), token: t.access_token, refresh: t.refresh_token, expiresAt: Date.now() + (t.expires_in || 7200) * 1000, user: t.displayName || '' };
         if ($('epic-code-input')) $('epic-code-input').value = '';
         saveData(null);
         hooks.toast(`Epic conectada${t.displayName ? ' como ' + t.displayName : ''}! Baixando sua biblioteca...`, false);
         epicSync();
     } catch (e) {
-        epicStatus('Não deu para concluir o login.' + (e && e.status ? ' O código é único e expira rápido: clique em "Entrar com a Epic" de novo e cole o novo código imediatamente.' : ' Confere sua internet (ou o Worker atualizado) e tente de novo.'));
+        const det = e && e.detail ? ` (Epic: ${String(e.detail).slice(0, 140)})` : ` (${e && e.message || 'erro'})`;
+        epicStatus('Não deu para concluir o login.' + det + (e && e.status ? ' O código é de uso único e expira em segundos: clique em "Entrar com a Epic" de novo e cole o novo endereço imediatamente.' : ' Confere sua internet (ou o Worker atualizado) e tente de novo.'));
         renderStoreStatus('epic');
     }
 }
