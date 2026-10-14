@@ -5,6 +5,7 @@
 import { appData, saveData } from './store.js';
 import { listGames, esc, normText, resizeUrl, guessFranchise, getGameDetails } from './gameApi.js';
 import { autoVerticalCover } from './covers.js';
+import { icon } from './icons.js';
 
 const gm = () => appData.gamematch || (appData.gamematch = {});
 let DEPS = { toast: (m) => console.log(m), render: null };   // injetado por initGameMatch (main.js)
@@ -198,7 +199,7 @@ const plannedDeck = [];        // fila de cartas (objetos de jogo)
 // Deck procedural: cada sessão começa numa página e ordenação diferentes,
 // então abrir o app mostra sempre jogos novos (o score de match ainda ordena dentro do lote)
 let poolPage = 1, poolExhausted = false, poolLoading = null, usingDemo = false;
-const POOL_ORDERS = ['-rating', '-added', '-popularity', '-metacritic', '-released'];
+const POOL_ORDERS = ['-rating', '-added', '-popularity', '-metacritic'];   // sem '-released': puxava jogos de 2030 desconhecidos
 let poolOrder = POOL_ORDERS[0];
 function reseedPool() {
     poolPage = 1 + Math.floor(Math.random() * 8);   // páginas 1..8 do catálogo
@@ -211,6 +212,14 @@ reseedPool();
 // Cobre tags do catálogo, ESRB "Adults Only" e palavras explícitas no título.
 const ADULT_TAGS = ['nsfw', 'hentai', 'eroge', 'erotic', 'sexual-content', 'nudity', 'lewd', 'adult', 'porn', 'mature-content'];
 const ADULT_TITLE_RE = /\b(hentai|porn|porno|eroge|erotic|erotica|nude|nudity|nsfw|sexual|lewd|ecchi|oppai|18\+|xxx|sex)\b/i;
+// Jogos marcados pra daqui a 1+ ano (ex.: "2030") atrapalham a descoberta — só entram se o
+// perfil pedir "só lançamentos"
+export function farFuture(g) {
+    if (g.tba || !g.released) return false;
+    const p = gm().profile || {};
+    return !p.upcomingOnly && +String(g.released).slice(0, 4) > new Date().getFullYear();
+}
+
 export function gmIsClean(g) {
     const tags = (g.tags || []).map(t => String(t).toLowerCase());
     if (tags.some(t => ADULT_TAGS.some(b => t === b || t.includes(b)))) return false;
@@ -223,7 +232,7 @@ export function gmIsClean(g) {
 function insertDeck(items) {
     const { ids, names } = knownGameKeys();
     const fresh = items.map(g => ({ ...g, _match: matchScore(g) }))
-        .filter(g => gmIsClean(g) && (g.rawgId < 0 || g.image) && !ids.has(g.rawgId) && !names.has(normText(g.title)) && g._match >= 20)
+        .filter(g => gmIsClean(g) && !farFuture(g) && (g.rawgId < 0 || g.image) && !ids.has(g.rawgId) && !names.has(normText(g.title)) && g._match >= 20)
         .sort((a, b) => b._match - a._match);
     // embaralha janelas de 5 para não ficar sempre do maior pro menor match
     for (let i = 0; i < fresh.length; i += 5) {
@@ -348,13 +357,13 @@ function applySwipe(g, action) {
     if (action === 'like') {
         d.likes.push(entry); learn(g, 2); pushLog(g, action);
         saveData();
-        if (match >= 90) overlayFeedback(`Esse jogo parece feito para você!`, `💘 Match de ${match}% — ${esc(g.title)}`);
+        if (match >= 90) overlayFeedback(`${icon('heart', { size: '0.9em' })} Esse jogo parece feito para você!`, `Match de ${match}% — ${esc(g.title)}`);
         else overlayFeedback('Match!', `${g.title} foi para a sua Wishlist.`);
         addToWishlist(g); saveData();
     } else if (action === 'favorite') {
         d.favorites.push(entry); learn(g, 4); pushLog(g, action);
         addToWishlist(g); saveData();
-        overlayFeedback('Favorito! ⭐', `Adicionado aos favoritos (${match}% match).`);
+        overlayFeedback(`${icon('star', { size: '0.9em' })} Favorito!`, `Adicionado aos favoritos (${match}% match).`);
     } else if (action === 'backlog') {
         d.backlogAdds.push(entry); learn(g, 3); pushLog(g, action);
         const ok = addToBacklog(g); saveData();
@@ -377,7 +386,7 @@ export function overlayFeedback(title, sub = '') {
         ov.innerHTML = `<div class="gm-ov-title"></div><div class="gm-ov-sub"></div>`;
         document.body.appendChild(ov);
     }
-    ov.querySelector('.gm-ov-title').textContent = title;
+    ov.querySelector('.gm-ov-title').innerHTML = title;
     ov.querySelector('.gm-ov-sub').innerHTML = sub;
     ov.classList.add('show');
     clearTimeout(ovT);
@@ -597,7 +606,7 @@ async function fetchExplorePage(cat, append) {
     const state = exploreState[cat] || (exploreState[cat] = { page: 0, items: [], more: true });
     state.page++;
     const res = await listGames(exploreParams(cat, state.page));
-    let items = res.items.filter(g => gmIsClean(g) && g.image);
+    let items = res.items.filter(g => gmIsClean(g) && g.image && (cat === 'releases' || !farFuture(g)));   // 2030 só na aba Lançamentos
     if (cat === 'gems') items = items.filter(g => (g.ratingsCount || 0) > 80 && (g.ratingsCount || 0) < 25000);
     if (cat === 'you') items = items.map(g => ({ ...g, _match: matchScore(g) })).sort((a, b) => b._match - a._match);
     state.items = append ? state.items.concat(items) : items;
@@ -606,13 +615,30 @@ async function fetchExplorePage(cat, append) {
     return state;
 }
 
+const xFilters = { genre: '', plat: '' };
+export function gmXFilterGenre(v) { xFilters.genre = v; paintExplore(exploreCat); }
+export function gmXFilterPlat(v) { xFilters.plat = v; paintExplore(exploreCat); }
+
+function fillExploreFilters() {
+    const bar = document.getElementById('gm-explore-filters');
+    if (!bar || bar.dataset.done) return;
+    bar.dataset.done = '1';
+    const [gs, ps] = bar.querySelectorAll('.gm-select');
+    gs.innerHTML = '<option value="">Todos os gêneros</option>' + GM_GENRES.map(g => `<option value="${g}">${g}</option>`).join('');
+    ps.innerHTML = '<option value="">Todas as plataformas</option>' + GM_PLATFORMS.map(p => `<option value="${p}">${p}</option>`).join('');
+}
+
 function paintExplore(cat) {
+    fillExploreFilters();
     const grid = document.getElementById('gm-explore-grid');
     const state = exploreState[cat];
     if (!grid || !state) return;
-    const moreBtn = state.more ? `<div class="gm-x-more"><button type="button" class="gm-cta" onclick="gmXMore()">Carregar mais jogos</button></div>` : `<div class="gm-x-more gm-note">Chegamos ao fim por aqui — troque de categoria para descobrir mais.</div>`;
-    if (!state.items.length) { grid.innerHTML = '<div class="gm-empty"><p>Nada por aqui agora.</p></div>'; return; }
-    grid.innerHTML = state.items.map(exploreCardHtml).join('') + moreBtn;
+    // filtros de client-side (gênero/plataforma) valem para todas as abas
+    const iw = xFilters.genre ? state.items.filter(g => profileGenreOf(g).includes(xFilters.genre)) : state.items;
+    const shown = xFilters.plat ? iw.filter(g => (g.platforms || []).some(p => normText(p) === normText(xFilters.plat) || normText(p).includes(normText(xFilters.plat)))) : iw;
+    const moreBtn = state.more ? `<div class="gm-x-more"><button type="button" class="gm-cta" onclick="gmXMore()">Carregar mais jogos</button></div>` : (state.items.length ? `<div class="gm-x-more gm-note">Chegamos ao fim por aqui — troque de categoria para descobrir mais.</div>` : '');
+    if (!shown.length) { grid.innerHTML = `<div class="gm-empty"><p>Nenhum jogo com esses filtros${state.more ? ' — toque em "Carregar mais jogos" para ampliar' : ''}.</p></div>` + moreBtn; return; }
+    grid.innerHTML = shown.map(exploreCardHtml).join('') + moreBtn;
     if (DEPS.hydrateIcons) DEPS.hydrateIcons(grid);
 }
 
@@ -692,13 +718,13 @@ export async function gmXOpen(rawgId) {
                 </div>
             </div>
             <div class="gp-actions">
-                <button type="button" class="pill-btn primary" onclick="gmXWish(${g.rawgId})">💘 Wishlist</button>
-                <button type="button" class="pill-btn" onclick="gmXBacklog(${g.rawgId})">📦 Direto pro backlog</button>
-                <button type="button" class="pill-btn" onclick="gmGoogle(${g.rawgId})">🔎 Buscar no Google</button>
-                <button type="button" class="pill-btn" onclick="gmBuy(${g.rawgId})">🛒 Comprar</button>
+                <button type="button" class="pill-btn primary" onclick="gmXWish(${g.rawgId})">${icon('heart', { size: '1em' })} Wishlist</button>
+                <button type="button" class="pill-btn" onclick="gmXBacklog(${g.rawgId})">${icon('archive', { size: '1em' })} Direto pro backlog</button>
+                <button type="button" class="pill-btn" onclick="gmGoogle(${g.rawgId})">${icon('search', { size: '1em' })} Buscar no Google</button>
+                <button type="button" class="pill-btn" onclick="gmBuy(${g.rawgId})">${icon('cart', { size: '1em' })} Comprar</button>
             </div>
             <details class="gp-sec" open>
-                <summary>🎮 Sobre o jogo</summary>
+                <summary>${icon('gamepad', { size: '1em' })} Sobre o jogo</summary>
                 <div class="gp-sec-body" id="gm-xdesc">Carregando descrição...</div>
             </details>
         </div>`;
@@ -861,7 +887,7 @@ function renderOb() {
     const steps = [
         // 0: boas-vindas
         `<div class="gm-ob-hero">
-            <div class="gm-ob-logo">💘</div>
+            <div class="gm-ob-logo">${icon('heart', { size: '52px' })}</div>
             <h2>Encontre seu próximo jogo.</h2>
             <p class="gm-ob-sub">O GameMatch cruza seu gosto com o catálogo e mostra um jogo por vez, no estilo Tinder. Deslize, dê match e descubra.</p>
             ${appData.games.length + (appData.wishlist || []).length >= 5 ? `
@@ -887,7 +913,7 @@ function renderOb() {
          <label class="gm-ob-label">Faixa de preço</label>${obSingle('price', GM_PRICES)}
          <label class="gm-ob-label">Época</label>${obSingle('era', [{ id: 'new', label: 'Jogos novos' }, { id: 'classic', label: 'Clássicos' }, { id: 'both', label: 'Os dois' }])}
          <label class="gm-ob-label">Tempo disponível</label>${obSingle('time', GM_TIMES)}
-         <button type="button" class="gm-chip gm-toggle ${obSel.upcomingOnly ? 'active' : ''}" onclick="gmObToggleUpcoming(this)">🚀 Só mostrar jogos que ainda vão lançar</button>`,
+         <button type="button" class="gm-chip gm-toggle ${obSel.upcomingOnly ? 'active' : ''}" onclick="gmObToggleUpcoming(this)">${icon('calendar', { size: '1em' })} Só mostrar jogos que ainda vão lançar</button>`,
         // 4: confirmação
         `<div class="gm-ob-hero">
             <h2>Perfil pronto, ${esc(obSel.name || 'gamer')}!</h2>
@@ -907,7 +933,7 @@ function renderOb() {
             ${obStep > 0 && obStep < steps.length - 1 ? `<button type="button" class="btn-cancel" onclick="gmObGo(${obStep - 1})">Voltar</button>` : '<span></span>'}
             ${obStep < steps.length - 1
                 ? `<button type="button" class="gm-cta" onclick="gmObGo(${obStep + 1})">${obStep === 0 ? 'Começar' : 'Avançar'}</button>`
-                : `<button type="button" class="gm-cta" onclick="gmObFinish()">Começar o swipe! 🎮</button>`}
+                : `<button type="button" class="gm-cta" onclick="gmObFinish()">Começar o swipe! ${icon('gamepad', { size: '1em' })}</button>`}
         </div>`;
     if (obStep === steps.length - 1) {
         const f = document.getElementById('gm-ob-final-summary');

@@ -153,6 +153,14 @@
                 <button type="button" class="gm-chip" data-dec="2000" onclick="gmClassicDecade('2000')">Anos 2000</button>
                 <button type="button" class="gm-chip" data-dec="2010" onclick="gmClassicDecade('2010')">Anos 2010</button>
             </div>
+            <div class="gm-explore-cats gm-explore-filters" id="gm-explore-filters">
+                <select class="gm-select" onchange="gmXFilterGenre(this.value)" aria-label="Filtrar por gênero">
+                    <option value="">Todos os gêneros</option>
+                </select>
+                <select class="gm-select" onchange="gmXFilterPlat(this.value)" aria-label="Filtrar por plataforma">
+                    <option value="">Todas as plataformas</option>
+                </select>
+            </div>
             <div class="gm-explore-grid" id="gm-explore-grid"><div class="gm-loading">Carregando...</div></div>
         </section>
 

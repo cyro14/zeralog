@@ -1247,3 +1247,23 @@ select.sort-time.active { border-color: var(--accent-playing); color: var(--acce
 .gm-xpage { position: fixed; inset: 0; z-index: 850; background: var(--bg-color); overflow-y: auto; opacity: 0; transition: opacity 0.22s ease; }
 .gm-xpage.open { opacity: 1; }
 .gm-xpage .gp-actions { margin: 6px 0 14px; }
+
+/* Rail lateral: ícone com tamanho fixo (font-size 0 zerava o svg em em) */
+@media (min-width: 900px) {
+    body.zl-rail .tab-btn .ic-lead svg { width: 22px !important; height: 22px !important; display: block; margin: 0 auto; }
+    body.zl-rail .tab-btn { display: flex; align-items: center; justify-content: center; }
+}
+
+/* Mobile: ao descer, as abas viram barra fixa embaixo só com ícones */
+@media (max-width: 899px) {
+    body.zl-rail { padding-bottom: 74px; }
+    body.zl-rail .search-container, body.zl-rail .platform-filter { opacity: 0; pointer-events: none; max-height: 0; overflow: hidden; margin: 0; padding: 0 15px; border: 0; transition: none; }
+    body.zl-rail .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 800; margin: 0; border-radius: 0; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border-color); }
+    body.zl-rail .tab-btn { font-size: 0; padding: 13px 2px; display: flex; align-items: center; justify-content: center; }
+    body.zl-rail .tab-btn .ic-lead svg { width: 24px !important; height: 24px !important; display: block; }
+}
+
+/* Seletores de filtro do Explorar */
+.gm-explore-filters select.gm-select, .gm-explore-filters .gm-chip { flex-shrink: 0; }
+.gm-select { font-size: 0.85em; padding: 7px 12px; border-radius: 999px; background: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); max-width: 100%; cursor: pointer; }
+.gm-select:focus { border-color: var(--accent-playing); outline: none; }
