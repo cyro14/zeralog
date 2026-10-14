@@ -499,7 +499,10 @@ export async function itchSync() {
         itchStatus(`Oi, ${user.username}! Baixando seus jogos...`);
         appData.settings.stores.itch = { ...itch(), user: user.username };
         const data = await storeFetch(`https://itch.io/api/1/${encodeURIComponent(key)}/my-owned-keys`);
-        const keys = (data && data.owned_keys) || [];
+        if (data && data.errors) throw Object.assign(new Error('auth'), { status: 403, detail: (data.errors || [])[0] || 'erros' });
+        const rawKeys = data && data.owned_keys;
+        // A Itch.io pode devolver array ou objeto indexado — aceita os dois
+        const keys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys || {});
         const seen = new Set();
         const names = [];
         const coverByTitle = new Map();
