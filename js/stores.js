@@ -395,25 +395,41 @@ export async function epicSync() {
     epicStatus('Buscando sua biblioteca Epic...');
     try {
         const token = await epicToken();
-        const data = await storeFetch('https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata=true', { token, publicFallback: false });
-        // guarda bruta para depuração futura (quantos itens a Epic manda)
-        appData.settings.stores.epic = { ...epic(), rawCount: ((data && (data.records || data.items)) || []).length };
+        const data = await storeFetch('https://library-service.live.use1a.on.epicgames.com/library/api/public/items', { token, publicFallback: false });
         const list = (data && (data.records || data.items)) || [];
-        epicStatus(`${list.length} itens na conta — separando os jogos...`);
-        const names = [...new Set(list.map(it => {
-            const meta = it.metadata || {};
-            // Namespace "ue" = Unreal Engine/Editor e assets, que NÃO são jogos —
-            // nem outros componentes de tecnologia (DLC, plugins, SDKs)
-            if (String(it.namespace || '').toLowerCase() === 'ue') return null;
-            if (String(it.appName || '').toLowerCase().startsWith('ue')) return null;
-            const title = (meta.title || it.title || '').trim() || null;
-            const cats = (meta.categories || []).map(c => String(c.path || c));
-            if (cats.some(c => /plugin|addon|engine|editor|asset|sdk|dlc/i.test(c))) return null;
-            if (title && /unreal engine|editor|plugin|sdk/i.test(title)) return null;
-            if (title && !/demo|trial|test/i.test(title)) return title;
-            return null;
-        }).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-        if (!names.length) { epicStatus(`A conta respondeu (${list.length} itens), mas nenhum jogo entre eles — só componentes. Dica: jogue algo na sua conta Epic e sincronize de novo.`); renderStoreStatus('epic'); return; }
+        appData.settings.stores.epic = { ...epic(), rawCount: list.length };
+        // A lista da biblioteca não traz o nome dos jogos — resolve pelo catálogo,
+        // em lotes por namespace. Namespace "ue" = Unreal Engine/editores/assets (não é jogo).
+        epicStatus(`${list.length} itens na conta — buscando os nomes dos jogos...`);
+        const pairs = [];
+        for (const it of list) {
+            if (!it || !it.catalogItemId) continue;
+            const ns = String(it.namespace || '');
+            if (ns.toLowerCase() === 'ue' || String(it.appName || '').toLowerCase().startsWith('ue-') || /^ue\d/i.test(String(it.appName || ''))) continue;
+            pairs.push({ ns, id: String(it.catalogItemId) });
+        }
+        const byNs = new Map();
+        pairs.forEach(p => { const arr = byNs.get(p.ns) || []; arr.push(p.id); byNs.set(p.ns, arr); });
+        const seen = new Set(), names = [];
+        for (const [ns, ids] of byNs) {
+            for (let i = 0; i < ids.length; i += 50) {
+                const qs = [...new Set(ids.slice(i, i + 50))].map(id => `id=${encodeURIComponent(id)}`).join('&');
+                try {
+                    const bulk = await storeFetch(`https://catalog-public-service-prod06.ol.epicgames.com/catalog/api/shared/namespace/${ns}/bulk/items?${qs}&country=BR&locale=pt-BR&includeDLCDetails=false`, { token, publicFallback: false });
+                    Object.values(bulk || {}).forEach(item => {
+                        const t = String(item && item.title || '').trim();
+                        if (!t) return;
+                        const cats = ((item && item.categories) || []).map(c => String(c.path || c));
+                        if (cats.some(c => /addon|engine|editor|plugin|sdk|asset/i.test(c))) return;
+                        if (/unreal engine|editor|plugin|sdk/i.test(t)) return;
+                        const k = normText(t);
+                        if (!seen.has(k)) { seen.add(k); names.push(t); }
+                    });
+                } catch (e) { /* lote indisponível: o resto segue */ }
+            }
+        }
+        names.sort((a, b) => a.localeCompare(b));
+        if (!names.length) { epicStatus(`A conta respondeu (${list.length} itens), mas não consegui os nomes dos jogos. Atualize o Worker (docs/steam-proxy.md passa pelo catálogo) e tente de novo.`); renderStoreStatus('epic'); return; }
         if (!names.length) { epicStatus('A conta respondeu, mas sem jogos na biblioteca.'); renderStoreStatus('epic'); return; }
         const cat = ensureRefs('epic');
         hooks.undo();
@@ -514,7 +530,8 @@ export async function itchSync() {
         renderAllStoreStatus();
         if (fresh.length) enrichStoreGames(fresh);
     } catch (e) {
-        itchStatus(e && (e.status === 401 || e.status === 403) ? 'Chave recusada pela Itch.io. Gere outra e cole de novo.' : 'A sincronização falhou. Veja sua internet (ou o Worker atualizado) e tente de novo.');
+        const det = e && e.detail ? ` (resposta: ${String(e.detail).slice(0, 140)})` : ` (${e && e.message || 'erro'})`;
+        itchStatus((e && (e.status === 401 || e.status === 403) ? 'Chave recusada pela Itch.io. Gere outra e cole de novo.' : 'A sincronização falhou.' + det + ' Confira a internet e se o Worker está atualizado (docs/steam-proxy.md precisa aceitar o host itch.io).'));
     } finally {
         if (btn) btn.disabled = false;
     }
