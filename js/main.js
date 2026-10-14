@@ -16,7 +16,7 @@ import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgrad
 import { openWiki, wikiChangeSource, wikiSearch, wikiSearchFab, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
 import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSync } from './steam.js';
 import { initGameMatch, gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject } from './gamematch.js';
-import { initStores, storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect } from './stores.js';
+import { initStores, storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect, itchSaveKey, itchSync, itchDisconnect } from './stores.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleCompact, toggleShelfPlain, saveStateForUndo, undoAction, switchTab, 
@@ -127,7 +127,7 @@ Object.assign(window, { steamLogin, steamLogout, steamSaveKey, steamSaveProxy, s
 
 // GameMatch: aba de descoberta estilo Tinder
 Object.assign(window, { gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject });
-Object.assign(window, { storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect });
+Object.assign(window, { storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect, itchSaveKey, itchSync, itchDisconnect });
 
 // Inicialização Principal (o banco é aberto de forma assíncrona antes de desenhar a tela)
 window.restoreSnapshotUI = restoreSnapshotUI;

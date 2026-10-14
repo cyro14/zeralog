@@ -326,15 +326,15 @@ export function gogDisconnect() {
 // Mesmo fluxo do aplicativo oficial: o usuário entra no site da Epic, copia o endereço
 // com ?code=... depois do login, e o app troca pelo token. A senha nunca passa pelo app.
 const EPIC_CLIENT = '34a02cf8f4414e29b15921876da36f9a:daafbccc737745039dffe53d94fc76cf';   // cliente público oficial do launcher Epic
-// Fluxo do app oficial: authorize → redireciona para localhost/launcher/authorized?code=...
-// (a página dá "erro de conexão" — o código vai no endereço dela)
 const EPIC_REDIRECT = 'https://localhost/launcher/authorized';
-const EPIC_AUTH_URL = `https://www.epicgames.com/id/authorize?response_type=code&client_id=${EPIC_CLIENT.split(':')[0]}&redirect_uri=${encodeURIComponent(EPIC_REDIRECT)}`;
+// Fluxo do launcher: depois do login, a Epic mostra um JSON com "authorizationCode"
+// (se estiver null, é porque a página deu refresh/expirou: faça login de novo)
+const EPIC_AUTH_URL = `https://www.epicgames.com/id/api/redirect?clientId=${EPIC_CLIENT.split(':')[0]}&responseType=code`;
 const epic = () => st('epic');
 function epicStatus(msg) { const el = $('epic-sync-status'); if (el) el.textContent = msg; }
 
 export function epicLogin() {
-    epicStatus('Abrindo o login da Epic em outra aba... Faça login, aperte Autorizar e a página vai dar "erro de conexão" (localhost/launcher/authorized?code=...) — isso é o esperado! Copie o ENDEREÇO COMPLETO dessa página da barra do navegador e cole no campo aqui. O código expira em segundos: cole logo.');
+    epicStatus('Abrindo o login da Epic... Faça login na aba que abrir. Quando aparecer um texto começando com {"warning":..., ela tem "authorizationCode" PREENCHIDO: copie o texto da página inteiro (Ctrl+A, Ctrl+C) e cole aqui em seguida. Se "authorizationCode" aparece null, não recarregue: clique em "Entrar com a Epic" de novo. Cada código vale uma única vez.');
     window.open(EPIC_AUTH_URL, '_blank', 'noopener');
 }
 
@@ -396,14 +396,24 @@ export async function epicSync() {
     try {
         const token = await epicToken();
         const data = await storeFetch('https://library-service.live.use1a.on.epicgames.com/library/api/public/items?includeMetadata=true', { token, publicFallback: false });
+        // guarda bruta para depuração futura (quantos itens a Epic manda)
+        appData.settings.stores.epic = { ...epic(), rawCount: ((data && (data.records || data.items)) || []).length };
         const list = (data && (data.records || data.items)) || [];
+        epicStatus(`${list.length} itens na conta — separando os jogos...`);
         const names = [...new Set(list.map(it => {
             const meta = it.metadata || {};
-            const title = it.title || meta.title || meta.developer && meta.title;
+            // Namespace "ue" = Unreal Engine/Editor e assets, que NÃO são jogos —
+            // nem outros componentes de tecnologia (DLC, plugins, SDKs)
+            if (String(it.namespace || '').toLowerCase() === 'ue') return null;
+            if (String(it.appName || '').toLowerCase().startsWith('ue')) return null;
+            const title = (meta.title || it.title || '').trim() || null;
             const cats = (meta.categories || []).map(c => String(c.path || c));
-            if (cats.some(c => /plugin|addon|engine|editor|asset/i.test(c))) return null;   // DLC/ferramenta, não jogo
-            return title || it.appName ? String(title || it.appName) : null;
+            if (cats.some(c => /plugin|addon|engine|editor|asset|sdk|dlc/i.test(c))) return null;
+            if (title && /unreal engine|editor|plugin|sdk/i.test(title)) return null;
+            if (title && !/demo|trial|test/i.test(title)) return title;
+            return null;
         }).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        if (!names.length) { epicStatus(`A conta respondeu (${list.length} itens), mas nenhum jogo entre eles — só componentes. Dica: jogue algo na sua conta Epic e sincronize de novo.`); renderStoreStatus('epic'); return; }
         if (!names.length) { epicStatus('A conta respondeu, mas sem jogos na biblioteca.'); renderStoreStatus('epic'); return; }
         const cat = ensureRefs('epic');
         hooks.undo();
@@ -435,6 +445,79 @@ export function epicDisconnect() {
     appData.settings.stores.epic = { catId: epic().catId };
     saveData(() => renderStoreStatus('epic'));
     hooks.toast('Epic desconectada.', false);
+}
+
+// ================= Itch.io: chave de API do usuário =================
+// A Itch.io tem API oficial: a chave é gerada em itch.io/user/settings/api-keys.
+// Com ela: /me (perfil) e /my-owned-keys (jogos comprados/baixados com chave).
+const itch = () => st('itch');
+function itchStatus(msg) { const el = $('itch-sync-status'); if (el) el.textContent = msg; }
+
+export function itchSaveKey() {
+    const v = String(($('itch-key-input') && $('itch-key-input').value) || '').trim();
+    if (!v) { itchStatus('Cole sua chave de API. Crie em itch.io/user/settings/api-keys (botão "Generate new API key").'); return; }
+    appData.settings.stores.itch = { ...itch(), apiKey: v };
+    saveData(null);
+    itchStatus('Chave salva! Verificando na Itch.io...');
+    itchSync();
+}
+
+export function itchDisconnect() {
+    if (!itch().apiKey) return;
+    if (!confirm('Desconectar a Itch.io? Os jogos já importados continuam na categoria Itch.io.')) return;
+    appData.settings.stores.itch = { catId: itch().catId };
+    saveData(() => renderStoreStatus('itch'));
+    hooks.toast('Itch.io desconectada.', false);
+    if ($('itch-key-input')) $('itch-key-input').value = '';
+}
+
+export async function itchSync() {
+    const key = itch().apiKey;
+    if (!key) { itchStatus('Cole sua chave da API primeiro.'); return; }
+    const btn = $('itch-sync-btn'); if (btn) btn.disabled = true;
+    itchStatus('Verificando sua conta na Itch.io...');
+    try {
+        const me = await storeFetch(`https://itch.io/api/1/${encodeURIComponent(key)}/me`);
+        const user = me && me.user;
+        if (!user) { appData.settings.stores.itch = { ...itch(), apiKey: '' }; saveData(null); itchStatus('A Itch.io recusou a chave. Gere outra em itch.io/user/settings/api-keys e cole de novo.'); renderStoreStatus('itch'); return; }
+        itchStatus(`Oi, ${user.username}! Baixando seus jogos...`);
+        appData.settings.stores.itch = { ...itch(), user: user.username };
+        const data = await storeFetch(`https://itch.io/api/1/${encodeURIComponent(key)}/my-owned-keys`);
+        const keys = (data && data.owned_keys) || [];
+        const seen = new Set();
+        const names = [];
+        const coverByTitle = new Map();
+        keys.forEach(k => {
+            const gm = k.game || {};
+            const t = String(gm.title || '').trim();
+            if (!t || seen.has(normText(t))) return;
+            seen.add(normText(t));
+            names.push(t);
+            if (gm.cover_url) coverByTitle.set(normText(t), gm.cover_url);
+        });
+        const cat = ensureRefs('itch');
+        hooks.undo();
+        const have = new Set(appData.games.map(g => normText(g.title)));
+        const fresh = [];
+        for (const t of names) {
+            if (have.has(normText(t))) continue;
+            const g = newGame('itch', t, cat.id);
+            const cov = coverByTitle.get(normText(t));
+            if (cov) { g.image = cov; g.wideCover = true; }
+            appData.games.push(g); fresh.push(g);
+        }
+        appData.settings.stores.itch = { ...itch(), lastSync: Date.now(), lastCount: names.length };
+        saveData(() => hooks.render());
+        itchStatus(`Sincronizado @${user.username}: ${names.length} jogos na conta · ${fresh.length} novos na categoria "Itch.io".${fresh.length ? ' Dados e capas sendo buscados em segundo plano...' : ''}`);
+        hooks.toast(`Itch.io: ${fresh.length} novos, ${names.length - fresh.length} já cadastrados.`, fresh.length > 0);
+        renderStoreStatus('itch');
+        renderAllStoreStatus();
+        if (fresh.length) enrichStoreGames(fresh);
+    } catch (e) {
+        itchStatus(e && (e.status === 401 || e.status === 403) ? 'Chave recusada pela Itch.io. Gere outra e cole de novo.' : 'A sincronização falhou. Veja sua internet (ou o Worker atualizado) e tente de novo.');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 }
 
 export function initStores(h) {
