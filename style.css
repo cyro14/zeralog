@@ -1238,3 +1238,12 @@ select.sort-time.active { border-color: var(--accent-playing); color: var(--acce
     body.zl-rail { padding-left: 84px; }
     .search-container, .platform-filter { transition: opacity .2s, transform .2s; }
 }
+
+/* Explorar: cards clicáveis + botão "carregar mais" + página do jogo */
+.gm-x-card { cursor: pointer; }
+.gm-x-card:focus-visible { outline: 2px solid var(--accent-playing); }
+.gm-x-more { grid-column: 1 / -1; display: flex; justify-content: center; padding: 6px 0 20px; }
+.gm-x-more.gm-note { color: var(--text-muted); font-size: 0.85em; text-align: center; }
+.gm-xpage { position: fixed; inset: 0; z-index: 850; background: var(--bg-color); overflow-y: auto; opacity: 0; transition: opacity 0.22s ease; }
+.gm-xpage.open { opacity: 1; }
+.gm-xpage .gp-actions { margin: 6px 0 14px; }

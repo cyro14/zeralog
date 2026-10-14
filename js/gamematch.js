@@ -3,7 +3,7 @@
 // swipe, da página Explorar e da página de Perfil. Os dados vivem em
 // appData.gamematch (persistidos junto com o resto do banco local).
 import { appData, saveData } from './store.js';
-import { listGames, esc, normText, resizeUrl, guessFranchise } from './gameApi.js';
+import { listGames, esc, normText, resizeUrl, guessFranchise, getGameDetails } from './gameApi.js';
 import { autoVerticalCover } from './covers.js';
 
 const gm = () => appData.gamematch || (appData.gamematch = {});
@@ -534,27 +534,37 @@ export const GM_EXPLORE_CATS = [
     { id: 'free', label: 'Grátis / Ofertas' },
     { id: 'top', label: 'Mais bem avaliados' }
 ];
-const exploreCache = {};   // categoria -> { items, more }
-let exploreById = new Map();   // id -> objeto de jogo (p/ os botões de ação)
-let classicDecade = '';   // '' | '1980' | '1990' | '2000' | '2010'
+const exploreState = {};   // cat -> { page, items: [], more }
+let exploreById = new Map();      // id -> objeto de jogo (p/ página do jogo e ações)
+let classicDecade = '';           // '' | '1980' | '1990' | '2000' | '2010'
+let exploreCat = 'you';
 
-function exploreParams(cat) {
+function exploreParams(cat, page) {
     const today = new Date().toISOString().slice(0, 10);
     const y = new Date().getFullYear();
-    const rp = n => 1 + Math.floor(Math.random() * n);   // página aleatória: variedade a cada visita
     switch (cat) {
-        case 'you': { const p = deckParams(rp(4)); return { ...p, ordering: poolOrder }; }
-        case 'hot': return { ordering: '-added', dates: `${y - 2}-01-01,${today}`, page_size: 20, page: rp(2), exclude_additions: 'true' };
-        case 'releases': return { ordering: 'released', dates: `${today},2030-12-31`, page_size: 20, page: rp(3) };
-        case 'gems': return { ordering: '-rating', genres: 'indie', page_size: 40, page: rp(4), exclude_additions: 'true' };
+        case 'you': { const p = deckParams(page); return { ...p, ordering: poolOrder }; }
+        case 'hot': {
+            // "Em alta" = bem avaliados e muito comentados nos últimos ~18 meses
+            const from = new Date(); from.setMonth(from.getMonth() - 18);
+            return { ordering: '-rating', dates: `${from.toISOString().slice(0, 10)},${today}`, page_size: 20, page, exclude_additions: 'true' };
+        }
+        case 'releases': return { ordering: 'released', dates: `${today},2030-12-31`, page_size: 20, page };
+        case 'gems': {
+            // Joias: indies pouco falados (poucas avaliações) — metade das vezes puxa clássicos indie antigos
+            const base = { page_size: 40, page, exclude_additions: 'true' };
+            const oldSchool = Math.random() < 0.5;
+            return oldSchool
+                ? { ...base, ordering: '-rating', genres: 'indie', dates: '2000-01-01,2017-12-31' }
+                : { ...base, ordering: '-rating', genres: 'indie' };
+        }
         case 'classics': {
-            // submenu de décadas: '1980' -> 1980-1989, etc.
             const start = classicDecade ? +classicDecade : 1980;
             const end = classicDecade ? start + 9 : 2012;
-            return { ordering: '-rating', dates: `${start}-01-01,${end}-12-31`, page_size: 20, page: rp(3), exclude_additions: 'true' };
+            return { ordering: '-rating', dates: `${start}-01-01,${end}-12-31`, page_size: 20, page, exclude_additions: 'true' };
         }
-        case 'free': return { ordering: '-popularity', tags: 'free-to-play', page_size: 20 };
-        case 'top': default: return { ordering: '-metacritic', page_size: 20, exclude_additions: 'true' };
+        case 'free': return { ordering: '-popularity', tags: 'free-to-play', page_size: 20, page };
+        case 'top': default: return { ordering: '-metacritic', page_size: 20, page, exclude_additions: 'true' };
     }
 }
 
@@ -565,7 +575,49 @@ export function gmClassicDecade(dec) {
     gmExplore('classics');
 }
 
+function exploreCardHtml(g) {
+    const img = g.image ? resizeUrl(g.image, 420) : null;
+    const m = g._match ?? matchScore(g);
+    return `
+    <div class="gm-x-card" role="button" tabindex="0" onclick="gmXOpen(${g.rawgId})" onkeydown="if(event.key==='Enter')gmXOpen(${g.rawgId})" title="Abrir ${esc(g.title)}">
+        <div class="gm-x-cover">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : `<div class="gm-cover-empty">${esc(g.title.slice(0, 2))}</div>`}</div>
+        <div class="gm-x-body">
+            <strong>${esc(g.title)}</strong>
+            <small>${esc((g.genres || []).slice(0, 2).join(' · '))}${g.released ? ' · ' + String(g.released).slice(0, 4) : ''}</small>
+            <span class="gm-match gm-match-${m >= 90 ? 'hi' : m >= 70 ? 'mid' : 'lo'}">${m}%</span>
+        </div>
+        <div class="gm-x-actions">
+            <button type="button" class="icon-btn xl" title="Adicionar à wishlist" onclick="event.stopPropagation();gmExploreWish(${g.rawgId})"><span data-icon="bookmark" data-size="1.1em"></span></button>
+            <button type="button" class="icon-btn xl" title="Comprar na Amazon" onclick="event.stopPropagation();gmBuy(${g.rawgId})"><span data-icon="cart" data-size="1.1em"></span></button>
+        </div>
+    </div>`;
+}
+
+async function fetchExplorePage(cat, append) {
+    const state = exploreState[cat] || (exploreState[cat] = { page: 0, items: [], more: true });
+    state.page++;
+    const res = await listGames(exploreParams(cat, state.page));
+    let items = res.items.filter(g => gmIsClean(g) && g.image);
+    if (cat === 'gems') items = items.filter(g => (g.ratingsCount || 0) > 80 && (g.ratingsCount || 0) < 25000);
+    if (cat === 'you') items = items.map(g => ({ ...g, _match: matchScore(g) })).sort((a, b) => b._match - a._match);
+    state.items = append ? state.items.concat(items) : items;
+    state.more = res.more;
+    items.forEach(g => exploreById.set(g.rawgId, g));
+    return state;
+}
+
+function paintExplore(cat) {
+    const grid = document.getElementById('gm-explore-grid');
+    const state = exploreState[cat];
+    if (!grid || !state) return;
+    const moreBtn = state.more ? `<div class="gm-x-more"><button type="button" class="gm-cta" onclick="gmXMore()">Carregar mais jogos</button></div>` : `<div class="gm-x-more gm-note">Chegamos ao fim por aqui — troque de categoria para descobrir mais.</div>`;
+    if (!state.items.length) { grid.innerHTML = '<div class="gm-empty"><p>Nada por aqui agora.</p></div>'; return; }
+    grid.innerHTML = state.items.map(exploreCardHtml).join('') + moreBtn;
+    if (DEPS.hydrateIcons) DEPS.hydrateIcons(grid);
+}
+
 export async function gmExplore(cat = 'you') {
+    exploreCat = cat;
     document.querySelectorAll('#gm-explore-cats .gm-chip').forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
     const decBar = document.getElementById('gm-classic-decades');
     if (decBar) {
@@ -574,35 +626,18 @@ export async function gmExplore(cat = 'you') {
     }
     const grid = document.getElementById('gm-explore-grid');
     if (!grid) return;
+    exploreState[cat] = { page: 0, items: [], more: true };   // categoria nova sempre sorteia a 1ª página
     grid.innerHTML = '<div class="gm-loading">Carregando...</div>';
-    try {
-        const res = await listGames(exploreParams(cat));
-        let items = res.items.filter(g => gmIsClean(g) && g.image);   // sem capa não aparece; conteúdo adulto nunca aparece
-        if (cat === 'gems') items = items.filter(g => (g.ratingsCount || 0) > 300 && (g.ratingsCount || 0) < 25000).slice(0, 20);
-        if (cat === 'you') items = items.map(g => ({ ...g, _match: matchScore(g) })).sort((a, b) => b._match - a._match);
-        exploreById = new Map(items.map(g => [g.rawgId, g]));
-        if (!items.length) { grid.innerHTML = '<div class="gm-empty"><p>Nada por aqui agora.</p></div>'; return; }
-        grid.innerHTML = items.map(g => {
-            const img = g.image ? resizeUrl(g.image, 420) : null;
-            const m = g._match ?? matchScore(g);
-            return `
-            <div class="gm-x-card">
-                <div class="gm-x-cover">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : `<div class="gm-cover-empty">${esc(g.title.slice(0, 2))}</div>`}</div>
-                <div class="gm-x-body">
-                    <strong>${esc(g.title)}</strong>
-                    <small>${esc((g.genres || []).slice(0, 2).join(' · '))}${g.released ? ' · ' + String(g.released).slice(0, 4) : ''}</small>
-                    <span class="gm-match gm-match-${m >= 90 ? 'hi' : m >= 70 ? 'mid' : 'lo'}">${m}%</span>
-                </div>
-                <div class="gm-x-actions">
-                    <button type="button" class="icon-btn xl" title="Adicionar à wishlist" onclick="gmExploreWish(${g.rawgId})"><span data-icon="bookmark" data-size="1.1em"></span></button>
-                    <button type="button" class="icon-btn xl" title="Comprar na Amazon" onclick="gmBuy(${g.rawgId})"><span data-icon="cart" data-size="1.1em"></span></button>
-                </div>
-            </div>`;
-        }).join('');
-        if (DEPS.hydrateIcons) DEPS.hydrateIcons(grid);
-    } catch (e) {
-        grid.innerHTML = `<div class="gm-empty"><p>Não consegui carregar o catálogo agora. Tente de novo em instantes — ou use o deck (modo demonstração).</p></div>`;
-    }
+    try { await fetchExplorePage(cat, false); paintExplore(cat); }
+    catch (e) { grid.innerHTML = `<div class="gm-empty"><p>Não consegui carregar o catálogo agora. Tente de novo em instantes — ou use o deck (modo demonstração).</p></div>`; }
+}
+
+export async function gmXMore() {
+    const grid = document.getElementById('gm-explore-grid');
+    const btn = grid && grid.querySelector('.gm-x-more button');
+    if (btn) { btn.disabled = true; btn.textContent = 'Carregando...'; }
+    try { await fetchExplorePage(exploreCat, true); } catch (e) { /* mantém o que já tinha */ }
+    paintExplore(exploreCat);
 }
 
 export function gmExploreWish(rawgId) {
@@ -618,6 +653,71 @@ export function gmBuy(rawgId) {
     const url = `https://www.amazon.com.br/s?k=${encodeURIComponent(g.title + ' jogo')}`;
     window.open(url, '_blank', 'noopener');
 }
+
+export function gmExploreBacklog(rawgId) {
+    const g = exploreById.get(rawgId);
+    if (!g) return;
+    const ok = addToBacklog(g); saveData(); renderApp();
+    toast(ok ? `${g.title} foi para o backlog (categoria GameMatch)!` : `${g.title} já estava na sua biblioteca.`);
+}
+
+export function gmGoogle(rawgId) {
+    const g = exploreById.get(rawgId) || plannedDeck.find(x => x.rawgId === rawgId);
+    if (!g) return;
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(g.title + ' jogo')}`, '_blank', 'noopener');
+}
+
+// ---------- Página em tela cheia de um jogo do Explorar ----------
+export async function gmXOpen(rawgId) {
+    const g = exploreById.get(rawgId) || plannedDeck.find(x => x.rawgId === rawgId);
+    if (!g) return;
+    let old = document.getElementById('gm-xpage');
+    if (old) old.remove();
+    const m = g._match ?? matchScore(g);
+    const img = g.image ? resizeUrl(g.image, 1280) : null;
+    const el = document.createElement('div');
+    el.id = 'gm-xpage';
+    el.className = 'gm-xpage';
+    el.innerHTML = `
+        ${img ? `<div class="gp-bg"><img src="${esc(img)}" alt=""></div>` : ''}
+        <div class="gp-scroll">
+            <button type="button" class="gp-back" onclick="gmXClose()">‹ Voltar</button>
+            <div class="gp-hero">
+                ${img ? `<img class="gp-cover" src="${esc(img)}" alt="">` : `<div class="gp-cover gp-cover-empty">${esc(g.title.slice(0, 2))}</div>`}
+                <div class="gp-hero-info">
+                    <span class="gm-match gm-match-${m >= 90 ? 'hi' : m >= 70 ? 'mid' : 'lo'}">${m}% Match</span>
+                    <h2>${esc(g.title)}</h2>
+                    <div class="gp-sub">${(g.genres || []).slice(0, 3).map(esc).join(' · ')}${g.released ? ' · ' + String(g.released).slice(0, 4) : ''}${g.playtime ? ` · ~${g.playtime}h` : ''}</div>
+                    <div class="gp-chips">${(g.platforms || []).slice(0, 4).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${g.rating ? `<span class="chip chip-gold">★ ${g.rating.toFixed(1)}</span>` : ''}${g.metacritic ? `<span class="chip">MC ${g.metacritic}</span>` : ''}</div>
+                </div>
+            </div>
+            <div class="gp-actions">
+                <button type="button" class="pill-btn primary" onclick="gmXWish(${g.rawgId})">💘 Wishlist</button>
+                <button type="button" class="pill-btn" onclick="gmXBacklog(${g.rawgId})">📦 Direto pro backlog</button>
+                <button type="button" class="pill-btn" onclick="gmGoogle(${g.rawgId})">🔎 Buscar no Google</button>
+                <button type="button" class="pill-btn" onclick="gmBuy(${g.rawgId})">🛒 Comprar</button>
+            </div>
+            <details class="gp-sec" open>
+                <summary>🎮 Sobre o jogo</summary>
+                <div class="gp-sec-body" id="gm-xdesc">Carregando descrição...</div>
+            </details>
+        </div>`;
+    document.body.appendChild(el);
+    if (window.zlNavPush) window.zlNavPush(() => { if (document.getElementById('gm-xpage')) { gmXClose(); return true; } return false; });
+    requestAnimationFrame(() => el.classList.add('open'));
+    try {
+        const d = await getGameDetails(rawgId);
+        const box = document.getElementById('gm-xdesc');
+        if (box) box.textContent = (d && d.description) || 'Sem descrição desse jogo no catálogo.';
+    } catch (e) {
+        const box = document.getElementById('gm-xdesc');
+        if (box) box.textContent = 'Sem descrição por aqui agora.';
+    }
+}
+
+export function gmXWish(rawgId) { gmExploreWish(rawgId); }
+export function gmXBacklog(rawgId) { gmExploreBacklog(rawgId); }
+export function gmXClose() { const el = document.getElementById('gm-xpage'); if (el) { el.classList.remove('open'); setTimeout(() => el.remove(), 220); } }
 
 // ================= PÁGINA DE PERFIL =================
 function styleLabel(id) { const s = GM_STYLES.find(x => x.id === id); return s ? s.label : id; }
