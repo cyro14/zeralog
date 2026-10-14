@@ -390,7 +390,7 @@ export function overlayFeedback(title, sub = '') {
     ov.querySelector('.gm-ov-sub').innerHTML = sub;
     ov.classList.add('show');
     clearTimeout(ovT);
-    ovT = setTimeout(() => ov.classList.remove('show'), 1400);
+    ovT = setTimeout(() => ov.classList.remove('show'), 950);
 }
 
 // ---------- Renderização do deck (1 card grande por vez, próximo atrás) ----------
@@ -481,11 +481,11 @@ function attachDrag(card) {
     const commit = action => {
         const g = plannedDeck.shift();
         const dirX = action === 'right' ? 1 : action === 'left' ? -1 : 0;
-        card.style.transition = 'transform 0.35s ease, opacity 0.35s ease';
+        card.style.transition = 'transform 0.16s ease, opacity 0.16s ease';
         card.style.transform = `translate(${dirX * 140}%, ${action === 'up' ? '-140%' : 0}) rotate(${dirX * 30}deg)`;
         card.style.opacity = '0';
         const map = { right: 'like', left: 'reject', up: 'backlog' };
-        setTimeout(() => { applySwipe(g, map[action]); renderDeck(); }, 220);
+        setTimeout(() => { applySwipe(g, map[action]); renderDeck(); }, 120);
     };
     card.addEventListener('pointerdown', e => { down = true; sx = e.clientX; sy = e.clientY; card.setPointerCapture(e.pointerId); });
     card.addEventListener('pointermove', e => { if (down) move(e.clientX, e.clientY); });
@@ -510,11 +510,11 @@ export function gmSwipe(action) {   // 'like' | 'reject' | 'backlog' | 'favorite
     if (card && action !== 'favorite') {
         const dir = action === 'like' ? 'right' : action === 'backlog' ? 'up' : 'left';
         const dirX = dir === 'right' ? 1 : dir === 'left' ? -1 : 0;
-        card.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+        card.style.transition = 'transform 0.16s ease, opacity 0.16s ease';
         card.style.transform = `translate(${dirX * 140}%, ${dir === 'up' ? '-140%' : 0}) rotate(${dirX * 30}deg)`;
         card.style.opacity = '0';
         plannedDeck.shift();
-        setTimeout(() => { applySwipe(g, action); renderDeck(); }, 180);
+        setTimeout(() => { applySwipe(g, action); renderDeck(); }, 120);
     } else {
         plannedDeck.shift(); applySwipe(g, action); renderDeck();
     }
@@ -607,7 +607,7 @@ async function fetchExplorePage(cat, append) {
     state.page++;
     const res = await listGames(exploreParams(cat, state.page));
     let items = res.items.filter(g => gmIsClean(g) && g.image && (cat === 'releases' || !farFuture(g)));   // 2030 só na aba Lançamentos
-    if (cat === 'gems') items = items.filter(g => (g.ratingsCount || 0) > 80 && (g.ratingsCount || 0) < 25000);
+    if (cat === 'gems') items = items.filter(g => (g.ratingsCount || 0) >= 25 && (g.ratingsCount || 0) <= 1500);   // só indie pouco falado
     if (cat === 'you') items = items.map(g => ({ ...g, _match: matchScore(g) })).sort((a, b) => b._match - a._match);
     state.items = append ? state.items.concat(items) : items;
     state.more = res.more;
