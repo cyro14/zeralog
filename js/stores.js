@@ -325,7 +325,7 @@ const epic = () => st('epic');
 function epicStatus(msg) { const el = $('epic-sync-status'); if (el) el.textContent = msg; }
 
 export function epicLogin() {
-    epicStatus('Abrindo o login da Epic em outra aba... Entre na sua conta; depois de logar, a Epic mostra um código (ou redireciona com ?code=... no endereço). Copie o código ou o endereço completo e cole aqui.');
+    epicStatus('Abrindo o login da Epic em outra aba... Entre na sua conta; a Epic mostra um texto JSON com "authorizationCode". Copie TUDO que a página mostra (pode colar o JSON inteiro) e cole aqui em seguida — o código expira em poucos segundos.');
     window.open(EPIC_AUTH_URL, '_blank', 'noopener');
 }
 
@@ -338,10 +338,14 @@ async function epicExchange(form) {
 export async function epicSaveCode() {
     const raw = String(($('epic-code-input') && $('epic-code-input').value) || '').trim();
     let code = null;
+    // Pode colar: o JSON da página ({"authorizationCode":"..."}), o endereço (?code=...) ou o código puro
+    const mJson = raw.match(/"authorizationCode"\s*:\s*"([0-9a-f]{32})"/i) || raw.match(/"exchangeCode"\s*:\s*"([0-9a-f]{32})"/i);
     const m = raw.match(/[?&#]code=([A-Za-z0-9]+)/);
-    if (m) code = m[1];
-    else if (/^[A-Za-z0-9]{32}$/.test(raw)) code = raw;
-    if (!code) { epicStatus('Não achei o código nesse texto. Ele é um bloco de 32 letras/números — copie o endereço completo da página após o login (tem ?code=...) ou só o código, e cole aqui.'); return; }
+    const mAny = mJson || (mJson ? null : raw.match(/\b([0-9a-f]{32})\b/i));
+    if (mJson) code = mJson[1];
+    else if (m) code = m[1];
+    else if (mAny) code = mAny[1];
+    if (!code) { epicStatus('Não achei o código nesse texto. O JSON precisa ter "authorizationCode" preenchido — se veio null, o login expirou: clique em "Entrar com a Epic" de novo e cole o resultado logo em seguida.'); return; }
     epicStatus('Trocando o código pelo acesso à conta...');
     try {
         const t = await epicExchange({ grant_type: 'authorization_code', code, token_type: 'eg1' });

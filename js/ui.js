@@ -1094,7 +1094,116 @@ export function createShelfItem(g, kind = 'game') {
     return li;
 }
 
+// ================= TELA DO JOGO (tela cheia) =================
+// Aberta ao clicar em qualquer jogo: hero com capa, todos os dados e ações,
+// seções colapsáveis (Sobre, Diário), navegável com Esc/voltar.
+export function openGamePage(id, isWish = false) {
+    const g = isWish ? (appData.wishlist || []).find(x => x.id === id) : appData.games.find(x => x.id === id);
+    if (!g) return;
+    const finished = !isWish && g.state === 'finished';
+    const playing = !isWish && g.state === 'playing';
+    const sub = [platformLabel(g.platform)];
+    if (g.released) sub.push(esc(String(g.released).slice(0, 4)));
+    if (g.franchise) sub.push(esc(g.franchise));
+    if (g.store) sub.push(esc(g.store.toUpperCase()));
+    const chips = [];
+    if (g.continuous) chips.push('<span class="chip chip-live">Contínuo</span>');
+    if (finished) chips.push('<span class="chip" style="color:var(--accent-finished);border-color:var(--accent-finished)">Zerado</span>');
+    else if (playing) chips.push('<span class="chip chip-accent">Jogando</span>');
+    else if (!isWish) chips.push('<span class="chip">Na fila</span>');
+    chips.push(...(g.genres || []).slice(0, 4).map(x => `<span class="chip">${esc(x)}</span>`));
+    chips.push(...flagChips(g));
+    if (g.metacritic) chips.push(scoreChip(g.metacritic));
+    if (g.is100) chips.push('<span class="chip chip-gold">100%</span>');
+    const facts = [];
+    if (finished && g.dateFinished) facts.push(`<div class="gp-fact"><small>Zerado em</small><strong>${esc(g.dateFinished)}</strong></div>`);
+    if (g.meta) facts.push(`<div class="gp-fact"><small>Tempo estimado</small><strong>${esc(fmtTime(g.meta))}</strong></div>`);
+    if (g.hoursPlayed) facts.push(`<div class="gp-fact"><small>Horas jogadas</small><strong>${esc(fmtHours(hoursNum(g.hoursPlayed)))}</strong></div>`);
+    if (g.userRating && finished) facts.push(`<div class="gp-fact"><small>Sua nota</small><strong>${esc(g.userRating)}/10</strong></div>`);
+    let progress = '';
+    if (g.meta && g.hoursPlayed) {
+        let total = parseFloat(String(g.meta).replace(',', '.')) || 0;
+        if (String(g.meta).includes('m')) total /= 60;
+        const played = parseFloat(g.hoursPlayed) || 0;
+        if (total > 0) {
+            const pct = Math.min(100, Math.round(played / total * 100));
+            progress = `<div class="gi-progress gp-progress"><div class="gi-bar"><span style="width:${pct}%"></span></div><small>${pct}% do caminho para zerar</small></div>`;
+        }
+    }
+    const btn = (label, fn, primary, danger) => `<button type="button" class="pill-btn ${primary ? 'primary' : ''} ${danger ? 'danger-link' : ''}" onclick="gpDo('${fn}', '${g.id}')">${label}</button>`;
+    const ic = n => icon(n, { size: '1em' });
+    const actions = [];
+    if (isWish) {
+        actions.push(btn(`${ic('bookmark')} Para a fila`, 'wishToBacklog', true));
+        if (!g.continuous) actions.push(btn(`${ic('play')} Jogar agora`, 'wishToPlaying'));
+        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('image')} Trocar capa`, 'openImageModal'), btn(`${ic('edit')} Editar`, 'openEditWishModal'), btn(`${ic('trash')} Remover`, 'askDeleteWish', false, true));
+    } else {
+        if (g.continuous || playing) actions.push(btn(`${ic('play')} Iniciar sessão`, 'startSession', true));
+        if (!finished && !g.continuous && !playing) actions.push(btn(`${ic('play')} Jogar agora`, 'playNow', true));
+        if (finished) actions.push(btn(`${ic('share')} Compartilhar`, 'openCardGenerator', true));
+        if (!finished && !g.continuous) actions.push(btn(playing ? `${ic('stop')} Parar de jogar` : `${ic('play')} Marcar como jogando`, 'markPlaying'), btn(`${ic('check')} Marcar como zerado`, 'markFinished'));
+        actions.push(btn(`${ic('pen')} Anotar no diário`, 'openJournalEntry'), btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('info')} Dados do jogo`, 'openEditGameModal'), btn(`${ic('image')} Trocar capa`, 'openImageModal'));
+        if (finished) actions.push(btn(`${ic('edit')} Editar conclusão`, 'openEditFinishedModal'));
+        else actions.push(btn(`${ic('bookmark')} Voltar à wishlist`, 'backlogToWish'));
+        actions.push(btn(`${ic('trash')} Remover`, 'askDeleteGame', false, true));
+    }
+    const desc = (g.description || '').trim();
+    const notes = [g.journalNotes, finished && g.review ? `📝 Review: ${g.review}` : ''].filter(Boolean).join('\n\n');
+    let old = document.getElementById('gp-page');
+    if (old) old.remove();
+    const el = document.createElement('div');
+    el.id = 'gp-page';
+    el.className = 'gp-page';
+    el.innerHTML = `
+        ${g.image ? `<div class="gp-bg"><img src="${esc(g.image)}" alt=""></div>` : ''}
+        <div class="gp-scroll">
+            <button type="button" class="gp-back" onclick="gpClose()">${icon('back', { size: '1em' })} Voltar</button>
+            <div class="gp-hero">
+                ${g.image ? `<img class="gp-cover${g.wideCover ? ' wide' : ''}" src="${esc(g.image)}" alt="Capa de ${esc(g.title)}">` : `<div class="gp-cover gp-cover-empty">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
+                <div class="gp-hero-info">
+                    <h2>${esc(g.title)}</h2>
+                    <div class="gp-sub">${sub.join(' <span class="dot">·</span> ')}</div>
+                    <div class="gp-chips">${chips.join('')}</div>
+                    ${progress}
+                </div>
+            </div>
+            ${facts.length ? `<div class="gp-facts">${facts.join('')}</div>` : ''}
+            <div class="gp-actions">${actions.join('')}</div>
+            <details class="gp-sec" ${desc ? 'open' : ''}>
+                <summary>${ic('info')} Sobre o jogo</summary>
+                <div class="gp-sec-body">${desc ? esc(desc) : 'Sem descrição por aqui. Use "Dados do jogo" para buscar na RAWG ou completar à mão.'}</div>
+            </details>
+            <details class="gp-sec">
+                <summary>${ic('pen')} Anotações e diário</summary>
+                <div class="gp-sec-body">${notes ? esc(notes).replace(/\n/g, '<br>') : 'Sem anotações ainda. Toque em "Anotar no diário" para começar.'}</div>
+            </details>
+        </div>`;
+    document.body.appendChild(el);
+    document.body.classList.add('gp-open');
+    requestAnimationFrame(() => el.classList.add('open'));
+}
+
+export function gpClose() {
+    const el = document.getElementById('gp-page');
+    document.body.classList.remove('gp-open');
+    if (el) { el.classList.remove('open'); setTimeout(() => el.remove(), 240); }
+}
+
+export function gpDo(fn, id) {
+    if (fn === 'playNow' || fn === 'markPlaying') { gpClose(); toggleState(id, 'playing'); return; }
+    if (fn === 'markFinished') { gpClose(); toggleState(id, 'finished'); return; }
+    gpClose();
+    if (typeof window[fn] === 'function') window[fn](id);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('gp-page') && !document.querySelector('dialog[open]')) gpClose(); });
+
+// Detalhe do item da prateleira: agora abre a tela cheia do jogo
 export function openShelfDetail(id, isWish = false) {
+    return openGamePage(id, isWish);
+}
+
+export function _oldShelfDetail(id, isWish = false) {
     const g = isWish ? (appData.wishlist || []).find(x => x.id === id) : appData.games.find(x => x.id === id);
     if (!g) return;
     const finished = !isWish && g.state === 'finished';
