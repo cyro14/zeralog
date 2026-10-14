@@ -2,7 +2,7 @@
 //  1) automática: autoVerticalCover() tenta Steam (capa 600x900) e Wikipédia (capa do artigo);
 //  2) manual: o buscador mostra as candidatas e, se a escolhida for horizontal, abre o recorte.
 // Fontes sem chave: Wikipédia (pageimages, licença "any"), Steam (via link da loja na RAWG) e artes da RAWG.
-import { searchGames, getGameStores, getGameDetails, fetchImageBlob, blobToSmallJpeg, imageSize, isVerticalSize, esc, scrapeUrl } from './gameApi.js';
+import { searchGames, getGameStores, getGameDetails, fetchImageBlob, blobToSmallJpeg, imageSize, isVerticalSize, esc, scrapeUrl, fetchHLTBData } from './gameApi.js';
 import { openCropper } from './crop.js';
 
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
@@ -77,14 +77,22 @@ async function rawgArt(title, rawgId) {
     return [d.image, d.imageExtra].filter(Boolean).map((url, i) => ({ url, source: 'RAWG', label: i ? 'Arte extra' : 'Arte principal', vertical: false }));
 }
 
+// HowLongToBeat: tem box art vertical de muitos jogos, principalmente antigos
+async function hltb(title) {
+    const d = await fetchHLTBData(title).catch(() => null);
+    if (d && d.imageUrl) return [{ url: d.imageUrl, source: 'HLTB', label: 'Box art', vertical: true }];
+    return [];
+}
+
 // ---------- automático: sempre tenta a capa vertical ----------
 // Retorna { data (JPEG pequeno), source, rawgId } ou null
 export async function autoVerticalCover(title, rawgId) {
     if (!title) return null;
     let id = rawgId || null;
     const cands = [];
-    const [st, wp] = await Promise.allSettled([steam(title, rawgId), wikipedia(title)]);
+    const [st, wp, hl] = await Promise.allSettled([steam(title, rawgId), wikipedia(title), hltb(title)]);
     if (st.status === 'fulfilled') { id = st.value.id || id; cands.push(...st.value.list); }
+    if (hl.status === 'fulfilled') cands.push(...hl.value);
     if (wp.status === 'fulfilled') cands.push(...wp.value.filter(c => c.vertical));
     for (const c of cands) {
         const blob = await fetchImageBlob(c.url);
@@ -147,7 +155,7 @@ export async function coversSearch() {
     state.cands = [];
     paint();
     $('cv-status').textContent = 'Procurando capas...';
-    const sources = [wikipedia(title), steam(title, state.rawgId).then(r => r.list), rawgArt(title, state.rawgId)];
+    const sources = [steam(title, state.rawgId).then(r => r.list), hltb(title), wikipedia(title), rawgArt(title, state.rawgId)];
     let pending = sources.length;
     sources.forEach(p => p.then(list => {
         if (token !== state.token) return;

@@ -18,7 +18,8 @@ const ALLOWED_HOSTS = new Set([
     'account-public-service-prod03.ol.epicgames.com',
     'library-service.live.use1a.on.epicgames.com',            // Epic: biblioteca
     'catalog-public-service-prod06.ol.epicgames.com',         // Epic: nomes dos jogos (catálogo)
-    'itch.io', 'api.itch.io'                                  // Itch.io API (chave do usuário)
+    'itch.io', 'api.itch.io',                                 // Itch.io API (chave do usuário)
+    'howlongtobeat.com'                                       // HowLongToBeat: tempo de jogo + box art
 ]);
 
 export default {

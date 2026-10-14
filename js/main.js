@@ -16,7 +16,7 @@ import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgrad
 import { openWiki, wikiChangeSource, wikiSearch, wikiSearchFab, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
 import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSync } from './steam.js';
 import { initGameMatch, gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject, gmXMore, gmXOpen, gmXClose, gmXWish, gmXBacklog, gmGoogle, gmExploreBacklog, gmXFilterGenre, gmXFilterPlat } from './gamematch.js';
-import { initStores, storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect, itchSaveKey, itchSync, itchDisconnect } from './stores.js';
+import { initStores, storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect, itchSaveKey, itchSync, itchDisconnect, enrichStoreGames } from './stores.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleCompact, toggleShelfPlain, saveStateForUndo, undoAction, switchTab, 
@@ -165,6 +165,16 @@ async function start() {
     initShare({ toast: msg => triggerToast(msg, false) });
     initGameMatch({ toast: msg => triggerToast(msg, false), hydrateIcons, render });
     initStores({ render, toast: (msg, undo) => triggerToast(msg, undo === true), undo: saveStateForUndo });
+    // Retomada de capas: se o app foi interrompido no meio da sincronização (ou jogos ficaram
+    // sem capa por qualquer motivo), retoma em segundo plano — no máximo 1x a cada 18h.
+    setTimeout(() => {
+        const missing = [...appData.games, ...(appData.wishlist || [])].filter(g => !g.image);
+        if (!missing.length) return;
+        let last = 0; try { last = +(localStorage.getItem('zl_last_enrich') || 0); } catch (e) {}
+        if (Date.now() - last < 18 * 3600 * 1000) return;
+        try { localStorage.setItem('zl_last_enrich', String(Date.now())); } catch (e) {}
+        enrichStoreGames(missing.slice(0, 80));
+    }, 4000);
     if (!canShareFiles()) document.getElementById('sh-share-btn').style.display = 'none';
     startReleaseWatch();
     const tabParam = new URLSearchParams(location.search).get('tab');

@@ -202,7 +202,7 @@ let poolPage = 1, poolExhausted = false, poolLoading = null, usingDemo = false;
 const POOL_ORDERS = ['-rating', '-added', '-popularity', '-metacritic'];   // sem '-released': puxava jogos de 2030 desconhecidos
 let poolOrder = POOL_ORDERS[0];
 function reseedPool() {
-    poolPage = 1 + Math.floor(Math.random() * 8);   // páginas 1..8 do catálogo
+    poolPage = 1 + Math.floor(Math.random() * 15);   // páginas 1..15 do catálogo — variedade real entre contas
     poolOrder = POOL_ORDERS[Math.floor(Math.random() * POOL_ORDERS.length)];
     poolExhausted = false; usingDemo = false;
 }
@@ -234,9 +234,10 @@ function insertDeck(items) {
     const fresh = items.map(g => ({ ...g, _match: matchScore(g) }))
         .filter(g => gmIsClean(g) && !farFuture(g) && (g.rawgId < 0 || g.image) && !ids.has(g.rawgId) && !names.has(normText(g.title)) && g._match >= 20)
         .sort((a, b) => b._match - a._match);
-    // embaralha janelas de 5 para não ficar sempre do maior pro menor match
-    for (let i = 0; i < fresh.length; i += 5) {
-        const end = Math.min(i + 5, fresh.length);
+    // embaralha mais forte quando o deck está vazio (conta nova: nunca os mesmos primeiros)
+    const windowSize = plannedDeck.length ? 5 : fresh.length;
+    for (let i = 0; i < fresh.length; i += windowSize) {
+        const end = Math.min(i + windowSize, fresh.length);
         for (let j = i; j < end; j++) {
             const k = j + Math.floor(Math.random() * (end - j));
             [fresh[j], fresh[k]] = [fresh[k], fresh[j]];
@@ -605,7 +606,18 @@ function exploreCardHtml(g) {
 async function fetchExplorePage(cat, append) {
     const state = exploreState[cat] || (exploreState[cat] = { page: 0, items: [], more: true });
     state.page++;
-    const res = await listGames(exploreParams(cat, state.page));
+    const params = exploreParams(cat, state.page);
+    // Filtros de gênero/plataforma viram parâmetros da busca (servidor), não só corte local:
+    if (xFilters.genre) {
+        const m = GENRE_RAWG[xFilters.genre];
+        if (m && m.genre) { params.genres = m.genre; delete params.tags; }
+        else if (m && m.tag) { params.tags = m.tag; delete params.genres; }
+    }
+    if (xFilters.plat) {
+        const ids = PLAT_RAWG_IDS[xFilters.plat];
+        if (ids) params.platforms = ids.join(',');
+    }
+    const res = await listGames(params);
     let items = res.items.filter(g => gmIsClean(g) && g.image && (cat === 'releases' || !farFuture(g)));   // 2030 só na aba Lançamentos
     if (cat === 'gems') items = items.filter(g => (g.ratingsCount || 0) >= 25 && (g.ratingsCount || 0) <= 1500);   // só indie pouco falado
     if (cat === 'you') items = items.map(g => ({ ...g, _match: matchScore(g) })).sort((a, b) => b._match - a._match);
@@ -616,8 +628,8 @@ async function fetchExplorePage(cat, append) {
 }
 
 const xFilters = { genre: '', plat: '' };
-export function gmXFilterGenre(v) { xFilters.genre = v; paintExplore(exploreCat); }
-export function gmXFilterPlat(v) { xFilters.plat = v; paintExplore(exploreCat); }
+export function gmXFilterGenre(v) { xFilters.genre = v; gmExplore(exploreCat); }   // rebusca com o filtro no servidor
+export function gmXFilterPlat(v) { xFilters.plat = v; gmExplore(exploreCat); }
 
 function fillExploreFilters() {
     const bar = document.getElementById('gm-explore-filters');

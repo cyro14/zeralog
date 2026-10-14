@@ -119,7 +119,11 @@ export function guessFranchise(title) {
 
 // ---------- fontes diretas (fallback quando a RAWG falha ou não tem o dado) ----------
 // HLTB e Metacritic não têm CORS aberto; as chamadas passam por proxies públicos.
+// O Worker do projeto (mesmo das lojas) encabeça a fila — é o único que passa POST
+// (necessário para a busca do HowLongToBeat) para hosts permitidos
+const ZERALOG_PROXY = 'https://worker-rapid-dawn-e634.cyromtg.workers.dev/';
 const SCRAPE_PROXIES = [
+    u => `${ZERALOG_PROXY}?url=${encodeURIComponent(u)}`,
     u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
     u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
     u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
@@ -158,6 +162,26 @@ export async function fetchMetacriticScore(title) {
         if (m) { const v = parseInt(m[1], 10); if (v >= 0 && v <= 100) return v; }
     }
     return null;
+}
+
+// Busca completa no HowLongToBeat: retorna { hours, imageUrl } do melhor resultado.
+// A imagem do HLTB é boxart vertical — boa fonte para jogos antigos/ausentes da RAWG.
+export async function fetchHLTBData(title) {
+    const body = JSON.stringify({
+        searchType: 'games', searchTerms: [title], searchPage: 1, size: 3,
+        searchOptions: { games: { userId: 0, platform: '', sortCategory: 'popular', rangeCategory: 'main', rangeTime: { min: 0, max: 0 }, gameplay: { perspective: '', flow: '', genre: '' }, modifier: '' }, users: { sortCategory: 'postcount' } },
+        filter: '', sort: 0, randomizer: 0
+    });
+    const txt = await scrape('https://howlongtobeat.com/api/search', body);
+    if (!txt) return null;
+    try {
+        const data = JSON.parse(txt);
+        const g = (data.data || [])[0];
+        if (!g) return null;
+        const sec = g.comp_main || 0;
+        const img = g.game_image ? `https://howlongtobeat.com/games/${g.game_image}` : null;
+        return { hours: sec > 0 ? Math.round(sec / 360) / 10 : null, imageUrl: img };
+    } catch (e) { return null; }
 }
 
 // Tempo para zerar (história principal) lido da busca do HowLongToBeat

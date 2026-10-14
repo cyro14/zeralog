@@ -105,7 +105,7 @@ export async function enrichStoreGames(newGames) {
     enriching = true;
     const queue = [...newGames];
     let done = 0, hit = 0, stopped = false;
-    const storeName = newGames[0] && newGames[0].store ? (STORES[newGames[0].store] || {}).name || 'Loja' : 'Loja';
+    const storeName = newGames[0] && newGames[0].store ? (STORES[newGames[0].store] || {}).name || 'Loja' : 'Biblioteca';
     const sleep = ms => new Promise(r => setTimeout(r, ms));
     syncShow(`${storeName}: buscando dados e capas`, 0, newGames.length);
     const worker = async () => {

@@ -1789,8 +1789,9 @@ export async function upgradeCovers() {
     const btn = document.getElementById('cover-upgrade-btn');
     const status = document.getElementById('cover-upgrade-status');
     if (coverBatchRunning) { stopCoverUpgrade(); btn.textContent = 'Parando...'; return; }
-    const items = [...appData.games, ...(appData.wishlist || [])];
-    if (!items.length) { status.textContent = 'Nenhum jogo na biblioteca.'; return; }
+    // Só processa quem NÃO tem capa — conferir capa existente demorava demais
+    const items = [...appData.games, ...(appData.wishlist || [])].filter(g => !g.image);
+    if (!items.length) { status.textContent = 'Tudo com capa já. Só buscaria de quem está sem.'; return; }
     coverBatchRunning = true;
     btn.textContent = 'Parar';
     saveStateForUndo();
