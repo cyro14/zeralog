@@ -175,3 +175,49 @@ async function start() {
     window.__zeralogReady = true;
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+
+// ================= Navegação por gesto/botão voltar (mobile e desktop) =================
+// Pilha de "telas sobrepostas" abertas (diálogo ou página de jogo). O gesto de voltar
+// fecha a do topo em vez de sair do app; se não tiver nada aberto, volta para a Fila.
+const zlNavStack = [];
+export function zlNavPush(closeFn) { try { history.pushState({ zl: 1 }, ''); } catch (e) {} zlNavStack.push(closeFn); }
+window.addEventListener('popstate', () => {
+    while (zlNavStack.length) {
+        const close = zlNavStack.pop();
+        try { if (close()) return; } catch (e) {}
+    }
+    if (!document.getElementById('tab-home').classList.contains('active')) switchTab('home');
+});
+// Qualquer <dialog> que abrir entra na pilha (funciona com todos os modais do app)
+const zlObs = new MutationObserver(muts => {
+    for (const m of muts) {
+        const dlg = m.target;
+        if (m.attributeName === 'open' && dlg.open) {
+            zlNavPush(() => { if (dlg.open) { dlg.close(); return true; } return false; });
+        }
+    }
+});
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('dialog').forEach(d => zlObs.observe(d, { attributes: true, attributeFilter: ['open'] }));
+});
+// A página de jogo (tela cheia) também entra: observa a criação do #gp-page
+document.addEventListener('DOMContentLoaded', () => {
+    new MutationObserver(() => {
+        const pg = document.getElementById('gp-page');
+        if (pg && !pg.dataset.nav) { pg.dataset.nav = '1'; zlNavPush(() => { if (document.getElementById('gp-page')) { window.gpClose && window.gpClose(); return true; } return false; }); }
+    }).observe(document.body, { childList: true });
+});
+
+// ================= Menu lateral recolhível (desktop) =================
+// Ao descer a página, os controles do topo viram uma trilha de ícones à esquerda;
+// ao subir de volta, voltam ao normal.
+let zlLastY = 0;
+window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    const goingDown = y > zlLastY + 4;
+    const goingUp = y < zlLastY - 4;
+    zlLastY = y;
+    if (y > 140 && goingDown) document.body.classList.add('zl-rail');
+    else if (goingUp || y < 90) document.body.classList.remove('zl-rail');
+}, { passive: true });
+window.zlNavPush = zlNavPush;

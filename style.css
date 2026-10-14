@@ -1205,3 +1205,36 @@ select.sort-time.active { border-color: var(--accent-playing); color: var(--acce
 .syncbar-track { width: 110px; height: 6px; border-radius: 99px; background: var(--border-color); overflow: hidden; display: inline-block; flex-shrink: 0; }
 .syncbar-fill { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-playing), var(--accent-finished)); transition: width 0.3s; }
 .syncbar-count { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* Hub das lojas em Conexões */
+.shop-hint { color: var(--text-muted); font-size: 0.85em; margin: 0 0 12px; }
+.shop-note { color: var(--text-muted); font-size: 0.78em; margin-top: 12px; display: block; }
+.shops-hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.shop-card { display: grid; grid-template-columns: 44px 1fr auto; grid-template-rows: auto auto; align-items: center; gap: 2px 12px; background: var(--card-bg, #17171f); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 14px; padding: 12px 14px; cursor: pointer; text-align: left; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s; }
+.shop-card:hover { transform: translateY(-2px); border-color: var(--accent-playing); box-shadow: 0 8px 18px rgba(0,0,0,0.3); }
+.shop-card.on { border-color: var(--accent-finished); }
+.shop-logo { grid-row: 1 / 3; width: 44px; height: 44px; border-radius: 10px; object-fit: cover; background: rgba(128,128,128,0.12); }
+.shop-logo.sm { width: 26px; height: 26px; vertical-align: -6px; margin-right: 4px; }
+.shop-name { font-weight: 800; font-size: 0.98em; }
+.shop-state { font-size: 0.72em; color: var(--text-muted); grid-column: 2; }
+.shop-card.on .shop-state strong { color: var(--accent-finished); }
+.shop-go { grid-row: 1 / 3; grid-column: 3; font-size: 1.3em; color: var(--text-muted); }
+
+/* Match do GameMatch: overlay legível (fundo escuro, título em pílula sólida) */
+.gm-overlay { background: rgba(0,0,0,0.62); }
+.gm-ov-title { font-size: 2.4em; background: var(--card-bg); background-image: none; color: var(--text-main); -webkit-text-fill-color: initial; padding: 14px 34px; border-radius: 18px; border: 3px solid transparent; background-clip: padding-box; box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 0 3px var(--accent-finished); animation: gm-pop 0.4s cubic-bezier(.2,1.6,.4,1); }
+.gm-overlay.win .gm-ov-title { color: var(--accent-finished); }
+.gm-ov-sub { font-size: 0.95em; }
+@media (max-width: 480px) { .gm-ov-title { font-size: 1.7em; padding: 10px 22px; } }
+
+/* Menu lateral recolhível ao descer a página (desktop) */
+@media (min-width: 900px) {
+    body.zl-rail .search-container, body.zl-rail .platform-filter { opacity: 0; pointer-events: none; transform: translateY(-8px); transition: opacity .2s, transform .2s; }
+    body.zl-rail .tabs { position: fixed; left: 12px; top: 50%; transform: translateY(-50%); flex-direction: column; width: 60px; z-index: 120; padding: 8px 6px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    body.zl-rail .tab-btn { padding: 12px 4px; justify-content: center; }
+    body.zl-rail .tab-label, body.zl-rail .tab-btn .ic-lead + *:not(.ic-lead) { display: none; }
+    body.zl-rail .tab-btn { font-size: 0; }
+    body.zl-rail .tab-btn .ic-lead { margin: 0; font-size: 1.3em; }
+    body.zl-rail { padding-left: 84px; }
+    .search-container, .platform-filter { transition: opacity .2s, transform .2s; }
+}

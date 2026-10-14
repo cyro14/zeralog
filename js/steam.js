@@ -14,6 +14,7 @@ import { appData, saveData } from './store.js';
 import { esc, blobToSmallJpeg, searchGames, guessFranchise } from './gameApi.js';
 import { platformIcons } from './icons.js';
 import { syncShow, syncHide } from './syncbar.js';
+import { renderShopHub } from './stores.js';
 
 const $ = id => document.getElementById(id);
 const ID_RE = /^\d{17}$/;
@@ -326,6 +327,7 @@ async function enrichSteamGames(newGames) {
 
 // ---------- painel nas Configurações ----------
 export function renderSteamSettings() {
+    renderShopHub();
     const box = $('steam-status');
     if (!box) return;
     const s = st();

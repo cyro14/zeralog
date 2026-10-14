@@ -338,10 +338,10 @@
                         <strong>Capas e Busca</strong>
                         <small>Capas verticais e API RAWG</small>
                     </button>
-                    <button type="button" class="set-card" onclick="openSettingsSection('steam')">
-                        <span class="set-card-ic" data-icon="steam" data-size="1.5em"></span>
+                    <button type="button" class="set-card" onclick="openSettingsSection('shops')">
+                        <span class="set-card-ic" data-icon="link" data-size="1.5em"></span>
                         <strong>Conexões</strong>
-                        <small>Conta Steam e importação</small>
+                        <small>Steam, GOG, Epic e Itch.io</small>
                     </button>
                     <button type="button" class="set-card" onclick="openSettingsSection('platforms')">
                         <span class="set-card-ic" data-icon="gamepad" data-size="1.5em"></span>
@@ -449,10 +449,45 @@
                 <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
             </div>
 
-            <!-- PÁGINA: Conexões (Steam) -->
-            <div id="settings-page-steam" class="settings-page" hidden>
+            <!-- PÁGINA: Conexões (hub das lojas) -->
+            <div id="settings-page-shops" class="settings-page" hidden>
                 <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
-                <h4 class="set-title"><span data-icon="steam"></span>Conexões</h4>
+                <h4 class="set-title"><span data-icon="link"></span>Conexões</h4>
+                <p class="shop-hint">Conecte suas lojas para importar a biblioteca de cada uma automaticamente. O login acontece no site oficial da loja — sua senha nunca passa pelo ZeraLog.</p>
+                <div id="shops-hub" class="shops-hub">
+                    <button type="button" class="shop-card" onclick="openSettingsSection('steam')">
+                        <img class="shop-logo" src="icons/Steam.webp" alt="Steam">
+                        <span class="shop-name">Steam</span>
+                        <span class="shop-state" id="shop-status-steam">…</span>
+                        <span class="shop-go">›</span>
+                    </button>
+                    <button type="button" class="shop-card" onclick="openSettingsSection('gog')">
+                        <img class="shop-logo" src="icons/gog.svg" alt="GOG">
+                        <span class="shop-name">GOG</span>
+                        <span class="shop-state" id="shop-status-gog">…</span>
+                        <span class="shop-go">›</span>
+                    </button>
+                    <button type="button" class="shop-card" onclick="openSettingsSection('epic')">
+                        <img class="shop-logo" src="icons/epic.svg" alt="Epic Games">
+                        <span class="shop-name">Epic Games</span>
+                        <span class="shop-state" id="shop-status-epic">…</span>
+                        <span class="shop-go">›</span>
+                    </button>
+                    <button type="button" class="shop-card" onclick="openSettingsSection('itch')">
+                        <img class="shop-logo" src="icons/itch.svg" alt="Itch.io">
+                        <span class="shop-name">Itch.io</span>
+                        <span class="shop-state" id="shop-status-itch">…</span>
+                        <span class="shop-go">›</span>
+                    </button>
+                </div>
+                <small class="shop-note">Horas jogadas estão disponíveis apenas na API da Steam. As outras lojas trazem a biblioteca; dados, notas e capas são buscados depois em segundo plano.</small>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Conexões › Steam -->
+            <div id="settings-page-steam" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="openSettingsSection('shops')"><span data-icon="back" data-size="1em"></span>Conexões</button>
+                <h4 class="set-title"><img class="shop-logo sm" src="icons/Steam.webp" alt=""> Steam</h4>
             <div class="setting-row steam-box" style="flex-direction: column; align-items: stretch; gap: 8px;">
                 <label style="font-weight: bold; display: flex; align-items: center; gap: 6px;"><span data-icon="steam"></span>Steam:</label>
                 <div id="steam-status" class="steam-status"></div>
@@ -477,9 +512,14 @@
                     <input type="text" id="steam-proxy-input" placeholder="Proxy personalizado (opcional), com %s no lugar da URL" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="steamSaveProxy(this.value)">
                 </details>
             </div>
-            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px; margin-top: 10px;">
-                <label style="font-weight: bold;">Outras lojas:</label>
-                <small style="color: var(--text-muted);">Entre na sua conta de cada loja para baixar a biblioteca automaticamente (o login acontece no site oficial da loja — sua senha nunca passa pelo ZeraLog). Em cada uma também há a opção de importar colando a lista de títulos. Horas jogadas estão disponíveis apenas na Steam.</small>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Conexões › GOG -->
+            <div id="settings-page-gog" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="openSettingsSection('shops')"><span data-icon="back" data-size="1em"></span>Conexões</button>
+                <h4 class="set-title"><img class="shop-logo sm" src="icons/gog.svg" alt=""> GOG</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
                 <div class="store-box">
                     <div class="store-head"><strong>GOG</strong><small id="store-status-gog"></small></div>
                     <div class="store-actions">
@@ -498,6 +538,15 @@
                         <button type="button" class="pill-btn" onclick="storeImport('gog')">Importar da lista</button>
                     </details>
                 </div>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Conexões › Epic Games -->
+            <div id="settings-page-epic" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="openSettingsSection('shops')"><span data-icon="back" data-size="1em"></span>Conexões</button>
+                <h4 class="set-title"><img class="shop-logo sm" src="icons/epic.svg" alt=""> Epic Games</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
                 <div class="store-box">
                     <div class="store-head"><strong>Epic Games</strong><small id="store-status-epic"></small></div>
                     <div class="store-actions">
@@ -516,6 +565,15 @@
                         <button type="button" class="pill-btn" onclick="storeImport('epic')">Importar da lista</button>
                     </details>
                 </div>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Conexões › Itch.io -->
+            <div id="settings-page-itch" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="openSettingsSection('shops')"><span data-icon="back" data-size="1em"></span>Conexões</button>
+                <h4 class="set-title"><img class="shop-logo sm" src="icons/itch.svg" alt=""> Itch.io</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
                 <div class="store-box">
                     <div class="store-head"><strong>Itch.io</strong><small id="store-status-itch"></small></div>
                     <div class="steam-manual">
@@ -527,7 +585,7 @@
                         <button type="button" class="pill-btn" id="itch-sync-btn" onclick="itchSync()" style="display:none">Sincronizar agora</button>
                         <button type="button" class="pill-btn" id="itch-out-btn" onclick="itchDisconnect()" style="display:none">Desconectar</button>
                     </div>
-                    <small id="itch-sync-status" style="color: var(--text-muted);">Como usar: em itch.io/user/settings/api-keys, toque em "Generate new API key" e cole a chave acima. Seus jogos com download (comprados ou resgatados) entram na categoria "Itch.io", com capas da própria loja quando disponíveis.</small>
+                    <small id="itch-sync-status" style="color: var(--text-muted);">Como usar: em itch.io/user/settings/api-keys, toque em "Generate new API key" e cole a chave acima. Entram na categoria "Itch.io" os jogos com <strong>chave de download</strong> (comprados, resgatados ou de bundles). Jogo grátis baixado direto pela loja não gera chave — na página dele, toque em "Download or claim" e ele passa a aparecer na sincronização.</small>
                     <details class="steam-adv">
                         <summary>Importar sem chave (colar lista de títulos)</summary>
                         <textarea id="store-import-itch" rows="3" placeholder="Celeste&#10;A Short Hike&#10;Butterfly Soup"></textarea>

@@ -65,7 +65,8 @@ function ensureRefs(key) {
     let cat = appData.categories.find(c => c.id === s.catId) || appData.categories.find(c => normText(c.name) === normText(S.name));
     if (!cat) { cat = { id: 'c' + Date.now(), name: S.name }; appData.categories.push(cat); }
     if (!appData.platforms.some(p => normText(p.name) === normText(S.name))) {
-        appData.platforms.push({ name: S.name, icon: platformIcons.default });
+        const img = { gog: 'icons/gog.svg', epic: 'icons/epic.svg', itch: 'icons/itch.svg' }[key];
+        appData.platforms.push({ name: S.name, icon: img ? `<img src="${img}" alt="" style="width: 1.2em; height: 1.2em; vertical-align: middle; border-radius: 4px;">` : platformIcons.default });
     }
     s.catId = cat.id;
     return cat;
@@ -198,7 +199,36 @@ export function renderStoreStatus(key) {
     box.style.color = 'var(--text-main)';
 }
 
-export function renderAllStoreStatus() { STORE_KEYS.forEach(renderStoreStatus); }
+// ---------- HUB das lojas (cards com logo, status e progresso) ----------
+export function renderShopHub() {
+    const hub = document.getElementById('shops-hub');
+    if (!hub) return;
+    const fmtDate = ts => new Date(ts).toLocaleDateString('pt-BR');
+    const setShop = (key, html, on) => {
+        const el = $('shop-status-' + key);
+        if (!el) return;
+        el.innerHTML = html;
+        el.closest('.shop-card').classList.toggle('on', !!on);
+    };
+    // Steam
+    const s = appData.settings.steam || {};
+    const nSteam = appData.games.filter(g => g.platform === 'Steam').length;
+    setShop('steam', s.steamId
+        ? `<strong>✓ Conectado</strong> · ${nSteam} jogos${s.lastSync ? ' · última sync ' + fmtDate(s.lastSync) : ''}`
+        : 'Toque para conectar', !!s.steamId);
+    // Lojas por conta (token) ou chave
+    STORE_KEYS.forEach(key => {
+        const c = st(key);
+        const n = appData.games.filter(g => g.store === key).length;
+        const connected = !!(c.token || c.refresh || c.apiKey);
+        const last = c.lastSync ? ' · última sync ' + fmtDate(c.lastSync) : (c.lastImport ? ' · importado em ' + fmtDate(c.lastImport) : '');
+        setShop(key, connected
+            ? `<strong>✓ Conectado</strong> · ${n} jogos${key === 'epic' && c.rawCount ? ` conta tem ${c.rawCount} itens` : ''}${last}`
+            : n ? `${n} importados${last}` : 'Toque para conectar', connected || n > 0);
+    });
+}
+
+export function renderAllStoreStatus() { STORE_KEYS.forEach(renderStoreStatus); renderShopHub(); }
 
 // ================= GOG: login OAuth + biblioteca completa =================
 // Fluxo (mesmo usado pelos apps de desktop): o usuário entra no site da GOG, a GOG

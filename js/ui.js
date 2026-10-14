@@ -1865,6 +1865,7 @@ export async function checkAppUpdate() {
 }
 
 export function openSettingsSection(id) {
+    document.querySelectorAll('#modal-settings .settings-page').forEach(p => { p.hidden = true; });
     document.getElementById('settings-hub').hidden = true;
     const page = document.getElementById('settings-page-' + id);
     if (page) page.hidden = false;
