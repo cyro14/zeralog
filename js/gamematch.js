@@ -3,7 +3,7 @@
 // swipe, da página Explorar e da página de Perfil. Os dados vivem em
 // appData.gamematch (persistidos junto com o resto do banco local).
 import { appData, saveData } from './store.js';
-import { listGames, esc, normText, resizeUrl, guessFranchise, getGameDetails, searchCompanies } from './gameApi.js';
+import { listGames, esc, normText, resizeUrl, guessFranchise, getGameDetails, searchCompanies, getGameScreenshots, shotsGalleryHtml } from './gameApi.js';
 import { autoVerticalCover } from './covers.js';
 import { icon } from './icons.js';
 
@@ -835,6 +835,7 @@ export async function gmXOpen(rawgId) {
             <details class="gp-sec" open>
                 <summary>${icon('gamepad', { size: '1em' })} Sobre o jogo</summary>
                 <div class="gp-sec-body" id="gm-xdesc">Carregando descrição...</div>
+                <div class="gp-extra" id="gm-xextra"></div>
             </details>
         </div>`;
     document.body.appendChild(el);
@@ -843,10 +844,22 @@ export async function gmXOpen(rawgId) {
     try {
         const d = await getGameDetails(rawgId);
         const box = document.getElementById('gm-xdesc');
-        if (box) box.textContent = (d && d.description) || 'Sem descrição desse jogo no catálogo.';
+        if (box && el.contains(box)) box.textContent = (d && d.description) || 'Sem descrição desse jogo no catálogo.';
+        const extra = document.getElementById('gm-xextra');
+        if (extra && el.contains(extra)) {   // ainda é a página deste jogo (o usuário pode ter aberto outro)
+            // Créditos (desenvolvedora/publicadora) + screenshots abaixo da descrição
+            const creds = [];
+            if ((d && d.developers || []).length) creds.push(`<strong>Desenvolvedora:</strong> ${esc(d.developers.join(', '))}`);
+            if ((d && d.publishers || []).length) creds.push(`<strong>Publicadora:</strong> ${esc(d.publishers.join(', '))}`);
+            let html = creds.length ? `<div class="gp-cred">${creds.join(' · ')}</div>` : '';
+            let shots = (g.screenshots || []).length ? g.screenshots : [];   // miniaturas que vieram na listagem
+            if (!shots.length && rawgId > 0) { try { shots = await getGameScreenshots(rawgId); } catch (e) { /* segue sem */ } }
+            if (shots.length) html += shotsGalleryHtml(shots);
+            extra.innerHTML = html;
+        }
     } catch (e) {
         const box = document.getElementById('gm-xdesc');
-        if (box) box.textContent = 'Sem descrição por aqui agora.';
+        if (box && el.contains(box)) box.textContent = 'Sem descrição por aqui agora.';
     }
 }
 

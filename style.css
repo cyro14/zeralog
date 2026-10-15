@@ -1180,6 +1180,14 @@ body.gp-open { overflow: hidden; }
 .gp-sec[open] summary::after { transform: rotate(90deg); }
 .gp-sec-body { padding: 0 16px 16px; color: var(--text-muted); font-size: 0.95em; line-height: 1.6; }
 
+/* Créditos (desenvolvedora/publicadora) e galeria de screenshots abaixo da descrição */
+.gp-extra { padding: 0 16px 16px; }
+.gp-cred { margin-top: 10px; font-size: 0.88em; color: var(--text-muted); }
+.gp-cred strong { color: var(--text-main); }
+.gp-shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 12px; }
+.gp-shots a { display: block; border-radius: 10px; overflow: hidden; border: 1px solid var(--border-color); background: var(--bg-color); }
+.gp-shots img { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+
 @media (max-width: 520px) {
     .gp-hero { flex-direction: column; align-items: flex-start; }
     .gp-cover { width: min(220px, 60vw); }

@@ -19,9 +19,12 @@ export const GENRES_PT = {
 // Escapa texto vindo de fora antes de usar em innerHTML
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// A RAWG serve versões redimensionadas das imagens (mais leve)
+// A RAWG serve versões redimensionadas das imagens (mais leve) — vale para capas e screenshots
 export function resizeUrl(url, width) {
-    return url && url.includes('/media/games/') ? url.replace('/media/games/', `/media/resize/${width}/-/games/`) : url;
+    if (!url) return url;
+    if (url.includes('/media/games/')) return url.replace('/media/games/', `/media/resize/${width}/-/games/`);
+    if (url.includes('/media/screenshots/')) return url.replace('/media/screenshots/', `/media/resize/${width}/-/screenshots/`);
+    return url;
 }
 
 function normalize(g) {
@@ -35,7 +38,10 @@ function normalize(g) {
         playtime: g.playtime || 0,                        // média de horas dos usuários da RAWG
         image: g.background_image || null,
         imageExtra: g.background_image_additional || null,
-        description: (g.description_raw || '').trim()
+        description: (g.description_raw || '').trim(),
+        developers: (g.developers || []).map(x => x.name).filter(Boolean),        // só no endpoint de detalhes
+        publishers: (g.publishers || []).map(x => x.name).filter(Boolean),        // só no endpoint de detalhes
+        screenshots: (g.short_screenshots || []).map(x => x.image).filter(Boolean) // miniaturas vindas da listagem
     };
 }
 
@@ -84,6 +90,17 @@ export async function getGameStores(id) {
 // A busca não traz a descrição; ela vem do endpoint de detalhes
 export async function getGameDetails(id) {
     return normalize(await rawg(`/games/${id}`));
+}
+
+// Screenshots oficiais do jogo (o detalhe só traz a contagem, as imagens moram aqui)
+export async function getGameScreenshots(id, pageSize = 10) {
+    const data = await rawg(`/games/${id}/screenshots`, { page_size: pageSize });
+    return (data.results || []).map(x => x.image).filter(Boolean);
+}
+
+// Galeria de screenshots (página do jogo na biblioteca e no Explorar): clique abre em tamanho cheio
+export function shotsGalleryHtml(urls) {
+    return `<div class="gp-shots">${(urls || []).map(u => `<a href="${esc(u)}" target="_blank" rel="noopener" title="Ver em tamanho cheio"><img src="${esc(resizeUrl(u, 640))}" alt="Screenshot do jogo" loading="lazy"></a>`).join('')}</div>`;
 }
 
 // Dados extras usados pelo GameMatch e pela busca avançada (plataformas, tags, avaliações)

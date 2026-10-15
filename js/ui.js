@@ -9,7 +9,7 @@ import { applyTheme, renderThemePicker } from './themes.js';
 import { phHtml, openIconPicker } from './phosphor.js';
 import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
-import { searchGames, getGameDetails, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
+import { searchGames, getGameDetails, getGameScreenshots, shotsGalleryHtml, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
 import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade } from './covers.js';
 import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
@@ -1173,6 +1173,7 @@ export function openGamePage(id, isWish = false) {
             <details class="gp-sec" ${desc ? 'open' : ''}>
                 <summary>${ic('info')} Sobre o jogo</summary>
                 <div class="gp-sec-body">${desc ? esc(desc) : 'Sem descrição por aqui. Use "Dados do jogo" para buscar na RAWG ou completar à mão.'}</div>
+                <div class="gp-extra" id="gp-extra"></div>
             </details>
             <details class="gp-sec">
                 <summary>${ic('pen')} Anotações e diário</summary>
@@ -1182,6 +1183,27 @@ export function openGamePage(id, isWish = false) {
     document.body.appendChild(el);
     document.body.classList.add('gp-open');
     requestAnimationFrame(() => el.classList.add('open'));
+    if (g.rawgId) hydrateGameExtras(g.rawgId, el);   // desenvolvedora/publicadora + screenshots (RAWG)
+}
+
+// Enche a seção "Sobre o jogo" com os créditos e screenshots da RAWG, sem tocar no jogo salvo:
+// busca na hora (o jogo pode ter sido importado antes de existir esses campos).
+async function hydrateGameExtras(rawgId, page) {
+    if (!(rawgId > 0)) return;
+    try {
+        const [d, shots] = await Promise.all([
+            getGameDetails(rawgId).catch(() => null),
+            getGameScreenshots(rawgId).catch(() => [])
+        ]);
+        const el = document.getElementById('gp-extra');
+        if (!el || !page.isConnected || !page.contains(el)) return;   // usuário fechou/trocou de jogo antes da resposta
+        const creds = [];
+        if (d && (d.developers || []).length) creds.push(`<strong>Desenvolvedora:</strong> ${esc(d.developers.join(', '))}`);
+        if (d && (d.publishers || []).length) creds.push(`<strong>Publicadora:</strong> ${esc(d.publishers.join(', '))}`);
+        let html = creds.length ? `<div class="gp-cred">${creds.join(' · ')}</div>` : '';
+        if ((shots || []).length) html += shotsGalleryHtml(shots);
+        if (html) el.innerHTML = html;
+    } catch (e) { /* sem internet ou jogo fora do catálogo: fica como está */ }
 }
 
 export function gpClose() {
