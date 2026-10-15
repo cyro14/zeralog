@@ -1,4 +1,4 @@
-import { appData, saveData, backupData, setAppData, defaultData, initStore, purgeOldLegacyCopy } from './store.js';
+﻿import { appData, saveData, backupData, setAppData, defaultData, initStore, purgeOldLegacyCopy } from './store.js';
 import { initStorageUI, restoreSnapshotUI, clearLegacyCopyUI } from './storage-ui.js';
 import { openShare, openCardGenerator, initShare, shareSetStyle, sharePage, shareTitleChanged, shareTitlesChanged, shareDownload, shareShare, canShareFiles } from './share.js';
 import { initFilters, openFilters, filtersClear, filtersSaveCurrent, filterSummary } from './filters.js';
@@ -12,6 +12,7 @@ import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetDiff, qmToggleEm
 import { genreSetBase, genreSetYear } from './genres.js';
 import { coversSearch } from './covers.js';
 import { cropApply, cropCancel, cropReset, cropFit } from './crop.js';
+import { coversSearchGoogle } from './covers.js';
 import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, setHomeView, shelfDo, openShelfDetail, openGamePage, gpClose, gpDo, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
 import { openWiki, wikiChangeSource, wikiSearch, wikiSearchFab, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
 import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSync } from './steam.js';
@@ -27,7 +28,7 @@ import {
     openRatingModal, openEditFinishedModal, cancelRating, skipRating, saveRating, saveFinishedEdit,
     spinRoulette, acceptRoulette, quickSearch, openImageModal, searchCoverOnGoogle, previewImageEdit, saveEditedImage, openBrowser, closeBrowser,
     openBackupModal, exportBackup, importBackup, openSettings, openFactoryReset, confirmFactoryReset,
-    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey, saveSgdbKey, openSettingsSection, backToSettingsHub, welcomeSteam, buyOnAmazon, checkAppUpdate
+    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey, saveIGDBKey, openSettingsSection, backToSettingsHub, welcomeSteam, buyOnAmazon, checkAppUpdate
 } from './ui.js';
 
 // Anexando ao escopo global para que o index.html possa ler os onlicks
@@ -37,11 +38,11 @@ Object.assign(window, {
     setWishSort, setWishView, toggleWishNotify, refreshDatesUI, paintWishNotify,
     openShare: tab => {
         const items = getTabGames(tab);
-        if (!items.length) { triggerToast('Não há jogos para compartilhar nesta tela (confira os filtros).', false); return; }
+        if (!items.length) { triggerToast('NÃ£o hÃ¡ jogos para compartilhar nesta tela (confira os filtros).', false); return; }
         const names = { home: 'Minha fila de jogos', finished: 'Jogos zerados', wish: 'Minha wishlist' };
         const view = tab === 'home' ? appData.settings.homeView : tab === 'finished' ? appData.settings.finishedView : appData.settings.wishView;
         const filt = filterSummary(tab);
-        openShare({ items, mode: tab, title: names[tab], subtitle: `${items.length} ${items.length === 1 ? 'jogo' : 'jogos'}${filt.length ? ' · ' + filt.join(' · ') : ''}`, style: view === 'shelf' ? 'shelf' : 'cards' });
+        openShare({ items, mode: tab, title: names[tab], subtitle: `${items.length} ${items.length === 1 ? 'jogo' : 'jogos'}${filt.length ? ' Â· ' + filt.join(' Â· ') : ''}`, style: view === 'shelf' ? 'shelf' : 'cards' });
     }
 });
 
@@ -86,6 +87,7 @@ window.openImageModal = openImageModal;
 window.searchCoverOnGoogle = searchCoverOnGoogle;
 window.openBrowser = openBrowser;
 window.closeBrowser = closeBrowser;
+window.coversSearchGoogle = coversSearchGoogle;
 window.previewImageEdit = previewImageEdit;
 window.saveEditedImage = saveEditedImage;
 window.openBackupModal = openBackupModal;
@@ -108,7 +110,7 @@ window.fetchGameFromRAWG = fetchGameFromRAWG;
 window.pickRawgResult = pickRawgResult;
 window.toggleJournal = toggleJournal;
 window.saveRawgKey = saveRawgKey;
-window.saveSgdbKey = saveSgdbKey;
+window.saveIGDBKey = saveIGDBKey;
 window.openWiki = openWiki;
 window.wikiChangeSource = wikiChangeSource;
 window.wikiSearch = () => wikiSearch();
@@ -123,29 +125,29 @@ window.wikiFindStep = wikiFindStep;
 window.wikiFindClose = () => wikiFindClose();
 Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, cropApply, cropCancel, cropReset, cropFit, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, iconSearch, iconWeightChange, iconMore, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, coversSearch, qmSetDiff, qmToggleEmulated, genreSetBase, genreSetYear, setHomeView, shelfDo, openShelfDetail, openGamePage, gpClose, gpDo, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetPlatform, qmSetFranchise, qmSetScore, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
 
-// Steam: login, sincronização e configurações
+// Steam: login, sincronizaÃ§Ã£o e configuraÃ§Ãµes
 Object.assign(window, { steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSyncUI: steamSync });
 
 // GameMatch: aba de descoberta estilo Tinder
 Object.assign(window, { gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject, gmXMore, gmXOpen, gmXClose, gmXWish, gmXBacklog, gmGoogle, gmExploreBacklog, gmXFilterGenre, gmXFilterPlat });
 Object.assign(window, { storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect, itchSaveKey, itchSync, itchDisconnect });
 
-// Inicialização Principal (o banco é aberto de forma assíncrona antes de desenhar a tela)
+// InicializaÃ§Ã£o Principal (o banco Ã© aberto de forma assÃ­ncrona antes de desenhar a tela)
 window.restoreSnapshotUI = restoreSnapshotUI;
 window.clearLegacyCopy = clearLegacyCopyUI;
-window.__zlData = () => appData;   // leitura dos dados em memória (usado nos testes)
+window.__zlData = () => appData;   // leitura dos dados em memÃ³ria (usado nos testes)
 
-// Confere lançamentos ao abrir, ao voltar para o app e a cada hora; atualiza as datas 1x por dia
+// Confere lanÃ§amentos ao abrir, ao voltar para o app e a cada hora; atualiza as datas 1x por dia
 async function releaseTick() {
     const due = await checkReleases();
-    if (due.length) { due.forEach(w => triggerToast(`${w.title} já está disponível! (${fmtDate(w.released)})`, false)); render(); }
+    if (due.length) { due.forEach(w => triggerToast(`${w.title} jÃ¡ estÃ¡ disponÃ­vel! (${fmtDate(w.released)})`, false)); render(); }
 }
 function startReleaseWatch() {
     releaseTick();
     registerPeriodicCheck();
     const DAY = 86400000;
     if (Date.now() - (appData.settings.lastReleaseRefresh || 0) > DAY) {
-        refreshReleaseDates().then(r => { appData.settings.lastReleaseRefresh = Date.now(); saveData(null); if (r.changed) { render(); triggerToast(`${r.changed} ${r.changed === 1 ? 'data de lançamento atualizada' : 'datas de lançamento atualizadas'}.`, false); } });
+        refreshReleaseDates().then(r => { appData.settings.lastReleaseRefresh = Date.now(); saveData(null); if (r.changed) { render(); triggerToast(`${r.changed} ${r.changed === 1 ? 'data de lanÃ§amento atualizada' : 'datas de lanÃ§amento atualizadas'}.`, false); } });
     }
     setInterval(releaseTick, 3600000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) releaseTick(); });
@@ -166,8 +168,8 @@ async function start() {
     initShare({ toast: msg => triggerToast(msg, false) });
     initGameMatch({ toast: msg => triggerToast(msg, false), hydrateIcons, render });
     initStores({ render, toast: (msg, undo) => triggerToast(msg, undo === true), undo: saveStateForUndo });
-    // Retomada de capas: se o app foi interrompido no meio da sincronização (ou jogos ficaram
-    // sem capa por qualquer motivo), retoma em segundo plano — no máximo 1x a cada 18h.
+    // Retomada de capas: se o app foi interrompido no meio da sincronizaÃ§Ã£o (ou jogos ficaram
+    // sem capa por qualquer motivo), retoma em segundo plano â€” no mÃ¡ximo 1x a cada 18h.
     setTimeout(() => {
         const missing = [...appData.games, ...(appData.wishlist || [])].filter(g => !g.image);
         if (!missing.length) return;
@@ -187,9 +189,9 @@ async function start() {
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 
-// ================= Navegação por gesto/botão voltar (mobile e desktop) =================
-// Pilha de "telas sobrepostas" abertas (diálogo ou página de jogo). O gesto de voltar
-// fecha a do topo em vez de sair do app; se não tiver nada aberto, volta para a Fila.
+// ================= NavegaÃ§Ã£o por gesto/botÃ£o voltar (mobile e desktop) =================
+// Pilha de "telas sobrepostas" abertas (diÃ¡logo ou pÃ¡gina de jogo). O gesto de voltar
+// fecha a do topo em vez de sair do app; se nÃ£o tiver nada aberto, volta para a Fila.
 const zlNavStack = [];
 export function zlNavPush(closeFn) { try { history.pushState({ zl: 1 }, ''); } catch (e) {} zlNavStack.push(closeFn); }
 window.addEventListener('popstate', () => {
@@ -211,7 +213,7 @@ const zlObs = new MutationObserver(muts => {
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('dialog').forEach(d => zlObs.observe(d, { attributes: true, attributeFilter: ['open'] }));
 });
-// A página de jogo (tela cheia) também entra: observa a criação do #gp-page
+// A pÃ¡gina de jogo (tela cheia) tambÃ©m entra: observa a criaÃ§Ã£o do #gp-page
 document.addEventListener('DOMContentLoaded', () => {
     new MutationObserver(() => {
         const pg = document.getElementById('gp-page');
@@ -219,8 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }).observe(document.body, { childList: true });
 });
 
-// ================= Menu lateral recolhível (desktop) =================
-// Ao descer a página, os controles do topo viram uma trilha de ícones à esquerda;
+// ================= Menu lateral recolhÃ­vel (desktop) =================
+// Ao descer a pÃ¡gina, os controles do topo viram uma trilha de Ã­cones Ã  esquerda;
 // ao subir de volta, voltam ao normal.
 let zlLastY = 0;
 window.addEventListener('scroll', () => {

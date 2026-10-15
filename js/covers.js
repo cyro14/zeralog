@@ -1,9 +1,9 @@
 // Capas verticais. Duas formas de uso:
-//  1) automática: autoVerticalCover() tenta Steam (capa 600x900) e Wikipédia (capa do artigo);
+//  1) automÃ¡tica: autoVerticalCover() tenta Steam (capa 600x900) e WikipÃ©dia (capa do artigo);
 //  2) manual: o buscador mostra as candidatas e, se a escolhida for horizontal, abre o recorte.
-// Fontes: SteamGridDB (com chave opcional), Wikipédia, Steam, HowLongToBeat e artes da RAWG.
+// Fontes: IGDB (com chave opcional), WikipÃ©dia, Steam, HowLongToBeat e artes da RAWG.
 import { searchGames, getGameStores, getGameDetails, fetchImageBlob, blobToSmallJpeg, imageSize, isVerticalSize, esc, scrapeUrl, fetchHLTBData } from './gameApi.js';
-import { fetchSgdbCovers, hasSgdbKey } from './sgdb.js';
+import { fetchIGDBCovers, fetchIGDBMediaDirect, hasValidToken } from './igdb.js';
 import { openCropper } from './crop.js';
 
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
@@ -22,7 +22,7 @@ async function getJson(url) {
 
 async function wikipedia(title) {
     const out = [];
-    for (const [lang, hint, label] of [['en', 'video game', 'Wikipedia (EN)'], ['pt', 'jogo eletrônico', 'Wikipédia (PT)']]) {
+    for (const [lang, hint, label] of [['en', 'video game', 'Wikipedia (EN)'], ['pt', 'jogo eletrÃ´nico', 'WikipÃ©dia (PT)']]) {
         try {
             const q = new URLSearchParams({ action: 'query', generator: 'search', gsrsearch: `${title} ${hint}`, gsrlimit: 4, gsrnamespace: 0, prop: 'pageimages', piprop: 'thumbnail', pithumbsize: 600, pilicense: 'any', redirects: 1, format: 'json', formatversion: 2, origin: '*' });
             const data = await getJson(`https://${lang}.wikipedia.org/w/api.php?${q}`);
@@ -32,12 +32,12 @@ async function wikipedia(title) {
                 const base = norm(p.title.replace(/\s*\([^)]*\)\s*$/, ''));
                 if (base && want && (base.includes(want) || want.includes(base))) out.push({ url: p.thumbnail.source, source: label, label: p.title, vertical: p.thumbnail.height >= p.thumbnail.width * 1.1 });
             });
-        } catch (e) { /* fonte indisponível: segue com as outras */ }
+        } catch (e) { /* fonte indisponÃ­vel: segue com as outras */ }
     }
     return out;
 }
 
-// Acha o jogo na RAWG com cuidado para não pegar um homônimo
+// Acha o jogo na RAWG com cuidado para nÃ£o pegar um homÃ´nimo
 async function findRawgId(title, rawgId) {
     if (rawgId) return rawgId;
     const res = await searchGames(title, 5);
@@ -54,18 +54,18 @@ async function steam(title, rawgId) {
             const stores = await getGameStores(id);
             stores.forEach(s => {
                 const m = String(s.url || '').match(/store\.steampowered\.com\/app\/(\d+)/);
-                if (m) list.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${m[1]}/library_600x900.jpg`, source: 'Steam', label: 'Capa vertical 600×900', vertical: true });
+                if (m) list.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${m[1]}/library_600x900.jpg`, source: 'Steam', label: 'Capa vertical 600Ã—900', vertical: true });
             });
         } catch (e) { /* sem link da loja: tenta a busca direta */ }
     }
-    // Fallback: a RAWG às vezes não tem o link da loja; pergunta direto à Steam
+    // Fallback: a RAWG Ã s vezes nÃ£o tem o link da loja; pergunta direto Ã  Steam
     if (!list.length) {
         try {
             const txt = await scrapeUrl(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(title)}&cc=us&l=en`);
             const js = txt && JSON.parse(txt);
             const want = norm(title);
             const hit = (js && js.items || []).find(i => norm(i.name) === want) || (js && js.items || []).find(i => norm(i.name).includes(want) || want.includes(norm(i.name)));
-            if (hit) list.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${hit.id}/library_600x900.jpg`, source: 'Steam', label: 'Capa vertical 600×900', vertical: true });
+            if (hit) list.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${hit.id}/library_600x900.jpg`, source: 'Steam', label: 'Capa vertical 600Ã—900', vertical: true });
         } catch (e) { /* segue sem */ }
     }
     return { id, list };
@@ -85,14 +85,14 @@ async function hltb(title) {
     return [];
 }
 
-// ---------- automático: sempre tenta a capa vertical ----------
+// ---------- automÃ¡tico: sempre tenta a capa vertical ----------
 // Retorna { data (JPEG pequeno), source, rawgId } ou null
 export async function autoVerticalCover(title, rawgId) {
     if (!title) return null;
     let id = rawgId || null;
     const cands = [];
-    const [sg, st, wp, hl] = await Promise.allSettled([
-        hasSgdbKey() ? fetchSgdbCovers(title, 8) : Promise.resolve([]),
+    const [sc, st, wp, hl] = await Promise.allSettled([
+        hasValidToken() ? fetchIGDBCovers(title, 8) : Promise.resolve([]),
         steam(title, rawgId),
         wikipedia(title),
         hltb(title)
@@ -102,11 +102,16 @@ export async function autoVerticalCover(title, rawgId) {
     if (hl.status === 'fulfilled') cands.push(...hl.value);
     if (wp.status === 'fulfilled') cands.push(...wp.value.filter(c => c.vertical));
     for (const c of cands) {
+        // Remover capas horizontais da lista IGDB se necessÃ¡rio
+    }
+    // Nota: a busca IGDB jÃ¡ foi feita em autoVerticalCover acima
+    // As prÃ³ximas fontes sÃ£o Steam, HLTB e WikipÃ©dia
+    for (const c of cands) {
         const blob = await fetchImageBlob(c.url);
         if (!blob) continue;
         const size = await imageSize(blob);
         if (!isVerticalSize(size)) continue;
-        try { return { data: await blobToSmallJpeg(blob), source: c.source, rawgId: id }; } catch (e) { /* tenta a próxima */ }
+        try { return { data: await blobToSmallJpeg(blob), source: c.source, rawgId: id }; } catch (e) { /* tenta a prÃ³xima */ }
     }
     return null;
 }
@@ -129,9 +134,9 @@ export async function upgradeAllCovers({ games, onProgress, onGame }) {
         try {
             const r = await autoVerticalCover(g.title, g.rawgId);
             if (r) { onGame(g, r); updated++; }
-        } catch (e) { /* segue para o próximo */ }
+        } catch (e) { /* segue para o prÃ³ximo */ }
         done++;
-        await new Promise(res => setTimeout(res, 250));   // não sobrecarrega as APIs
+        await new Promise(res => setTimeout(res, 250));   // nÃ£o sobrecarrega as APIs
     }
     onProgress && onProgress({ done, total: todo.length, title: '', updated, finished: true, stopped: batchStop });
     return { total: todo.length, updated, stopped: batchStop };
@@ -141,7 +146,7 @@ export async function upgradeAllCovers({ games, onProgress, onGame }) {
 function paint() {
     const horizontal = $('cv-horizontal') && $('cv-horizontal').checked;
     $('cv-grid').innerHTML = state.cands.map((c, i) => `
-        <button type="button" class="cv-item ${c.vertical ? 'v' : 'h'}" data-i="${i}" title="${esc(c.source + ' · ' + c.label)}">
+        <button type="button" class="cv-item ${c.vertical ? 'v' : 'h'}" data-i="${i}" title="${esc(c.source + ' Â· ' + c.label)}">
             <img src="${esc(c.previewUrl || c.url)}" alt="" loading="lazy" referrerpolicy="no-referrer">
             <span class="cv-src">${esc(c.source)}</span>
             ${c.vertical ? '' : (horizontal ? '<span class="cv-badge wide">horizontal</span>' : '<span class="cv-badge h">recortar</span>')}
@@ -167,7 +172,7 @@ export async function coversSearch() {
         hltb(title),
         wikipedia(title),
         rawgArt(title, state.rawgId),
-        hasSgdbKey() ? fetchSgdbCovers(title) : Promise.resolve([])
+        hasValidToken() ? fetchIGDBCovers(title) : Promise.resolve([])
     ];
     let pending = sources.length;
     sources.forEach(p => p.then(list => {
@@ -178,8 +183,8 @@ export async function coversSearch() {
     }).catch(() => {}).finally(() => {
         if (token !== state.token) return;
         if (--pending === 0) $('cv-status').textContent = state.cands.length
-            ? 'Toque na capa que você quer usar. As horizontais abrem o recorte.'
-            : 'Nenhuma capa encontrada. Tente outro nome (em inglês costuma ajudar) ou envie uma foto.';
+            ? 'Toque na capa que vocÃª quer usar. As horizontais abrem o recorte.'
+            : 'Nenhuma capa encontrada. Tente outro nome (em inglÃªs costuma ajudar) ou envie uma foto.';
     }));
 }
 
@@ -201,7 +206,7 @@ async function pick(i) {
     const onPick = state.onPick;
     const horizontal = $('cv-horizontal') && $('cv-horizontal').checked;
     $('modal-covers').close();
-    if (horizontal) { onPick(await blobToSmallJpeg(blob, 640), true); return; }   // sem recorte: a opção veio do próprio seletor
+    if (horizontal) { onPick(await blobToSmallJpeg(blob, 640), true); return; }   // sem recorte: a opÃ§Ã£o veio do prÃ³prio seletor
     const size = await imageSize(blob);
     if (isVerticalSize(size)) onPick(await blobToSmallJpeg(blob));
     else openCropper({ blob, onDone: p => onPick(p) });   // arte horizontal: recorta para vertical
