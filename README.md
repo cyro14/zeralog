@@ -107,7 +107,7 @@ Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 - **Tudo editável.** Revise antes de salvar. Os campos extras ficam em "Mais detalhes".
 - **Atalhos úteis:** buscar o tempo no **HowLongToBeat**, a nota no **Metacritic** e a capa no Google.
 - **Capa leve.** A imagem é reduzida (lado maior de 420 px) e salva em JPEG pequeno. Como o banco é o IndexedDB, não existe mais o limite de ~5 MB do `localStorage`; em Configurações → **Banco de dados** você vê quanto espaço está usando.
-- **Capa vertical sempre que possível.** Ao usar a busca automática (🌐 Auto), o app procura sozinho a **capa vertical**: primeiro a da **Steam** (600×900, achada pelo link da loja que a RAWG informa) e depois a da **Wikipédia** (capa do artigo). Só se não achar nenhuma é que usa a arte horizontal da RAWG, e então avisa para você recortar. Não precisa de chave nem de conta além da RAWG.
+- **Capa vertical sempre que possível.** Ao usar a busca automática (🌐 Auto), o app procura sozinho a **capa vertical**: na **SteamGridDB** (com sua chave gratuita opcional), na **Steam** (600×900, achada pelo link da loja que a RAWG informa), no **HowLongToBeat** e na **Wikipédia**. Só se não achar nenhuma é que usa a arte horizontal da RAWG, e então avisa para você recortar.
 - **Recortar a capa.** O botão **Recortar** (no cadastro, e em **Recortar a capa** ao tocar na capa de um jogo) abre um recorte 2:3: arraste para posicionar, use o controle (ou a pinça/roda do mouse) para ampliar, **Preencher** para cobrir tudo ou **Imagem inteira** para encaixar a arte horizontal toda sobre um fundo desfocado.
 - **Trocar capa.** O buscador mostra as candidatas (Wikipédia, Steam e artes da RAWG) e você escolhe; as horizontais abrem direto o recorte. Fotos enviadas por você também podem ser recortadas.
 - **Capas da biblioteca inteira.** Em Configurações → **Capas verticais**, o botão **Buscar capas verticais da biblioteca** troca as capas horizontais ou ausentes por verticais, jogo a jogo, com progresso, opção de parar e **Desfazer**.
@@ -308,6 +308,7 @@ O código já separa o app do banco: `js/db.js` define uma interface única de p
 | Serviço | Para quê | O que é enviado |
 |---|---|---|
 | [RAWG](https://rawg.io/apidocs) | Busca automática de dados e capas | Nome digitado e a chave de API |
+| [SteamGridDB](https://www.steamgriddb.com/api/v2) (opcional) | Capas verticais feitas pela comunidade | Nome do jogo e a sua chave de API |
 | APIs MediaWiki (Wikipédia, Yugipedia, Bulbapedia, Fandom e outras que você adicionar) | Leitor de wikis | Termos de busca e títulos de páginas |
 | [Wikipédia](https://www.mediawiki.org/wiki/Extension:PageImages) (`pageimages`) | Candidatas no buscador de capas | Nome do jogo |
 | CDN da Steam | Capa vertical 600×900 de jogos de PC | Nada (baixa a imagem) |
@@ -318,6 +319,8 @@ O código já separa o app do banco: `js/db.js` define uma interface única de p
 **Capas verticais sem chave extra.** Steam e Wikipédia são consultadas direto do navegador; a Steam só cobre jogos de PC e a Wikipédia depende de o artigo ter capa. Para os demais, use **Recortar** na arte horizontal.
 
 **Chave da RAWG.** O app traz uma chave padrão (a mesma é enviada ao navegador de quem usa o site, como é normal nas chaves públicas da RAWG), que pode atingir o limite de uso. Se a busca automática falhar, crie uma chave gratuita em <https://rawg.io/apidocs> e cole em **Configurações → Chave da API RAWG**. O app mostra mensagens claras: chave recusada, limite atingido ou sem conexão.
+
+**Chave da SteamGridDB (opcional).** Para priorizar as capas verticais da comunidade, crie a chave gratuita em <https://www.steamgriddb.com/profile/preferences/api> e cole em **Configurações → Capas e Busca → Chave da API SteamGridDB**. Sem a chave, as fontes sem login (Steam, HLTB e Wikipédia) continuam funcionando.
 
 ## Estrutura do projeto
 

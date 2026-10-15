@@ -14,7 +14,7 @@ export function getFranchiseStats() {
     const map = new Map();
     const touch = name => {
         const k = norm(name);
-        if (!map.has(k)) map.set(k, { key: k, name: name.trim(), total: 0, done: 0, playing: 0, wish: 0, games: [], wishItems: [] });
+        if (!map.has(k)) map.set(k, { key: k, name: name.trim(), total: 0, done: 0, playing: 0, wish: 0, games: [], wishItems: [], earliestReleased: null, earliestGame: null });
         return map.get(k);
     };
     appData.games.forEach(g => {
@@ -23,6 +23,11 @@ export function getFranchiseStats() {
         f.total++; f.games.push(g);
         if (g.state === 'finished') f.done++;
         if (g.state === 'playing') f.playing++;
+        // Track the game with the earliest release date in this franchise
+        if (!f.earliestGame || (g.released && g.released < f.earliestGame.released)) {
+            f.earliestGame = g;
+            f.earliestReleased = g.released || null;
+        }
     });
     (appData.wishlist || []).forEach(w => {
         if (!w.franchise || !w.franchise.trim()) return;
@@ -30,8 +35,28 @@ export function getFranchiseStats() {
         f.total++;   // o total da franquia conta também os jogos que estão na wishlist
         f.wish++; f.wishItems.push(w);
     });
+    // Ordenar jogos de cada franquia pela data de lançamento (mais antigo primeiro)
+    map.forEach(f => {
+        f.games.sort((a, b) => {
+            const aDate = a.released || '';
+            const bDate = b.released || '';
+            if (aDate && bDate) return aDate.localeCompare(bDate);
+            if (aDate && !bDate) return -1;
+            if (!aDate && bDate) return 1;
+            return 0;
+        });
+        // wishItems mantêm ordem de adição
+    });
     const pct = f => f.total ? f.done / f.total : 0;
-    return [...map.values()].sort((a, b) => pct(b) - pct(a) || b.total - a.total || a.name.localeCompare(b.name));
+    // Ordenar franças pelas datas de lançamento mais antigas primeiro, depois por percentual de conclusão, total de jogos e nome
+    return [...map.values()].sort((a, b) => {
+        const aDate = a.earliestReleased || '';
+        const bDate = b.earliestReleased || '';
+        if (aDate && bDate) {
+            return aDate.localeCompare(bDate);
+        }
+        return pct(b) - pct(a) || b.total - a.total || a.name.localeCompare(b.name);
+    });
 }
 
 const statusOf = g => g.state === 'finished' ? ['Zerado', 'ok'] : g.state === 'playing' ? ['Jogando', 'play'] : ['Na fila', ''];
@@ -118,7 +143,11 @@ export function renderFranchiseStats() {
         const extra = [f.playing ? `${f.playing} jogando` : '', f.wish ? `+${f.wish} na wishlist` : ''].filter(Boolean).join(' · ');
         return `<div class="fr-item ${full ? 'complete' : ''} ${isOpen ? 'open' : ''}" data-key="${esc(f.key)}">
             <button type="button" class="fr-toggle" data-act="toggle" aria-expanded="${isOpen}">
-                <span class="fr-head"><strong>${esc(f.name)}${full ? '<span class="fr-done">Completa</span>' : ''}</strong><span>${f.total ? `${f.done}/${f.total} · ${p}%` : 'só na wishlist'}</span></span>
+                <span class="fr-head">
+                    ${f.earliestGame && f.earliestGame.image ? `<span class="fr-cover"><img src="${esc(resizeUrl(f.earliestGame.image, 80))}" alt="${esc(f.name)} cover" loading="lazy"></span>` : ''}
+                    <strong>${esc(f.name)}${full ? '<span class="fr-done">Completa</span>' : ''}</strong>
+                    <span>${f.total ? `${f.done}/${f.total} · ${p}%` : 'só na wishlist'}</span>
+                </span>
                 <span class="fr-chevron">${icon('chevron', { size: '1em' })}</span>
             </button>
             <div class="gi-bar"><span style="width:${p}%"></span></div>

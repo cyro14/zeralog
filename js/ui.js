@@ -11,6 +11,7 @@ import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
 import { searchGames, getGameDetails, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
 import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade } from './covers.js';
+import { getSgdbKey, setSgdbKey, hasSgdbKey } from './sgdb.js';
 import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
 import { renderSteamSettings } from './steam.js';
@@ -717,7 +718,7 @@ export function setStatsPane(p) {
 }
 
 function applyStatsPane() {
-    const p = ['overview', 'genres', 'franchises', 'continuous', 'achievements'].includes(appData.settings.statsPane) ? appData.settings.statsPane : 'overview';
+    const p = ['franchises', 'overview', 'genres', 'continuous', 'achievements'].includes(appData.settings.statsPane) ? appData.settings.statsPane : 'franchises';
     document.querySelectorAll('#stats-subnav button').forEach(b => { const on = b.dataset.pane === p; b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on)); });
     document.querySelectorAll('.stats-pane').forEach(s => s.classList.toggle('active', s.dataset.pane === p));
     return p;
@@ -1840,6 +1841,7 @@ export function importBackup(event) {
 }
 
 export function saveRawgKey(value) { setRawgKey(value); triggerToast(value.trim() ? 'Chave da RAWG salva.' : 'Voltou para a chave padrão.'); }
+export function saveSgdbKey(value) { setSgdbKey(value); triggerToast(value.trim() ? 'Chave da SteamGridDB salva.' : 'Chave da SteamGridDB removida — as capas continuam vindo do Steam/HLTB/Wikipédia.'); }
 
 // ---------- Loja: link de afiliado da Amazon (fixo, não configurável pelo usuário) ----------
 const AMAZON_TAG = 'superyugioh-20';
@@ -1888,6 +1890,8 @@ export function welcomeSteam() {
 export function openSettings() {
     backToSettingsHub();
     document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
+    const sgdbInput = document.getElementById('sgdb-key-input');
+    if (sgdbInput) sgdbInput.value = hasSgdbKey() ? getSgdbKey() : '';
     renderThemePicker();
     paintPlatformDisplay();
     updateStorageMeter();

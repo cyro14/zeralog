@@ -51,7 +51,8 @@ async function storeFetch(url, { method = 'GET', token = null, basic = null, bod
 export const STORES = {
     gog: { id: 'gog', name: 'GOG', label: 'GOG Galaxy', home: 'https://www.gog.com/account/providers' },
     epic: { id: 'epic', name: 'Epic Games', label: 'Epic Games Store', home: 'https://store.epicgames.com/pt-BR/account/personal' },
-    itch: { id: 'itch', name: 'Itch.io', label: 'Itch.io', home: 'https://itch.io/user/settings/api-keys' }
+    itch: { id: 'itch', name: 'Itch.io', label: 'Itch.io', home: 'https://itch.io/user/settings/api-keys' },
+    amazon: { id: 'amazon', name: 'Amazon Games', label: 'Prime Gaming', home: 'https://gaming.amazon.com' }
 };
 export const STORE_KEYS = Object.keys(STORES);
 
@@ -65,7 +66,7 @@ function ensureRefs(key) {
     let cat = appData.categories.find(c => c.id === s.catId) || appData.categories.find(c => normText(c.name) === normText(S.name));
     if (!cat) { cat = { id: 'c' + Date.now(), name: S.name }; appData.categories.push(cat); }
     if (!appData.platforms.some(p => normText(p.name) === normText(S.name))) {
-        const img = { gog: 'icons/gog.svg', epic: 'icons/epic.svg', itch: 'icons/itch.svg' }[key];
+        const img = { gog: 'icons/gog.svg', epic: 'icons/epic.svg', itch: 'icons/itch.svg', amazon: 'icons/amazon.svg' }[key];
         appData.platforms.push({ name: S.name, icon: img ? `<img src="${img}" alt="" style="width: 1.2em; height: 1.2em; vertical-align: middle; border-radius: 4px;">` : platformIcons.default });
     }
     s.catId = cat.id;

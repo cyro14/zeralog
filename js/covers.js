@@ -1,8 +1,9 @@
 // Capas verticais. Duas formas de uso:
 //  1) automática: autoVerticalCover() tenta Steam (capa 600x900) e Wikipédia (capa do artigo);
 //  2) manual: o buscador mostra as candidatas e, se a escolhida for horizontal, abre o recorte.
-// Fontes sem chave: Wikipédia (pageimages, licença "any"), Steam (via link da loja na RAWG) e artes da RAWG.
+// Fontes: SteamGridDB (com chave opcional), Wikipédia, Steam, HowLongToBeat e artes da RAWG.
 import { searchGames, getGameStores, getGameDetails, fetchImageBlob, blobToSmallJpeg, imageSize, isVerticalSize, esc, scrapeUrl, fetchHLTBData } from './gameApi.js';
+import { fetchSgdbCovers, hasSgdbKey } from './sgdb.js';
 import { openCropper } from './crop.js';
 
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
@@ -90,7 +91,13 @@ export async function autoVerticalCover(title, rawgId) {
     if (!title) return null;
     let id = rawgId || null;
     const cands = [];
-    const [st, wp, hl] = await Promise.allSettled([steam(title, rawgId), wikipedia(title), hltb(title)]);
+    const [sg, st, wp, hl] = await Promise.allSettled([
+        hasSgdbKey() ? fetchSgdbCovers(title, 8) : Promise.resolve([]),
+        steam(title, rawgId),
+        wikipedia(title),
+        hltb(title)
+    ]);
+    if (sg.status === 'fulfilled') cands.push(...sg.value.filter(c => c.vertical));
     if (st.status === 'fulfilled') { id = st.value.id || id; cands.push(...st.value.list); }
     if (hl.status === 'fulfilled') cands.push(...hl.value);
     if (wp.status === 'fulfilled') cands.push(...wp.value.filter(c => c.vertical));
@@ -135,7 +142,7 @@ function paint() {
     const horizontal = $('cv-horizontal') && $('cv-horizontal').checked;
     $('cv-grid').innerHTML = state.cands.map((c, i) => `
         <button type="button" class="cv-item ${c.vertical ? 'v' : 'h'}" data-i="${i}" title="${esc(c.source + ' · ' + c.label)}">
-            <img src="${esc(c.url)}" alt="" loading="lazy" referrerpolicy="no-referrer">
+            <img src="${esc(c.previewUrl || c.url)}" alt="" loading="lazy" referrerpolicy="no-referrer">
             <span class="cv-src">${esc(c.source)}</span>
             ${c.vertical ? '' : (horizontal ? '<span class="cv-badge wide">horizontal</span>' : '<span class="cv-badge h">recortar</span>')}
         </button>`).join('');
@@ -155,7 +162,13 @@ export async function coversSearch() {
     state.cands = [];
     paint();
     $('cv-status').textContent = 'Procurando capas...';
-    const sources = [steam(title, state.rawgId).then(r => r.list), hltb(title), wikipedia(title), rawgArt(title, state.rawgId)];
+    const sources = [
+        steam(title, state.rawgId).then(r => r.list),
+        hltb(title),
+        wikipedia(title),
+        rawgArt(title, state.rawgId),
+        hasSgdbKey() ? fetchSgdbCovers(title) : Promise.resolve([])
+    ];
     let pending = sources.length;
     sources.forEach(p => p.then(list => {
         if (token !== state.token) return;

@@ -19,6 +19,7 @@ const ALLOWED_HOSTS = new Set([
     'library-service.live.use1a.on.epicgames.com',            // Epic: biblioteca
     'catalog-public-service-prod06.ol.epicgames.com',         // Epic: nomes dos jogos (catálogo)
     'itch.io', 'api.itch.io',                                 // Itch.io API (chave do usuário)
+    'www.steamgriddb.com', 'api.steamgriddb.com',             // SteamGridDB: busca e capas da comunidade
     'howlongtobeat.com'                                       // HowLongToBeat: tempo de jogo + box art
 ]);
 

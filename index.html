@@ -222,9 +222,9 @@
 
     <div id="tab-stats" class="tab-content">
         <div class="subnav" id="stats-subnav" role="tablist" aria-label="Seções das estatísticas">
+            <button type="button" role="tab" data-pane="franchises" onclick="setStatsPane('franchises')">Franquias <span class="subnav-count" id="sn-franchises"></span></button>
             <button type="button" role="tab" data-pane="overview" onclick="setStatsPane('overview')">Visão geral</button>
             <button type="button" role="tab" data-pane="genres" onclick="setStatsPane('genres')">Gêneros</button>
-            <button type="button" role="tab" data-pane="franchises" onclick="setStatsPane('franchises')">Franquias <span class="subnav-count" id="sn-franchises"></span></button>
             <button type="button" role="tab" data-pane="continuous" onclick="setStatsPane('continuous')">Contínuos <span class="subnav-count" id="sn-continuous"></span></button>
             <button type="button" role="tab" data-pane="achievements" onclick="setStatsPane('achievements')">Conquistas <span class="subnav-count" id="sn-ach"></span></button>
         </div>
@@ -344,7 +344,7 @@
                     <button type="button" class="set-card" onclick="openSettingsSection('covers')">
                         <span class="set-card-ic" data-icon="image" data-size="1.5em"></span>
                         <strong>Capas e Busca</strong>
-                        <small>Capas verticais e API RAWG</small>
+                        <small>RAWG, SteamGridDB e capas</small>
                     </button>
                     <button type="button" class="set-card" onclick="openSettingsSection('shops')">
                         <span class="set-card-ic" data-icon="link" data-size="1.5em"></span>
@@ -444,7 +444,7 @@
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
                 <label style="font-weight: bold;">Capas verticais:</label>
                 <button type="button" class="pill-btn" id="cover-upgrade-btn" onclick="upgradeCovers()" style="align-self: flex-start;">Buscar capas verticais da biblioteca</button>
-                <small id="cover-upgrade-status" style="color: var(--text-muted);">Troca as capas horizontais ou ausentes por capas verticais (Steam e Wikipédia). Dá para desfazer.</small>
+                <small id="cover-upgrade-status" style="color: var(--text-muted);">Troca as capas horizontais ou ausentes por capas verticais (SteamGridDB, Steam, HLTB e Wikipédia). Dá para desfazer.</small>
             </div>
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
                 <label for="rawg-key-input" style="font-weight: bold;">Chave da API RAWG:</label>
@@ -453,6 +453,14 @@
                     <a class="pill-btn" href="https://rawg.io/apidocs" target="_blank" rel="noopener" title="Abrir a página da RAWG para criar sua chave grátis" style="display: inline-flex; align-items: center; gap: 5px; text-decoration: none; white-space: nowrap;"><span data-icon="external" data-size="0.95em"></span>Gerar chave</a>
                 </div>
                 <small style="color: var(--text-muted);">Usada na busca automática de jogos. Se ela falhar, crie uma chave grátis clicando em "Gerar chave" e cole aqui. Deixe vazio para usar a padrão.</small>
+            </div>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                <label for="sgdb-key-input" style="font-weight: bold;">Chave da API SteamGridDB:</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="sgdb-key-input" placeholder="Cole sua chave (opcional)" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="saveSgdbKey(this.value)" style="flex: 1;">
+                    <a class="pill-btn" href="https://www.steamgriddb.com/profile/preferences/api" target="_blank" rel="noopener" title="Abrir sua página da SteamGridDB para criar uma chave grátis" style="display: inline-flex; align-items: center; gap: 5px; text-decoration: none; white-space: nowrap;"><span data-icon="external" data-size="0.95em"></span>Gerar chave</a>
+                </div>
+                <small style="color: var(--text-muted);">Opcional: melhora a busca e a troca automática por capas verticais feitas pela comunidade.</small>
             </div>
                 <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
             </div>
@@ -485,6 +493,12 @@
                         <img class="shop-logo" src="icons/itch.svg" alt="Itch.io">
                         <span class="shop-name">Itch.io</span>
                         <span class="shop-state" id="shop-status-itch">…</span>
+                        <span class="shop-go">›</span>
+                    </button>
+                    <button type="button" class="shop-card" onclick="openSettingsSection('amazon')">
+                        <img class="shop-logo" src="icons/amazon.svg" alt="Amazon Games">
+                        <span class="shop-name">Amazon Games</span>
+                        <span class="shop-state" id="shop-status-amazon">…</span>
                         <span class="shop-go">›</span>
                     </button>
                 </div>
@@ -599,6 +613,23 @@
                         <textarea id="store-import-itch" rows="3" placeholder="Celeste&#10;A Short Hike&#10;Butterfly Soup"></textarea>
                         <button type="button" class="pill-btn" onclick="storeImport('itch')">Importar da lista</button>
                     </details>
+                </div>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Conexões › Amazon Games -->
+            <div id="settings-page-amazon" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="openSettingsSection('shops')"><span data-icon="back" data-size="1em"></span>Conexões</button>
+                <h4 class="set-title"><img class="shop-logo sm" src="icons/amazon.svg" alt=""> Amazon Games</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                <div class="store-box">
+                    <div class="store-head"><strong>Amazon Games</strong><small id="store-status-amazon"></small></div>
+                    <div class="steam-manual">
+                        <textarea id="store-import-amazon" rows="3" placeholder="Fortnite&#10;Candle&#10;Mass Effect: Andromeda &#10;Lost Ark&#10;PUBG&#10;Destiny 2"></textarea>
+                        <button type="button" class="pill-btn primary" onclick="storeImport('amazon')">Importar da lista</button>
+                    </div>
+                    <small style="color: var(--text-muted);">A Amazon (Prime Gaming / Amazon Games) não abre a biblioteca, então a integração é por importação: cole os títulos no campo e a categoria "Amazon Games" é criada com os jogos.</small>
                 </div>
             </div>
                 <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>

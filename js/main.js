@@ -27,7 +27,7 @@ import {
     openRatingModal, openEditFinishedModal, cancelRating, skipRating, saveRating, saveFinishedEdit,
     spinRoulette, acceptRoulette, quickSearch, openImageModal, searchCoverOnGoogle, previewImageEdit, saveEditedImage, openBrowser, closeBrowser,
     openBackupModal, exportBackup, importBackup, openSettings, openFactoryReset, confirmFactoryReset,
-    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey, openSettingsSection, backToSettingsHub, welcomeSteam, buyOnAmazon, checkAppUpdate
+    renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey, saveSgdbKey, openSettingsSection, backToSettingsHub, welcomeSteam, buyOnAmazon, checkAppUpdate
 } from './ui.js';
 
 // Anexando ao escopo global para que o index.html possa ler os onlicks
@@ -108,6 +108,7 @@ window.fetchGameFromRAWG = fetchGameFromRAWG;
 window.pickRawgResult = pickRawgResult;
 window.toggleJournal = toggleJournal;
 window.saveRawgKey = saveRawgKey;
+window.saveSgdbKey = saveSgdbKey;
 window.openWiki = openWiki;
 window.wikiChangeSource = wikiChangeSource;
 window.wikiSearch = () => wikiSearch();
