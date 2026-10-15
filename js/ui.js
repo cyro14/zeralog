@@ -9,7 +9,7 @@ import { applyTheme, renderThemePicker } from './themes.js';
 import { phHtml, openIconPicker } from './phosphor.js';
 import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
-import { searchGames, getGameDetails, getGameScreenshots, shotsGalleryHtml, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
+import { searchGames, getGameDetails, getGameScreenshots, shotsGalleryHtml, viewImage, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
 import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade } from './covers.js';
 import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
@@ -1170,9 +1170,10 @@ export function openGamePage(id, isWish = false) {
             </div>
             ${facts.length ? `<div class="gp-facts">${facts.join('')}</div>` : ''}
             <div class="gp-actions">${actions.join('')}</div>
-            <details class="gp-sec" ${desc ? 'open' : ''}>
+            <details class="gp-sec" open>
                 <summary>${ic('info')} Sobre o jogo</summary>
                 <div class="gp-sec-body">${desc ? esc(desc) : 'Sem descrição por aqui. Use "Dados do jogo" para buscar na RAWG ou completar à mão.'}</div>
+                <div class="gp-mine" id="gp-mine"></div>
                 <div class="gp-extra" id="gp-extra"></div>
             </details>
             <details class="gp-sec">
@@ -1183,7 +1184,54 @@ export function openGamePage(id, isWish = false) {
     document.body.appendChild(el);
     document.body.classList.add('gp-open');
     requestAnimationFrame(() => el.classList.add('open'));
+    paintMineShots(g, isWish);
     if (g.rawgId) hydrateGameExtras(g.rawgId, el);   // desenvolvedora/publicadora + screenshots (RAWG)
+}
+
+// ---------- Screenshots do próprio usuário (salvas no jogo, no banco local) ----------
+const MAX_USER_SHOTS = 12;
+function paintMineShots(g, isWish) {
+    const box = document.getElementById('gp-mine');
+    if (!box) return;
+    const mine = g.userShots || [];
+    const full = mine.length >= MAX_USER_SHOTS;
+    box.innerHTML = `
+        <div class="gp-mine-head">
+            <strong>Suas screenshots</strong>
+            <button type="button" class="pill-btn" id="gp-shot-add" ${full ? 'disabled title="Limite de ' + MAX_USER_SHOTS + ' por jogo"' : ''}>${ic('image')} Adicionar</button>
+        </div>
+        ${mine.length
+            ? `<div class="gp-shots">${mine.map((u, i) => `<div class="gp-shot-mine"><img src="${esc(u)}" alt="Screenshot sua" loading="lazy" data-i="${i}" title="Ver em tamanho cheio"><button type="button" class="gp-shot-del" data-i="${i}" title="Remover screenshot">${ic('trash')}</button></div>`).join('')}</div>`
+            : `<small class="gp-mine-none">Envie prints seus do jogo — ficam salvos aqui no aparelho.</small>`}
+        <input type="file" id="gp-shot-file" accept="image/*" multiple hidden>`;
+    const file = box.querySelector('#gp-shot-file');
+    box.querySelector('#gp-shot-add').addEventListener('click', () => { if (!full) file.click(); });
+    box.querySelectorAll('.gp-shot-mine img').forEach(img => img.addEventListener('click', () => viewImage((g.userShots || [])[+img.dataset.i])));
+    box.querySelectorAll('.gp-shot-del').forEach(btn => btn.addEventListener('click', () => {
+        g.userShots.splice(+btn.dataset.i, 1);
+        if (!g.userShots.length) delete g.userShots;
+        saveData(null);
+        paintMineShots(g, isWish);
+    }));
+    file.addEventListener('change', async () => {
+        const picked = [...(file.files || [])];
+        file.value = '';
+        if (!picked.length) return;
+        const room = MAX_USER_SHOTS - (g.userShots || []).length;
+        const use = picked.slice(0, Math.max(0, room));
+        if (picked.length > use.length) triggerToast(`Limite de ${MAX_USER_SHOTS} screenshots por jogo — as últimas ${picked.length - use.length} ficaram de fora.`, false);
+        let ok = 0;
+        for (const f of use) {
+            try {
+                const data = await fileToSmallJpeg(f, 1080);   // reduz para não estourar o banco
+                if (!g.userShots) g.userShots = [];
+                g.userShots.push(data);
+                ok++;
+            } catch (e) { /* arquivo inválido: pula */ }
+        }
+        if (ok) { saveData(null); triggerToast(`${ok} screenshot${ok > 1 ? 's' : ''} salva${ok > 1 ? 's' : ''}!`); }
+        paintMineShots(g, isWish);
+    });
 }
 
 // Enche a seção "Sobre o jogo" com os créditos e screenshots da RAWG, sem tocar no jogo salvo:
@@ -1219,7 +1267,7 @@ export function gpDo(fn, id) {
     if (typeof window[fn] === 'function') window[fn](id);
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('gp-page') && !document.querySelector('dialog[open]')) gpClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('gp-page') && !document.querySelector('dialog[open]') && !document.getElementById('gp-lightbox')) gpClose(); });
 
 // Detalhe do item da prateleira: agora abre a tela cheia do jogo
 export function openShelfDetail(id, isWish = false) {

@@ -1185,8 +1185,25 @@ body.gp-open { overflow: hidden; }
 .gp-cred { margin-top: 10px; font-size: 0.88em; color: var(--text-muted); }
 .gp-cred strong { color: var(--text-main); }
 .gp-shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 12px; }
-.gp-shots a { display: block; border-radius: 10px; overflow: hidden; border: 1px solid var(--border-color); background: var(--bg-color); }
+.gp-shots .gp-shot, .gp-shots a { display: block; padding: 0; border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; background: var(--bg-color); cursor: zoom-in; font: inherit; text-align: inherit; }
 .gp-shots img { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+
+/* Screenshots do próprio usuário */
+.gp-mine { padding: 0 16px; }
+.gp-mine-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; }
+.gp-mine-head strong { font-size: 0.85em; }
+.gp-mine-head .pill-btn { padding: 6px 12px; font-size: 0.8em; }
+.gp-mine-none { display: block; margin-top: 6px; font-size: 0.82em; color: var(--text-muted); }
+.gp-shot-mine { position: relative; }
+.gp-shot-mine img { cursor: zoom-in; }
+.gp-shot-del { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+.gp-shot-del:hover { background: rgba(180,30,30,0.85); }
+
+/* Visualizador de imagem em tela cheia (screenshots) */
+.gp-lightbox { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.93); display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
+.gp-lightbox img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; padding: 24px; box-sizing: border-box; }
+.gp-lightbox .lb-close { position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border: none; border-radius: 12px; background: rgba(255,255,255,0.12); color: #fff; font-size: 1.1em; cursor: pointer; }
+.gp-lightbox .lb-close:hover { background: rgba(255,255,255,0.25); }
 
 @media (max-width: 520px) {
     .gp-hero { flex-direction: column; align-items: flex-start; }

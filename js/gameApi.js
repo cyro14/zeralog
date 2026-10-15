@@ -98,9 +98,30 @@ export async function getGameScreenshots(id, pageSize = 10) {
     return (data.results || []).map(x => x.image).filter(Boolean);
 }
 
-// Galeria de screenshots (página do jogo na biblioteca e no Explorar): clique abre em tamanho cheio
+// Galeria de screenshots (página do jogo na biblioteca e no Explorar):
+// clique abre a imagem em tela cheia dentro do próprio app (viewImage)
 export function shotsGalleryHtml(urls) {
-    return `<div class="gp-shots">${(urls || []).map(u => `<a href="${esc(u)}" target="_blank" rel="noopener" title="Ver em tamanho cheio"><img src="${esc(resizeUrl(u, 640))}" alt="Screenshot do jogo" loading="lazy"></a>`).join('')}</div>`;
+    return `<div class="gp-shots">${(urls || []).map(u => `<button type="button" class="gp-shot" onclick="window.viewImage && window.viewImage('${esc(u)}')" title="Ver em tamanho cheio"><img src="${esc(resizeUrl(u, 640))}" alt="Screenshot do jogo" loading="lazy"></button>`).join('')}</div>`;
+}
+
+// Abre uma imagem em tela cheia no próprio app: toque/clique em qualquer lugar, Esc
+// ou o botão voltar do celular fecham. Usado pelas screenshots e capa do jogo.
+let lbKeyClose = e => { if (e.key === 'Escape') viewImageClose(); };
+export function viewImage(url) {
+    viewImageClose();
+    const lb = document.createElement('div');
+    lb.id = 'gp-lightbox';
+    lb.className = 'gp-lightbox';
+    lb.innerHTML = `<img src="${esc(url)}" alt="Imagem ampliada"><button type="button" class="lb-close" title="Fechar (Esc)">✕</button>`;
+    lb.addEventListener('click', () => viewImageClose());
+    document.body.appendChild(lb);
+    document.addEventListener('keydown', lbKeyClose);
+    if (window.zlNavPush) window.zlNavPush(() => { if (document.getElementById('gp-lightbox')) { viewImageClose(); return true; } return false; });
+}
+export function viewImageClose() {
+    const el = document.getElementById('gp-lightbox');
+    if (el) el.remove();
+    document.removeEventListener('keydown', lbKeyClose);
 }
 
 // Dados extras usados pelo GameMatch e pela busca avançada (plataformas, tags, avaliações)
@@ -278,8 +299,9 @@ export async function imageSize(src) {
 }
 export const isVerticalSize = s => !!s && s.h >= s.w * 1.1;
 
-// Fotos enviadas pelo usuário também são reduzidas (evita estourar o localStorage)
-export async function fileToSmallJpeg(file) {
-    try { return await blobToSmallJpeg(file); }
+// Fotos enviadas pelo usuário também são reduzidas (evita estourar o localStorage).
+// Screenshots pedem resolução maior que capa: chame com maxSide=1080.
+export async function fileToSmallJpeg(file, maxSide = 420) {
+    try { return await blobToSmallJpeg(file, maxSide); }
     catch (e) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); }); }
 }

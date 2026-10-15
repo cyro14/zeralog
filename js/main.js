@@ -11,6 +11,7 @@ import { initSession, startSession, openEndSession, sessionPreview, sessionFinis
 import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetDiff, qmToggleEmulated, qmSetPlatform, qmSetFranchise, qmSetScore } from './quickmatch.js';
 import { genreSetBase, genreSetYear } from './genres.js';
 import { coversSearch } from './covers.js';
+import { viewImage } from './gameApi.js';
 import { cropApply, cropCancel, cropReset, cropFit } from './crop.js';
 import { coversSearchGoogle } from './covers.js';
 import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, setHomeView, shelfDo, openShelfDetail, openGamePage, gpClose, gpDo, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise } from './ui.js';
@@ -33,6 +34,7 @@ import {
 
 // Anexando ao escopo global para que o index.html possa ler os onlicks
 window.openCardGenerator = openCardGenerator;
+window.viewImage = viewImage;   // visualizador de screenshot (os cards da galeria chamam por onclick)
 Object.assign(window, {
     openFilters, filtersClear, filtersSaveCurrent, shareSetStyle, sharePage, shareTitleChanged, shareTitlesChanged, shareDownload, shareShare,
     setWishSort, setWishView, toggleWishNotify, refreshDatesUI, paintWishNotify,
