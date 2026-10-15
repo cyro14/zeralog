@@ -1281,13 +1281,15 @@ select.sort-time.active { border-color: var(--accent-playing); color: var(--acce
     body.zl-rail .tab-btn { display: flex; align-items: center; justify-content: center; }
 }
 
-/* Mobile: ao descer, as abas viram barra fixa embaixo só com ícones */
+/* Mobile: barra de abas SEMPRE fixa embaixo (só ícones), em qualquer ponto da página.
+   O zl-rail (que era ligado/desligado pela direção do scroll) continua valendo só
+   para esconder a busca e os filtros do topo ao descer. */
 @media (max-width: 899px) {
-    body.zl-rail { padding-bottom: 74px; }
+    body { padding-bottom: 78px; }
     body.zl-rail .search-container, body.zl-rail .platform-filter { opacity: 0; pointer-events: none; max-height: 0; overflow: hidden; margin: 0; padding: 0 15px; border: 0; transition: none; }
-    body.zl-rail .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 800; margin: 0; border-radius: 0; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border-color); }
-    body.zl-rail .tab-btn { font-size: 0; padding: 13px 2px; display: flex; align-items: center; justify-content: center; }
-    body.zl-rail .tab-btn .ic-lead svg { width: 24px !important; height: 24px !important; display: block; }
+    .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 800; margin: 0; border-radius: 0; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border-color); box-shadow: 0 -4px 14px rgba(0,0,0,0.3); }
+    .tab-btn { font-size: 0; padding: 13px 2px; display: flex; align-items: center; justify-content: center; }
+    .tab-btn .ic-lead svg { width: 24px !important; height: 24px !important; display: block; }
 }
 
 /* Seletores de filtro do Explorar */

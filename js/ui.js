@@ -1184,8 +1184,8 @@ export function openGamePage(id, isWish = false) {
     document.body.appendChild(el);
     document.body.classList.add('gp-open');
     requestAnimationFrame(() => el.classList.add('open'));
-    paintMineShots(g, isWish);
     if (g.rawgId) hydrateGameExtras(g.rawgId, el);   // desenvolvedora/publicadora + screenshots (RAWG)
+    try { paintMineShots(g, isWish); } catch (e) { console.error('Falha ao pintar suas screenshots', e); }   // um não pode derrubar o outro
 }
 
 // ---------- Screenshots do próprio usuário (salvas no jogo, no banco local) ----------
@@ -1195,13 +1195,14 @@ function paintMineShots(g, isWish) {
     if (!box) return;
     const mine = g.userShots || [];
     const full = mine.length >= MAX_USER_SHOTS;
+    const icn = n => icon(n, { size: '1em' });
     box.innerHTML = `
         <div class="gp-mine-head">
             <strong>Suas screenshots</strong>
-            <button type="button" class="pill-btn" id="gp-shot-add" ${full ? 'disabled title="Limite de ' + MAX_USER_SHOTS + ' por jogo"' : ''}>${ic('image')} Adicionar</button>
+            <button type="button" class="pill-btn" id="gp-shot-add" ${full ? 'disabled title="Limite de ' + MAX_USER_SHOTS + ' por jogo"' : ''}>${icn('image')} Adicionar</button>
         </div>
         ${mine.length
-            ? `<div class="gp-shots">${mine.map((u, i) => `<div class="gp-shot-mine"><img src="${esc(u)}" alt="Screenshot sua" loading="lazy" data-i="${i}" title="Ver em tamanho cheio"><button type="button" class="gp-shot-del" data-i="${i}" title="Remover screenshot">${ic('trash')}</button></div>`).join('')}</div>`
+            ? `<div class="gp-shots">${mine.map((u, i) => `<div class="gp-shot-mine"><img src="${esc(u)}" alt="Screenshot sua" loading="lazy" data-i="${i}" title="Ver em tamanho cheio"><button type="button" class="gp-shot-del" data-i="${i}" title="Remover screenshot">${icn('trash')}</button></div>`).join('')}</div>`
             : `<small class="gp-mine-none">Envie prints seus do jogo — ficam salvos aqui no aparelho.</small>`}
         <input type="file" id="gp-shot-file" accept="image/*" multiple hidden>`;
     const file = box.querySelector('#gp-shot-file');
