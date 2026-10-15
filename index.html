@@ -154,12 +154,18 @@
                 <button type="button" class="gm-chip" data-dec="2010" onclick="gmClassicDecade('2010')">Anos 2010</button>
             </div>
             <div class="gm-explore-cats gm-explore-filters" id="gm-explore-filters">
-                <select class="gm-select" onchange="gmXFilterGenre(this.value)" aria-label="Filtrar por gênero">
+                <select class="gm-select" id="gm-x-genre" onchange="gmXFilterGenre(this.value)" aria-label="Filtrar por gênero">
                     <option value="">Todos os gêneros</option>
                 </select>
-                <select class="gm-select" onchange="gmXFilterPlat(this.value)" aria-label="Filtrar por plataforma">
+                <select class="gm-select" id="gm-x-plat" onchange="gmXFilterPlat(this.value)" aria-label="Filtrar por plataforma">
                     <option value="">Todas as plataformas</option>
                 </select>
+                <div class="gm-co-wrap" id="gm-dev-filter">
+                    <input type="text" class="gm-co-input" placeholder="Desenvolvedora..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Filtrar por desenvolvedora">
+                </div>
+                <div class="gm-co-wrap" id="gm-pub-filter">
+                    <input type="text" class="gm-co-input" placeholder="Publicadora..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Filtrar por publicadora">
+                </div>
             </div>
             <div class="gm-explore-grid" id="gm-explore-grid"><div class="gm-loading">Carregando...</div></div>
         </section>

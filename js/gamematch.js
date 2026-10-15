@@ -3,7 +3,7 @@
 // swipe, da página Explorar e da página de Perfil. Os dados vivem em
 // appData.gamematch (persistidos junto com o resto do banco local).
 import { appData, saveData } from './store.js';
-import { listGames, esc, normText, resizeUrl, guessFranchise, getGameDetails } from './gameApi.js';
+import { listGames, esc, normText, resizeUrl, guessFranchise, getGameDetails, searchCompanies } from './gameApi.js';
 import { autoVerticalCover } from './covers.js';
 import { icon } from './icons.js';
 
@@ -14,7 +14,10 @@ const renderApp = () => { if (DEPS.render) DEPS.render(); };   // atualiza Fila/
 
 // ---------- Opções do perfil (onboarding) ----------
 export const GM_PLATFORMS = ['PC', 'PlayStation', 'Xbox', 'Nintendo Switch', 'Mobile', 'Steam Deck'];
-export const GM_GENRES = ['RPG', 'Ação', 'Aventura', 'Estratégia', 'Simulação', 'Terror', 'FPS', 'Corrida', 'Esportes', 'Indie', 'Roguelike', 'Soulslike', 'MMORPG', 'Puzzle'];
+export const GM_GENRES = ['RPG', 'Ação', 'Aventura', 'Estratégia', 'Simulação', 'Terror', 'FPS', 'Corrida', 'Esportes', 'Indie', 'Roguelike', 'Soulslike', 'MMORPG', 'Puzzle', 'Luta', 'Plataforma', 'Arcade', 'Casual', 'Família', 'Tabuleiro', 'Cartas', 'Educacional'];
+// Estilos "à la Steam" (tags da RAWG): aparecem só no filtro do Explorar, para refinar além
+// dos gêneros oficiais. O servidor aceita as tags como filtro de busca normalmente.
+export const GM_X_STYLES = ['Mundo Aberto', 'Sobrevivência', 'Zumbi', 'Furtivo', 'Point & Click', 'Visual Novel', 'Metroidvania', 'Tower Defense', 'Battle Royale', 'Co-op', 'História Rica'];
 export const GM_STYLES = [
     { id: 'single', label: 'Single-player' },
     { id: 'multi', label: 'Multiplayer' },
@@ -41,7 +44,14 @@ const GENRE_RAWG = {
     'Ação': { genre: 'action' }, 'Aventura': { genre: 'adventure' }, 'RPG': { genre: 'role-playing-games-rpg' },
     'Estratégia': { genre: 'strategy' }, 'Simulação': { genre: 'simulation' }, 'FPS': { genre: 'shooter' },
     'Corrida': { genre: 'racing' }, 'Esportes': { genre: 'sports' }, 'Indie': { genre: 'indie' }, 'Puzzle': { genre: 'puzzle' },
-    'Terror': { tag: 'horror' }, 'Roguelike': { tag: 'roguelike' }, 'Soulslike': { tag: 'souls-like' }, 'MMORPG': { tag: 'massively-multiplayer' }
+    'Terror': { tag: 'horror' }, 'Roguelike': { tag: 'roguelike' }, 'Soulslike': { tag: 'souls-like' }, 'MMORPG': { tag: 'massively-multiplayer' },
+    'Luta': { genre: 'fighting' }, 'Plataforma': { genre: 'platformer' }, 'Arcade': { genre: 'arcade' },
+    'Casual': { genre: 'casual' }, 'Família': { genre: 'family' }, 'Tabuleiro': { genre: 'board-games' },
+    'Cartas': { genre: 'card' }, 'Educacional': { genre: 'educational' },
+    'Mundo Aberto': { tag: 'open-world' }, 'Sobrevivência': { tag: 'survival' }, 'Zumbi': { tag: 'zombies' },
+    'Furtivo': { tag: 'stealth' }, 'Point & Click': { tag: 'point-and-click' }, 'Visual Novel': { tag: 'visual-novel' },
+    'Metroidvania': { tag: 'metroidvania' }, 'Tower Defense': { tag: 'tower-defense' },
+    'Battle Royale': { tag: 'battle-royale' }, 'Co-op': { tag: 'co-op' }, 'História Rica': { tag: 'story-rich' }
 };
 const PLAT_RAWG_IDS = {
     'PC': [4], 'PlayStation': [18, 187, 19, 16, 15], 'Xbox': [1, 186, 14, 80],
@@ -53,8 +63,14 @@ const PLAT_KEYWORDS = {
     'Nintendo Switch': ['nintendo switch', 'nintendo'], 'Mobile': ['android', 'ios'], 'Steam Deck': ['pc', 'linux', 'steamos']
 };
 // Gêneros que a API devolve -> nome usado no perfil do usuário
-const GENRE_ALIAS = { 'Tiro': 'FPS', 'Quebra-cabeça': 'Puzzle', 'Multiplayer massivo': 'MMORPG' };
-const GENRE_TAG_ALIAS = { 'horror': 'Terror', 'roguelike': 'Roguelike', 'souls-like': 'Soulslike', 'massively multiplayer': 'MMORPG' };
+const GENRE_ALIAS = { 'Tiro': 'FPS', 'Quebra-cabeça': 'Puzzle', 'Multiplayer massivo': 'MMORPG', 'Jogos de tabuleiro': 'Tabuleiro' };
+const GENRE_TAG_ALIAS = {
+    'horror': 'Terror', 'roguelike': 'Roguelike', 'souls-like': 'Soulslike', 'massively multiplayer': 'MMORPG',
+    'open world': 'Mundo Aberto', 'survival': 'Sobrevivência', 'zombies': 'Zumbi', 'stealth': 'Furtivo',
+    'point-and-click': 'Point & Click', 'point & click': 'Point & Click', 'visual novel': 'Visual Novel',
+    'metroidvania': 'Metroidvania', 'tower defense': 'Tower Defense', 'battle royale': 'Battle Royale',
+    'co-op': 'Co-op', 'story rich': 'História Rica'
+};
 const STYLE_TAGS = {
     single: ['singleplayer'], multi: ['multiplayer'], coop: ['co-op', 'cooperative', 'online co-op'],
     online: ['online', 'cross-platform multiplayer'], local: ['local multiplayer', 'split screen', 'local co-op']
@@ -617,6 +633,8 @@ async function fetchExplorePage(cat, append) {
         const ids = PLAT_RAWG_IDS[xFilters.plat];
         if (ids) params.platforms = ids.join(',');
     }
+    if (xFilters.devId) params.developers = xFilters.devId;   // estúdio escolhido no autocomplete
+    if (xFilters.pubId) params.publishers = xFilters.pubId;   // publicadora escolhida no autocomplete
     const res = await listGames(params);
     let items = res.items.filter(g => gmIsClean(g) && g.image && (cat === 'releases' || !farFuture(g)));   // 2030 só na aba Lançamentos
     if (cat === 'gems') items = items.filter(g => (g.ratingsCount || 0) >= 25 && (g.ratingsCount || 0) <= 1500);   // só indie pouco falado
@@ -627,7 +645,7 @@ async function fetchExplorePage(cat, append) {
     return state;
 }
 
-const xFilters = { genre: '', plat: '' };
+const xFilters = { genre: '', plat: '', devId: 0, devName: '', pubId: 0, pubName: '' };
 export function gmXFilterGenre(v) { xFilters.genre = v; gmExplore(exploreCat); }   // rebusca com o filtro no servidor
 export function gmXFilterPlat(v) { xFilters.plat = v; gmExplore(exploreCat); }
 
@@ -635,9 +653,79 @@ function fillExploreFilters() {
     const bar = document.getElementById('gm-explore-filters');
     if (!bar || bar.dataset.done) return;
     bar.dataset.done = '1';
-    const [gs, ps] = bar.querySelectorAll('.gm-select');
-    gs.innerHTML = '<option value="">Todos os gêneros</option>' + GM_GENRES.map(g => `<option value="${g}">${g}</option>`).join('');
-    ps.innerHTML = '<option value="">Todas as plataformas</option>' + GM_PLATFORMS.map(p => `<option value="${p}">${p}</option>`).join('');
+    const gs = document.getElementById('gm-x-genre');
+    const ps = document.getElementById('gm-x-plat');
+    if (gs) gs.innerHTML = '<option value="">Todos os gêneros</option>'
+        + '<optgroup label="Gêneros">' + GM_GENRES.map(g => `<option value="${g}">${g}</option>`).join('') + '</optgroup>'
+        + '<optgroup label="Estilos (Steam)">' + GM_X_STYLES.map(g => `<option value="${g}">${g}</option>`).join('') + '</optgroup>';
+    if (ps) ps.innerHTML = '<option value="">Todas as plataformas</option>' + GM_PLATFORMS.map(p => `<option value="${p}">${p}</option>`).join('');
+    setupCompanyFilter(document.getElementById('gm-dev-filter'), 'developers');
+    setupCompanyFilter(document.getElementById('gm-pub-filter'), 'publishers');
+}
+
+// ---------- Filtro de desenvolvedora/publicadora com autocomplete ----------
+// A RAWG tem ~465 mil estúdios, então não dá para baixar uma lista fixa: o usuário
+// digita 2+ letras, busca na API e escolhe na lista de sugestões que abre embaixo.
+function setupCompanyFilter(wrap, kind) {
+    if (!wrap || wrap.dataset.done) return;
+    wrap.dataset.done = '1';
+    const input = wrap.querySelector('input');
+    if (!input) return;
+    const isDev = kind === 'developers';
+    const list = document.createElement('div');
+    list.className = 'gm-co-list';
+    list.hidden = true;
+    list.addEventListener('mousedown', e => e.preventDefault());   // clicar numa sugestão não desfoca o campo
+    document.body.appendChild(list);   // fixo na tela: não fica preso no overflow da barra de filtros
+    let timer = null, seq = 0;
+    const curName = () => isDev ? xFilters.devName : xFilters.pubName;
+    const apply = (id, name) => {
+        if (isDev) { xFilters.devId = id; xFilters.devName = name; }
+        else { xFilters.pubId = id; xFilters.pubName = name; }
+        gmExplore(exploreCat);
+    };
+    const close = () => { list.hidden = true; list.innerHTML = ''; };
+    const openAt = () => {
+        const r = input.getBoundingClientRect();
+        const left = Math.max(8, Math.min(r.left, window.innerWidth - 240));
+        list.style.left = `${Math.round(left)}px`;
+        list.style.maxWidth = `${Math.round(window.innerWidth - left - 8)}px`;   // nunca estoura a tela no celular
+        list.style.top = `${Math.round(r.bottom + 6)}px`;
+        list.hidden = false;
+    };
+    const search = async () => {
+        const q = input.value.trim();
+        if (q.length < 2) { close(); return; }
+        const my = ++seq;
+        try {
+            const res = await searchCompanies(kind, q);
+            if (my !== seq) return;   // resposta velha chegando depois de nova digitação
+            if (!res.length) list.innerHTML = '<div class="gm-co-empty">Nada encontrado.</div>';
+            else {
+                list.innerHTML = res.map(c => `<button type="button" class="gm-co-item" data-id="${c.id}" data-name="${esc(c.name)}"><strong>${esc(c.name)}</strong><small>${c.gamesCount} jogos</small></button>`).join('');
+                list.querySelectorAll('.gm-co-item').forEach(btn => btn.addEventListener('click', () => {
+                    const name = btn.dataset.name || '';
+                    input.value = name;
+                    close();
+                    apply(+btn.dataset.id, name);
+                }));
+            }
+            openAt();
+        } catch (e) { close(); }
+    };
+    input.addEventListener('input', () => {
+        clearTimeout(timer);
+        if (!input.value.trim()) { close(); if (curName()) apply(0, ''); return; }   // campo vazio: limpa o filtro
+        if (input.value.trim() !== curName()) timer = setTimeout(search, 350);
+    });
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); const f = list.querySelector('.gm-co-item'); if (f && !list.hidden) f.click(); }
+        else if (e.key === 'Escape') { close(); input.value = curName(); }
+    });
+    input.addEventListener('focus', () => { if (input.value.trim().length >= 2 && input.value.trim() !== curName()) search(); });
+    input.addEventListener('blur', () => setTimeout(() => { close(); if (input.value.trim() !== curName()) input.value = curName(); }, 160));
+    window.addEventListener('scroll', () => close(), { passive: true });
+    window.addEventListener('resize', () => close());
 }
 
 function paintExplore(cat) {
@@ -647,7 +735,16 @@ function paintExplore(cat) {
     if (!grid || !state) return;
     // filtros de client-side (gênero/plataforma) valem para todas as abas
     const iw = xFilters.genre ? state.items.filter(g => profileGenreOf(g).includes(xFilters.genre)) : state.items;
-    const shown = xFilters.plat ? iw.filter(g => (g.platforms || []).some(p => normText(p) === normText(xFilters.plat) || normText(p).includes(normText(xFilters.plat)))) : iw;
+    // Plataforma: a RAWG devolve nomes como "Android"/"iOS"/"PC" — o filtro antigo comparava
+    // "mobile" com esses nomes (nunca dava match) e a grade ficava vazia. Usa os apelidos.
+    const platMatch = g => {
+        const kws = PLAT_KEYWORDS[xFilters.plat] || [];
+        return (g.platforms || []).some(p => {
+            const np = normText(p);
+            return np === normText(xFilters.plat) || np.includes(normText(xFilters.plat)) || kws.some(k => np.includes(k));
+        });
+    };
+    const shown = xFilters.plat ? iw.filter(platMatch) : iw;
     const moreBtn = state.more ? `<div class="gm-x-more"><button type="button" class="gm-cta" onclick="gmXMore()">Carregar mais jogos</button></div>` : (state.items.length ? `<div class="gm-x-more gm-note">Chegamos ao fim por aqui — troque de categoria para descobrir mais.</div>` : '');
     if (!shown.length) { grid.innerHTML = `<div class="gm-empty"><p>Nenhum jogo com esses filtros${state.more ? ' — toque em "Carregar mais jogos" para ampliar' : ''}.</p></div>` + moreBtn; return; }
     grid.innerHTML = shown.map(exploreCardHtml).join('') + moreBtn;

@@ -1266,6 +1266,17 @@ select.sort-time.active { border-color: var(--accent-playing); color: var(--acce
 }
 
 /* Seletores de filtro do Explorar */
-.gm-explore-filters select.gm-select, .gm-explore-filters .gm-chip { flex-shrink: 0; }
+.gm-explore-filters select.gm-select, .gm-explore-filters .gm-chip, .gm-explore-filters .gm-co-wrap { flex-shrink: 0; }
 .gm-select { font-size: 0.85em; padding: 7px 12px; border-radius: 999px; background: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); max-width: 100%; cursor: pointer; }
 .gm-select:focus { border-color: var(--accent-playing); outline: none; }
+
+/* Filtro de desenvolvedora/publicadora com autocomplete (lista fixa no body, não na barra) */
+.gm-co-wrap { position: relative; }
+.gm-co-input { font-size: 0.85em; padding: 7px 12px; border-radius: 999px; background: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); width: 150px; max-width: 44vw; cursor: text; }
+.gm-co-input:focus { border-color: var(--accent-playing); outline: none; }
+.gm-co-list { position: fixed; z-index: 1000; min-width: 230px; max-width: 320px; max-height: 270px; overflow-y: auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+.gm-co-list[hidden] { display: none !important; }
+.gm-co-item { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; width: 100%; text-align: left; background: none; border: none; color: var(--text-main); padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 0.88em; }
+.gm-co-item:hover, .gm-co-item:focus-visible { background: rgba(128,128,128,0.12); }
+.gm-co-item small { color: var(--text-muted); white-space: nowrap; font-size: 0.85em; }
+.gm-co-empty { padding: 10px; font-size: 0.85em; color: var(--text-muted); text-align: center; }

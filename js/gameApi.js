@@ -103,6 +103,19 @@ export async function listGames(params) {
     const data = await rawg('/games', params);
     return { items: (data.results || []).map(normalizeFull), more: !!data.next, count: data.count || 0 };
 }
+
+// Busca estúdios (developers) ou publicadoras (publishers) pelo nome — filtro do Explorar.
+// São ~465 mil cadastros, então a lista é digitada e buscada, não baixada inteira.
+// A busca da RAWG ordena por "score" e traz muito nome pequeno: pegamos uma página maior,
+// jogamos fora quem não tem jogos e colocamos os estúdios maiores na frente.
+export async function searchCompanies(kind, query) {
+    const data = await rawg(`/${kind}`, { search: query, page_size: 20 });
+    return (data.results || [])
+        .map(x => ({ id: x.id, name: x.name, gamesCount: x.games_count || 0 }))
+        .filter(c => c.gamesCount > 0)
+        .sort((a, b) => b.gamesCount - a.gamesCount)
+        .slice(0, 8);
+}
 export const normText = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 // Adivinha a franquia a partir do título: corta subtítulo ("The Witcher 3: Wild Hunt" -> "The Witcher"),
