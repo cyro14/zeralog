@@ -41,7 +41,7 @@ export const GM_TIMES = [
 ];
 
 // ---------- Mapas para o catálogo RAWG ----------
-const GENRE_RAWG = {
+export const GENRE_RAWG = {
     'Ação': { genre: 'action' }, 'Aventura': { genre: 'adventure' }, 'RPG': { genre: 'role-playing-games-rpg' },
     'Estratégia': { genre: 'strategy' }, 'Simulação': { genre: 'simulation' }, 'FPS': { genre: 'shooter' },
     'Corrida': { genre: 'racing' }, 'Esportes': { genre: 'sports' }, 'Indie': { genre: 'indie' }, 'Puzzle': { genre: 'puzzle' },
@@ -54,7 +54,7 @@ const GENRE_RAWG = {
     'Metroidvania': { tag: 'metroidvania' }, 'Tower Defense': { tag: 'tower-defense' },
     'Battle Royale': { tag: 'battle-royale' }, 'Co-op': { tag: 'co-op' }, 'História Rica': { tag: 'story-rich' }
 };
-const PLAT_RAWG_IDS = {
+export const PLAT_RAWG_IDS = {
     'PC': [4], 'PlayStation': [18, 187, 19, 16, 15], 'Xbox': [1, 186, 14, 80],
     'Nintendo Switch': [7], 'Mobile': [3, 21], 'Steam Deck': [4, 6]
 };
