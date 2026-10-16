@@ -4,7 +4,7 @@
 import { test, assert, assertEq } from './shim.mjs';
 import { appData } from '../js/store.js';
 import { applyStoreCatIcons } from '../js/stores.js';
-import { STORE_ICONS, brandImg } from '../js/icons.js';
+import { STORE_ICONS, brandImg, platformIcons } from '../js/icons.js';
 import { anyIconHtml } from '../js/phosphor.js';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -57,9 +57,21 @@ test('applyStoreCatIcons: plataforma da loja troca o SVG antigo e preserva custo
         { name: 'Amazon Games' },   // sem ícone
     );
     applyStoreCatIcons();
-    assert(String(appData.platforms.find(p => p.name === 'GOG').icon).includes('gog-galaxy.jpg'), 'SVG antigo atualizado');
+    assert(String(appData.platforms.find(p => p.name === 'GOG').icon).includes('gog-galaxy.webp'), 'SVG antigo atualizado');
     assertEq(typeof appData.platforms.find(p => p.name === 'Epic Games').icon, 'object', 'custom preservado');
     assert(String(appData.platforms.find(p => p.name === 'Amazon Games').icon).includes('brand-ico'), 'sem ícone ganha o logo');
+});
+
+test('applyStoreCatIcons: markup antigo com estilo inline (largura fixa em quadrado) é renovado', () => {
+    appData.platforms.push({ name: 'Steam', icon: '<img src="icons/Steam.webp" alt="" style="width: 1.2em; height: 1.2em;">' });
+    applyStoreCatIcons();
+    const ic = String(appData.platforms.find(p => p.name === 'Steam').icon);
+    assert(ic.includes('brand-ico') && !ic.includes('width: 1.2em'), 'vira a classe de altura única');
+});
+
+test('proporção: platformIcons usa a MESMA marcação (classe brand-ico) das lojas', () => {
+    const pc = platformIcons['PC'];
+    assert(String(pc).includes('class="brand-ico"') && !String(pc).includes('style='), 'sem estilo inline');
 });
 
 test('anyIconHtml: Phosphor vira <i>, logo HTML passa direto, lixo vira vazio', () => {

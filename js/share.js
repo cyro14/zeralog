@@ -102,12 +102,19 @@ async function metaLine(ctx, x, y, item, o) {
     if (item.released) parts.push(String(item.released).slice(0, 4));
     if (item.genres && item.genres.length) parts.push(item.genres.slice(0, 2).join(', '));
     const glyph = o.icons === false ? null : await platformGlyph(item.platform, o.size, o.color);
+    // Mesma regra da tela: altura fixa, largura pelo formato do logo (PS5 deitado
+    // fica mais largo — nunca desenhado espremido num quadrado)
+    let gw = 0, ga = 1;
+    if (glyph) {
+        ga = Math.min(1.6, Math.max(0.75, (glyph.width || 1) / (glyph.height || 1)));
+        gw = o.size * 1.15 * ga + 12;
+    }
     ctx.font = `500 ${o.size}px ${FONT}`;
     const text = (glyph ? '' : (item.platform ? item.platform + (parts.length ? '  ·  ' : '') : '')) + parts.join('  ·  ');
-    const tw = ctx.measureText(text).width, gw = glyph ? o.size * 1.15 + 12 : 0;
+    const tw = ctx.measureText(text).width;
     const total = Math.min(o.maxW || 9999, gw + tw);
     let sx = o.align === 'center' ? x - total / 2 : x;
-    if (glyph) { ctx.drawImage(glyph, sx, y - o.size * 0.6, o.size * 1.15, o.size * 1.15); sx += gw; }
+    if (glyph) { ctx.drawImage(glyph, sx, y - o.size * 0.6, o.size * 1.15 * ga, o.size * 1.15); sx += gw; }
     ctx.fillStyle = o.color; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText(ellipsis(ctx, text, (o.maxW || 9999) - gw), sx, y);
     return total;

@@ -83,7 +83,7 @@ export function applyStoreCatIcons() {
         const cat = appData.categories.find(c => normText(c.name) === normText(name));
         if (cat && (!cat.icon || (typeof cat.icon === 'object' && cat.icon.name === 'steam-logo'))) cat.icon = brandImg(src);
         const p = appData.platforms.find(pl => normText(pl.name) === normText(name));
-        if (p && (!p.icon || /icons\/(gog|epic|itch|amazon)\.svg/.test(String(p.icon)))) p.icon = brandImg(src);
+        if (p && (!p.icon || /icons\/(gog|epic|itch|amazon)\.svg|width:\s*1\.2em/.test(String(p.icon)))) p.icon = brandImg(src);
     });
 }
 

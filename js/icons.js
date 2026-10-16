@@ -71,9 +71,24 @@ export function icon(name, { size = '1.15em', color = 'currentColor', cls = '' }
     return `<svg class="ic ${cls}" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 }
 
+// Logos das lojas/conexões (arquivos da pasta /icons). O MESMO HTML (brandImg) é
+// usado no hub de Conexões, no ícone da plataforma da loja e no ícone da
+// categoria dela. Proporção: TODOS os logos têm a MESMA ALTURA (a classe
+// .brand-ico fixa a altura e deixa a largura seguir o formato natural —
+// o PS5 "deitado" fica mais largo, nunca menor).
+export const brandImg = src => `<img src="${src}" alt="" class="brand-ico">`;
+
 // Ícones padrão das plataformas (guardados como HTML no appData).
-// PC, Nintendo, Playstation, Xbox e Steam usam os arquivos da pasta /icons.
-const platformImg = src => `<img src="${src}" alt="" style="width: 1.2em; height: 1.2em; vertical-align: middle; border-radius: 4px; object-fit: contain; flex-shrink: 0;">`;
+// PC, Nintendo, Playstation, Xbox e Steam usam os arquivos da pasta /icons;
+// o migrateData renova esses ícones a cada carregamento.
+export const STORE_ICONS = {
+    'Steam': 'icons/Steam.webp',
+    'GOG': 'icons/gog-galaxy.webp',
+    'Epic Games': 'icons/Epic_Games_logo.svg.webp',
+    'Itch.io': 'icons/app-icon.svg',
+    'Amazon Games': 'icons/amazon_games_icon_by_reiloucobr_dern7rm-fullview.png'
+};
+const platformImg = brandImg;
 export const platformIcons = {
     'PC': platformImg('icons/PC.png'),
     'Nintendo': platformImg('icons/nintendo.webp'),
@@ -83,19 +98,6 @@ export const platformIcons = {
     'Mobile': icon('phone'),
     'default': icon('gamepad')
 };
-
-// Logos das lojas/conexões (arquivos da pasta /icons). O MESMO HTML (brandImg) é
-// usado no hub de Conexões, no ícone da plataforma da loja e no ícone da
-// categoria dela — assim todos ficam com a mesma proporção (quadradinho 1.2em,
-// igual aos ícones de plataforma; dentro de títulos de categoria vira 1em).
-export const STORE_ICONS = {
-    'Steam': 'icons/Steam.webp',
-    'GOG': 'icons/gog-galaxy.jpg',
-    'Epic Games': 'icons/Epic_Games_logo.svg.webp',
-    'Itch.io': 'icons/app-icon.svg',
-    'Amazon Games': 'icons/amazon_games_icon_by_reiloucobr_dern7rm-fullview.png'
-};
-export const brandImg = src => `<img src="${src}" alt="" class="brand-ico">`;
 
 export const iconNames = Object.keys(P);
 
