@@ -479,7 +479,8 @@ export function renderFinishedTab() {
     const finishedContainer = document.getElementById('finished-list-container');
     const finishedAll = getSortedGames(appData.games.filter(g => g.state === 'finished'), appData.settings.finishedSort, true);
     const finishedGames = applyFilters('finished', finishedAll);
-    document.getElementById('count-finished').innerText = finishedAll.length;
+    const countEl = document.getElementById('count-finished');
+    if (countEl) countEl.innerText = finishedAll.length;
 
     Object.keys(sortLabels).forEach(k => {
         const el = document.getElementById(`sort-fin-${k}`);
@@ -493,7 +494,8 @@ export function renderFinishedTab() {
 
     const view = appData.settings.finishedView === 'timeline' ? 'timeline' : 'shelf';   // "list" (cards) foi removido: sempre prateleira ou timeline
     ['timeline', 'shelf'].forEach(v => { const el = document.getElementById(`fin-view-${v}`); if (el) el.classList.toggle('active', view === v); });
-    document.getElementById('fin-sort-bar').style.display = view === 'timeline' ? 'none' : '';
+    const sortBar = document.getElementById('fin-sort-bar');
+    if (sortBar) sortBar.style.display = view === 'timeline' ? 'none' : '';
 
     if (finishedGames.length === 0) {
         finishedContainer.innerHTML = finishedAll.length ? `<div class="empty-state">Nenhum jogo zerado combina com os filtros.</div>` : `<div class="empty-state">Nenhum jogo finalizado ainda. Hora de focar no backlog!</div>`;
@@ -1941,20 +1943,25 @@ export function importBackup(event) {
     if (!file) return; 
     const reader = new FileReader(); 
     reader.onload = function(e) { 
-        try { 
-            const imported = JSON.parse(e.target.result); 
-            if (imported && imported.games) { 
-                saveStateForUndo(); 
-                setAppData(migrateData(imported)); 
+        try {
+            const imported = JSON.parse(e.target.result);
+            if (imported && imported.games) {
+                saveStateForUndo();
+                setAppData(migrateData(imported));
                 if (!appData.settings) appData.settings = { sort: 'manual', compact: false, finishedSortDir: 'desc', homeSortDir: 'asc' };
                 if (!appData.settings.homeSortDir) appData.settings.homeSortDir = 'asc';
                 if (!appData.collapsedCats) appData.collapsedCats =[];
                 if (!appData.platforms) appData.platforms = defaultData.platforms;
-                saveData(() => render());
+                saveData(() => { try { render(); } catch (e) { console.error('render falhou após importar:', e); } });
                 closeModal('modal-backup-info');
                 triggerToast('Restaurado!');
-            } 
-        } catch (err) { alert("Erro ao ler o arquivo."); } 
+            } else {
+                alert('Arquivo sem jogos. Confira se é um backup do ZeraLog.');
+            }
+        } catch (err) {
+            console.error('Erro ao importar backup:', err);
+            alert('Não consegui ler esse arquivo como backup do ZeraLog. Confira se é um .json exportado pelo app.');
+        } 
         event.target.value = ''; 
     }; 
     reader.readAsText(file); 
