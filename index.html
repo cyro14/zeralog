@@ -448,6 +448,14 @@
                 <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
                 <h4 class="set-title"><span data-icon="image"></span>Capas e Busca</h4>
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                <label for="cover-pref-select" style="font-weight: bold;">Capas automáticas:</label>
+                <select id="cover-pref-select" onchange="saveCoverPref(this.value)" style="padding: 9px 12px; border-radius: 9px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); font: inherit; align-self: flex-start;">
+                    <option value="vertical">Verticais (padrão)</option>
+                    <option value="horizontal">Horizontais</option>
+                </select>
+                <small style="color: var(--text-muted);">Formato usado quando o app busca capas sozinho (importação de lojas e preenchimento de dados). Verticais deixam a prateleira e os cards bonitos; com "Horizontais", a arte wide da RAWG entra direto.</small>
+            </div>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
                 <label style="font-weight: bold;">Capas verticais:</label>
                 <button type="button" class="pill-btn" id="cover-upgrade-btn" onclick="upgradeCovers()" style="align-self: flex-start;">Buscar capas verticais da biblioteca</button>
                 <small id="cover-upgrade-status" style="color: var(--text-muted);">Troca as capas horizontais ou ausentes por capas verticais (IGDB, Steam, HLTB e Wikipédia). Dá para desfazer.</small>
@@ -805,6 +813,7 @@
                 </div>
                 <input type="text" id="sh-title" placeholder="Título da imagem" oninput="shareTitleChanged()">
                 <label class="flag-row" id="sh-titles-row"><input type="checkbox" id="sh-titles" onchange="shareTitlesChanged()"><span>Mostrar os nomes dos jogos na prateleira</span></label>
+                <label class="flag-row" style="margin-top: -8px;"><input type="checkbox" id="sh-tiny" onchange="shareTitlesChanged()"><span>Capas minúsculas — sem prateleira, tudo numa imagem só</span></label>
                 <label class="flag-row" style="margin-top: -8px;"><input type="checkbox" id="sh-chips" checked onchange="shareTitlesChanged()"><span>Mostrar selos e tags nos cards</span></label>
                 <div id="sh-status" class="rawg-msg"></div>
                 <div id="sh-pages" class="share-pages" style="display: none;">

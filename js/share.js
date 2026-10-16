@@ -306,32 +306,40 @@ async function drawCart(ctx, item, x, y, w, h, p, showBadges, dim, plain = false
 }
 export async function renderShelf(items, o) {
     const p = pal(), n = items.length;
-    const cols = n <= 8 ? 4 : n <= 15 ? 5 : n <= 24 ? 6 : n <= 35 ? 7 : 8;
-    const pad = 56, gap = Math.round(110 / cols) + 10, cartW = (W - pad * 2 - gap * (cols - 1)) / cols, cartH = cartW * 1.5;
-    const showTitles = o.titles && cols <= 7, boardH = showTitles ? 64 : 44, rowH = cartH + boardH + 26;
+    const tiny = !!o.tiny;
+    // Capas minúsculas: sem prateleira de madeira, capas menores e colunas extras —
+    // tudo vira uma imagem única. Normal: prateleira com a tábua de madeira.
+    const cols = tiny
+        ? (n <= 25 ? 8 : n <= 50 ? 10 : n <= 80 ? 11 : 12)
+        : (n <= 8 ? 4 : n <= 15 ? 5 : n <= 24 ? 6 : n <= 35 ? 7 : 8);
+    const pad = 56, gap = tiny ? 8 : Math.round(110 / cols) + 10, cartW = (W - pad * 2 - gap * (cols - 1)) / cols, cartH = cartW * 1.5;
+    const showTitles = !tiny && o.titles && cols <= 7, boardH = showTitles ? 64 : 44, rowH = cartH + (tiny ? 16 : boardH + 26);
     const rows = Math.ceil(n / cols);
     const tmp = document.createElement('canvas').getContext('2d'); tmp.font = `800 62px ${FONT}`;
     const hh = (wrap(tmp, o.title, W - 112, 2).length * 70) + (o.subtitle ? 100 : 40) + 170;
-    const H = Math.round(hh + rows * rowH + 170);
+    const H = Math.round(hh + rows * rowH + (tiny ? 140 : 170));
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
     backdrop(ctx, H, p, null);
     let y0 = header(ctx, p, o.title, o.subtitle, false) + 10;
     for (let r = 0; r < rows; r++) {
-        const top = y0 + r * rowH, by = top + cartH - 6;
-        // tábua de madeira
-        const bx = pad - 26, bw = W - (pad - 26) * 2;
-        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 12;
-        rr(ctx, bx, by, bw, boardH, 8); const wg = ctx.createLinearGradient(0, by, 0, by + boardH); wg.addColorStop(0, '#a47a4f'); wg.addColorStop(0.35, '#7a5535'); wg.addColorStop(1, '#4a3220'); ctx.fillStyle = wg; ctx.fill(); ctx.restore();
-        ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(bx + 8, by + 2, bw - 16, 3);
-        ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 2;
-        for (let k = 0; k < 7; k++) { const ly = by + 12 + k * (boardH - 16) / 6; ctx.beginPath(); ctx.moveTo(bx + 14, ly); ctx.lineTo(bx + bw - 14, ly + (k % 2 ? 2 : -2)); ctx.stroke(); }
+        const top = y0 + r * rowH;
+        if (!tiny) {
+            const by = top + cartH - 6;
+            // tábua de madeira
+            const bx = pad - 26, bw = W - (pad - 26) * 2;
+            ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 12;
+            rr(ctx, bx, by, bw, boardH, 8); const wg = ctx.createLinearGradient(0, by, 0, by + boardH); wg.addColorStop(0, '#a47a4f'); wg.addColorStop(0.35, '#7a5535'); wg.addColorStop(1, '#4a3220'); ctx.fillStyle = wg; ctx.fill(); ctx.restore();
+            ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(bx + 8, by + 2, bw - 16, 3);
+            ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 2;
+            for (let k = 0; k < 7; k++) { const ly = by + 12 + k * (boardH - 16) / 6; ctx.beginPath(); ctx.moveTo(bx + 14, ly); ctx.lineTo(bx + bw - 14, ly + (k % 2 ? 2 : -2)); ctx.stroke(); }
+        }
         for (let k = 0; k < cols; k++) {
             const it = items[r * cols + k]; if (!it) break;
             const x = pad + k * (cartW + gap);
             const dim = !!(o.gray && it.state !== 'finished');
-            await drawCart(ctx, it, x, top, cartW, cartH, p, cols <= 7, dim, o.plain);
-            if (showTitles) { ctx.font = `600 ${cols <= 5 ? 20 : 17}px ${FONT}`; ctx.fillStyle = dim ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.92)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ellipsis(ctx, it.title, cartW + gap - 8), x + cartW / 2, by + 24 + (boardH - 44) / 2 + 10); }
+            await drawCart(ctx, it, x, top, cartW, cartH, p, !tiny && cols <= 7, dim, tiny ? true : o.plain);
+            if (showTitles) { ctx.font = `600 ${cols <= 5 ? 20 : 17}px ${FONT}`; ctx.fillStyle = dim ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.92)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ellipsis(ctx, it.title, cartW + gap - 8), x + cartW / 2, top + cartH - 6 + 24 + (boardH - 44) / 2 + 10); }
         }
     }
     footer(ctx, H - 70, p, false);
@@ -340,7 +348,9 @@ export async function renderShelf(items, o) {
 
 // ---------- 3) lista de cards ----------
 export async function renderCards(items, o) {
-    const p = pal(), n = items.length, cols = 2, pad = 48, gap = 22, cw = (W - pad * 2 - gap) / 2, chh = 214;
+    const p = pal(), n = items.length;
+    const tiny = !!o.tiny;   // "Capas minúsculas": 4 por linha, card curto, sem selos
+    const cols = tiny ? 4 : 2, pad = 48, gap = 22, cw = (W - pad * 2 - gap * (cols - 1)) / cols, chh = tiny ? 122 : 214;
     const rows = Math.ceil(n / cols);
     const tmp = document.createElement('canvas').getContext('2d'); tmp.font = `800 62px ${FONT}`;
     const hh = (wrap(tmp, o.title, W - 112, 2).length * 70) + (o.subtitle ? 100 : 40) + 170;
@@ -351,32 +361,34 @@ export async function renderCards(items, o) {
     const y0 = header(ctx, p, o.title, o.subtitle, false) + 4;
     for (let i = 0; i < n; i++) {
         const it = items[i], x = pad + (i % cols) * (cw + gap), y = y0 + Math.floor(i / cols) * (chh + gap);
-        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8; rr(ctx, x, y, cw, chh, 22); ctx.fillStyle = p.card; ctx.fill(); ctx.restore();
-        rr(ctx, x, y, cw, chh, 22); ctx.lineWidth = it.is100 ? 3 : 1.5; ctx.strokeStyle = it.is100 ? p.star : p.border; ctx.stroke();
-        const img = await loadImg(it.image), iw = 118, ih = chh - 36, ix = x + 18, iy = y + 18;
+        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8; rr(ctx, x, y, cw, chh, tiny ? 14 : 22); ctx.fillStyle = p.card; ctx.fill(); ctx.restore();
+        rr(ctx, x, y, cw, chh, tiny ? 14 : 22); ctx.lineWidth = it.is100 ? 3 : 1.5; ctx.strokeStyle = it.is100 ? p.star : p.border; ctx.stroke();
+        const img = await loadImg(it.image), iw = tiny ? 68 : 118, ih = chh - 36, ix = x + 18, iy = y + 18;
         const dim = !!(o.gray && it.state !== 'finished');
         if (img) {
             if (dim) { ctx.save(); try { ctx.filter = 'grayscale(1)'; } catch (e) {} coverFit(ctx, img, ix, iy, iw, ih, 12); ctx.restore(); }
             else coverFit(ctx, img, ix, iy, iw, ih, 12);
-        } else { rr(ctx, ix, iy, iw, ih, 12); ctx.fillStyle = rgba(p.muted, 0.2); ctx.fill(); ctx.fillStyle = p.muted; ctx.font = `800 54px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText((it.title.trim()[0] || '?').toUpperCase(), ix + iw / 2, iy + ih / 2); }
+        } else { rr(ctx, ix, iy, iw, ih, 12); ctx.fillStyle = rgba(p.muted, 0.2); ctx.fill(); ctx.fillStyle = p.muted; ctx.font = `800 ${tiny ? 30 : 54}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText((it.title.trim()[0] || '?').toUpperCase(), ix + iw / 2, iy + ih / 2); }
         const tx = ix + iw + 18, tw = cw - iw - 18 * 3;
-        ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = `800 29px ${FONT}`; ctx.fillStyle = p.text;
-        const tl = wrap(ctx, it.title, tw - (it.state === 'finished' && it.userRating ? 70 : 0), 2);
-        tl.forEach((l, k) => ctx.fillText(l, tx, y + 42 + k * 34));
-        const my = y + 42 + tl.length * 34 + 8;
-        await metaLine(ctx, tx, my, it, { size: 21, color: p.muted, maxW: tw });
-        // selos (opcionais: podem ser desligados na janela de compartilhamento)
-        let cx2 = tx, cy2 = my + 16; const chips = o.chips === false ? [] : chipsFor(it, o.mode, p).slice(0, 4);
-        for (const ch of chips) {
-            ctx.font = `700 13px ${FONT}`; const w2 = Math.min(ctx.measureText(ch.t).width + 16, tw);
-            if (cx2 + w2 > tx + tw) { cx2 = tx; cy2 += 24; if (cy2 > y + chh - 28) break; }
-            const r = pill(ctx, cx2, cy2, ellipsis(ctx, ch.t, w2 - 16), { size: 13, padX: 8, bg: ch.bg, border: ch.border, fg: ch.fg || '#fff' }); cx2 += r.w + 5;
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = `800 ${tiny ? 21 : 29}px ${FONT}`; ctx.fillStyle = p.text;
+        const tl = wrap(ctx, it.title, tw - (!tiny && it.state === 'finished' && it.userRating ? 70 : 0), 2);
+        tl.forEach((l, k) => ctx.fillText(l, tx, y + (tiny ? 30 : 42) + k * (tiny ? 26 : 34)));
+        const my = y + (tiny ? 34 : 42) + tl.length * (tiny ? 26 : 34) + (tiny ? 4 : 8);
+        await metaLine(ctx, tx, my, it, { size: tiny ? 17 : 21, color: p.muted, maxW: tw });
+        // selos (podem ser desligados na janela de compartilhamento; minúsculas não usa)
+        if (!tiny) {
+            let cx2 = tx, cy2 = my + 16; const chips = o.chips === false ? [] : chipsFor(it, o.mode, p).slice(0, 4);
+            for (const ch of chips) {
+                ctx.font = `700 13px ${FONT}`; const w2 = Math.min(ctx.measureText(ch.t).width + 16, tw);
+                if (cx2 + w2 > tx + tw) { cx2 = tx; cy2 += 24; if (cy2 > y + chh - 28) break; }
+                const r = pill(ctx, cx2, cy2, ellipsis(ctx, ch.t, w2 - 16), { size: 13, padX: 8, bg: ch.bg, border: ch.border, fg: ch.fg || '#fff' }); cx2 += r.w + 5;
+            }
         }
-        if (it.state === 'finished' && it.userRating) {
+        if (!tiny && it.state === 'finished' && it.userRating) {
             const bx = x + cw - 46, by = y + 44;
             ctx.beginPath(); ctx.arc(bx, by, 30, 0, Math.PI * 2); ctx.fillStyle = p.star; ctx.fill();
             ctx.fillStyle = '#241a00'; ctx.textAlign = 'center'; ctx.font = `900 28px ${FONT}`; ctx.fillText(String(it.userRating), bx, by + 1);
-        } else if (dim) { rr(ctx, x, y, cw, chh, 22); ctx.fillStyle = 'rgba(12,12,18,0.45)'; ctx.fill(); }
+        } else if (dim) { rr(ctx, x, y, cw, chh, tiny ? 14 : 22); ctx.fillStyle = 'rgba(12,12,18,0.45)'; ctx.fill(); }
     }
     footer(ctx, H - 66, p, false);
     return c;
@@ -480,11 +492,14 @@ async function build() {
         if (S.kind === 'gamerid') canvas = await renderGamerId();
         else if (S.kind === 'game') canvas = await renderGameCard(S.game);
         else {
-            const per = PER_PAGE[S.style], pages = Math.max(1, Math.ceil(S.items.length / per));
+            // "Capas minúsculas": tudo numa imagem só (sem paginação)
+            const tiny = !!($('sh-tiny') && $('sh-tiny').checked);
+            const per = tiny ? 99999 : PER_PAGE[S.style];
+            const pages = Math.max(1, Math.ceil(S.items.length / per));
             S.page = Math.min(S.page, pages - 1);
-            const slice = S.items.slice(S.page * per, (S.page + 1) * per);
+            const slice = tiny ? S.items : S.items.slice(S.page * per, (S.page + 1) * per);
             const title = S.title + (pages > 1 ? ` · parte ${S.page + 1}/${pages}` : '');
-            const o = { title, subtitle: S.subtitle, titles: $('sh-titles').checked, mode: S.mode, gray: S.gray, plain: !!appData.settings.shelfPlain, chips: $('sh-chips').checked };
+            const o = { title, subtitle: S.subtitle, titles: $('sh-titles').checked, mode: S.mode, gray: S.gray, plain: !!appData.settings.shelfPlain, chips: $('sh-chips').checked, tiny };
             canvas = S.style === 'shelf' ? await renderShelf(slice, o) : await renderCards(slice, o);
             $('sh-pages').style.display = pages > 1 ? '' : 'none';
             $('sh-page-label').textContent = `Parte ${S.page + 1} de ${pages}`;

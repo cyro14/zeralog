@@ -93,6 +93,7 @@ function installGlobals() {
     if (!globalThis.Image) globalThis.Image = class { constructor() { this.width = 300; this.height = 200; } set src(v) { setTimeout(() => this.onload && this.onload(), 0); } };
     if (!globalThis.Path2D) globalThis.Path2D = class { constructor() {} };
     if (!globalThis.URL.createObjectURL) { globalThis.URL.createObjectURL = () => 'blob:teste'; globalThis.URL.revokeObjectURL = () => {}; }
+    if (!globalThis.createImageBitmap) globalThis.createImageBitmap = async () => ({ width: 600, height: 900, close() {} });   // para testar a capa vertical end-to-end
 }
 installGlobals();
 
@@ -108,7 +109,12 @@ globalThis.fetch = async (url, opts) => {
     if (fetchMap) {
         for (const [key, data] of fetchMap) {
             if (u.includes(key)) {
-                return { ok: true, status: 200, json: async () => data, text: async () => JSON.stringify(data) };
+                return {
+                    ok: true, status: 200,
+                    json: async () => data,
+                    text: async () => JSON.stringify(data),
+                    blob: async () => new Blob([Buffer.alloc(300, 120)], { type: 'image/jpeg' }),   // >200 bytes, tipo imagem
+                };
             }
         }
     }

@@ -172,11 +172,14 @@ export async function applyRawgGame(base) {
         document.getElementById('game-time-unit').value = 'h';
     }
     document.getElementById('game-extra').open = true;
-    // Sempre tenta a capa vertical (Steam, Wikipédia); se não achar, usa a arte horizontal da RAWG
+    // Sempre tenta a capa vertical (Steam, Wikipédia); se não achar, usa a arte horizontal
+    // da RAWG. Com a preferência "horizontais", pula a busca vertical e vai direto na arte.
     box.innerHTML = '<div class="rawg-msg">Buscando a capa vertical...</div>';
     let coverNote = '';
     let auto = null;
-    try { auto = await autoVerticalCover(g.title, g.rawgId); } catch (e) { /* segue sem */ }
+    if (appData.settings.autoCoverPref !== 'horizontal') {
+        try { auto = await autoVerticalCover(g.title, g.rawgId); } catch (e) { /* segue sem */ }
+    }
     if (auto) { pendingCover = auto.data; updateCoverPreview(pendingCover); coverNote = ` Capa vertical: ${auto.source}.`; }
     else if (g.image) {
         pendingCover = await coverToDataURL(g.image);
@@ -1974,6 +1977,13 @@ export function importBackup(event) {
 }
 
 export function saveRawgKey(value) { setRawgKey(value); triggerToast(value.trim() ? 'Chave da RAWG salva.' : 'Voltou para a chave padrão.'); }
+
+// Preferência de capas automáticas: vertical (padrão) ou horizontal
+export function saveCoverPref(value) {
+    appData.settings.autoCoverPref = value === 'horizontal' ? 'horizontal' : 'vertical';
+    saveData(null);
+    triggerToast(appData.settings.autoCoverPref === 'horizontal' ? 'Capas automáticas: horizontais.' : 'Capas automáticas: verticais.');
+}
 export function saveIGDBKey(value) { setAccessToken(value); triggerToast(value.trim() ? 'Chave da IGDB salva.' : 'Chave da IGDB removida — as capas continuam vindo do Steam/HLTB/Wikipédia.'); }
 
 // ---------- Loja: link de afiliado da Amazon (fixo, não configurável pelo usuário) ----------
@@ -2025,6 +2035,8 @@ export function openSettings() {
     document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
     const sgdbInput = document.getElementById('sgdb-key-input');
     if (sgdbInput) sgdbInput.value = getAccessToken()
+    const coverPref = document.getElementById('cover-pref-select');
+    if (coverPref) coverPref.value = appData.settings.autoCoverPref === 'horizontal' ? 'horizontal' : 'vertical';
     renderThemePicker();
     paintPlatformDisplay();
     updateStorageMeter();

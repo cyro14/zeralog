@@ -139,12 +139,21 @@ export async function enrichStoreGames(newGames) {
                     if (!g.description && d.description) g.description = d.description;
                     hit++;
                 }
-                // Capa retrato: Steam (600×900) e Wikipédia; sem sorte, arte horizontal da RAWG
+                // Capa: respeita a preferência do usuário (vertical é o padrão).
+                // Sem sorte na vertical, o jogo fica sem capa e a retomada do boot
+                // tenta de novo em segundo plano — a biblioteca não fica poluída
+                // de artes horizontais que o usuário não pediu.
                 if (!g.image) {
                     if (!g.rawgId && d) g.rawgId = d.rawgId;
-                    const cov = await autoVerticalCover(g.title, g.rawgId).catch(() => null);
-                    if (cov && cov.data) { g.image = cov.data; g.wideCover = false; }
-                    else if (d && d.image) { const wide = await coverToDataURL(d.image).catch(() => d.image); g.image = wide; g.wideCover = true; }
+                    if (appData.settings.autoCoverPref === 'horizontal') {
+                        if (d && d.image) {
+                            const wide = await coverToDataURL(d.image).catch(() => d.image);
+                            if (wide) { g.image = wide; g.wideCover = true; }
+                        }
+                    } else {
+                        const cov = await autoVerticalCover(g.title, g.rawgId).catch(() => null);
+                        if (cov && cov.data) { g.image = cov.data; g.wideCover = false; }
+                    }
                 }
                 done++;
                 syncShow(`${storeName}: buscando dados e capas`, done, newGames.length);

@@ -97,15 +97,13 @@ export async function autoVerticalCover(title, rawgId) {
         wikipedia(title),
         hltb(title)
     ]);
-    if (sg.status === 'fulfilled') cands.push(...sg.value.filter(c => c.vertical));
+    // BUGFIX histórico: este bloco referenciava "sg" (variável que não existia —
+    // o nome certo é "sc") e o erro era engolido pelos .catch() das chamadas.
+    // Resultado: a capa vertical "nunca era achada" e tudo caía na arte horizontal.
+    if (sc.status === 'fulfilled') cands.push(...sc.value.filter(c => c.vertical));
     if (st.status === 'fulfilled') { id = st.value.id || id; cands.push(...st.value.list); }
     if (hl.status === 'fulfilled') cands.push(...hl.value);
     if (wp.status === 'fulfilled') cands.push(...wp.value.filter(c => c.vertical));
-    for (const c of cands) {
-        // Remover capas horizontais da lista IGDB se necessário
-    }
-    // Nota: a busca IGDB já foi feita em autoVerticalCover acima
-    // As próximas fontes são Steam, HLTB e Wikipédia
     for (const c of cands) {
         const blob = await fetchImageBlob(c.url);
         if (!blob) continue;

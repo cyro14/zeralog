@@ -80,3 +80,26 @@ test('contadores do Gamer ID refletem a biblioteca real', async () => {
     const nums = ['1', '1', '1'];
     assert(nums.every(n => t.includes(n)), 'números corretos nos contadores');
 });
+
+test('"Capas minúsculas": tudo numa imagem só, sem paginação', async () => {
+    gamingData();
+    // 50 jogos: a prateleira normal pagina (40/página) — minúscula não pode paginar
+    for (let i = 0; i < 50; i++) appData.games.push({ id: 'm' + i, title: 'Mini ' + i, platform: 'PC', state: 'backlog' });
+    document.getElementById('sh-tiny').checked = true;
+    openShare({ items: appData.games, mode: 'home', title: 'Tudo numa imagem', style: 'shelf' });
+    await sleep(80);
+    assertEq(elById('sh-pages').style.display, 'none', 'paginador escondido (1 página só)');
+    const status = elById('sh-status').textContent || '';
+    assert(status.includes('53'), `status conta todos os jogos (${status})`);
+    document.getElementById('sh-tiny').checked = false;
+});
+
+test('prateleira normal continua paginando (contraste com minúsculas)', async () => {
+    gamingData();
+    for (let i = 0; i < 50; i++) appData.games.push({ id: 'n' + i, title: 'Norm ' + i, platform: 'PC', state: 'backlog' });
+    document.getElementById('sh-tiny').checked = false;
+    openShare({ items: appData.games, mode: 'home', title: 'Prateleira normal', style: 'shelf' });
+    await sleep(80);
+    assert(elById('sh-pages').style.display !== 'none', 'paginador visível');
+    assert((elById('sh-page-label').textContent || '').includes('parte') || (elById('sh-page-label').textContent || '').includes('Parte'), 'label de páginas presente');
+});

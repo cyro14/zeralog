@@ -9,7 +9,7 @@ export const homeSortLabels = { 'manual': 'Manual', 'az': 'A-Z', 'time': 'Tempo 
 export const sortLabels = { 'date': 'Data', 'rating': 'Nota', 'time': 'Tempo', 'played': 'Horas Jogadas', 'portable': 'Portátil' };
 
 export const defaultData = {
-    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', homeView: 'shelf', wishView: 'shelf', platformDisplay: 'icon', shelfPlain: true, steam: {} },
+    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', homeView: 'shelf', wishView: 'shelf', platformDisplay: 'icon', shelfPlain: true, autoCoverPref: 'vertical', steam: {} },
     collapsedCats: [], 
     categories: [ { id: 'c1', name: 'Cartas e Estratégia' }, { id: 'c2', name: 'Plataforma 3D' } ],
     platforms: [
@@ -45,7 +45,7 @@ export function migrateData(data) {
     if (!isObj(data)) data = clone(defaultData);
     ['categories', 'games', 'wikis', 'wishlist', 'collapsedCats', 'unlockedAchievements', 'savedFilters'].forEach(k => { if (!Array.isArray(data[k])) data[k] = []; });
     if (!Array.isArray(data.platforms)) data.platforms = clone(defaultData.platforms);
-    data.settings = { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', wishSort: 'release', wishView: 'shelf', homeView: 'shelf', platformDisplay: 'icon', shelfPlain: true, ...(isObj(data.settings) ? data.settings : {}) };   // shelfPlain: padrão ligado (quem desligou fica desligado)
+    data.settings = { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', wishSort: 'release', wishView: 'shelf', homeView: 'shelf', platformDisplay: 'icon', shelfPlain: true, autoCoverPref: 'vertical', ...(isObj(data.settings) ? data.settings : {}) };   // shelfPlain/autoCoverPref: padrões ligados (quem mudou fica como está)
     // Uma única vez: abrir direto no modo Prateleira (novo padrão visual)
     if (!data.settings.vShelfDefault) { data.settings.homeView = 'shelf'; data.settings.wishView = 'shelf'; data.settings.finishedView = 'shelf'; data.settings.vShelfDefault = 1; }
     if (!isObj(data.settings.steam)) data.settings.steam = {};   // login/sync da Steam (id, chave, categoria)
