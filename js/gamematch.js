@@ -422,7 +422,7 @@ function gmPlatLabel(g) {
 }
 
 function cardHtml(g, idx) {
-    const img = g.image ? resizeUrl(g.image, 640) : null;
+    const img = g._vcover || (g.image ? resizeUrl(g.image, 640) : null);
     const match = g._match ?? matchScore(g);
     const mcls = match >= 90 ? 'hi' : match >= 70 ? 'mid' : 'lo';
     const year = g.released ? String(g.released).slice(0, 4) : (g.tba ? 'Em breve' : '');
@@ -483,6 +483,42 @@ export async function renderDeck() {
     if (DEPS.hydrateIcons) DEPS.hydrateIcons(deck);
     const h = document.getElementById('gm-deck-hint');
     if (h) h.textContent = usingDemo ? `${plannedDeck.length} jogos de demonstração (modo offline)` : `Restam ${plannedDeck.length} jogos no seu deck`;
+    upgradeDeckCovers();   // capas verticais em segundo plano (a horizontal é o placeholder)
+}
+
+// ---------- Capas verticais do deck: busca em segundo plano ----------
+// A RAWG só devolve arte horizontal na listagem — enquanto a vertical não chega,
+// o card mostra a horizontal (cropped). Assim que a vertical é achada, o card
+// re-renderiza com a capa de verdade.
+let coverUpgrading = false;
+async function upgradeDeckCovers() {
+    if (coverUpgrading) return;
+    const candidates = plannedDeck.filter(g => g.rawgId > 0 && !g._vcover && !g._vcoverTried).slice(0, 6);
+    if (!candidates.length) return;
+    coverUpgrading = true;
+    for (const g of candidates) {
+        g._vcoverTried = true;   // não tenta de novo no mesmo jogo (economia de API)
+        try {
+            const cov = await autoVerticalCover(g.title, g.rawgId);
+            if (cov && cov.data) {
+                g._vcover = cov.data;
+                // re-renderiza a carta se ela ainda está no deck visível
+                const idx = plannedDeck.indexOf(g);
+                if (idx >= 0 && idx < 3) {
+                    const deck = document.getElementById('gm-deck');
+                    if (deck) {
+                        const el = deck.querySelectorAll('.gm-card')[idx];
+                        if (el) {
+                            const img = el.querySelector('.gm-cover img');
+                            if (img) img.src = cov.data;
+                        }
+                    }
+                }
+            }
+        } catch (e) { /* segue para a próxima */ }
+        await new Promise(r => setTimeout(r, 300));   // não sobrecarrega
+    }
+    coverUpgrading = false;
 }
 
 // ---------- Gestos de arrasto (toque e mouse) ----------
@@ -564,7 +600,7 @@ export const GM_EXPLORE_CATS = [
     { id: 'top', label: 'Mais bem avaliados' }
 ];
 const exploreState = {};   // cat -> { page, items: [], more }
-let exploreById = new Map();      // id -> objeto de jogo (p/ página do jogo e ações)
+export let exploreById = new Map();      // id -> objeto de jogo (p/ página do jogo e ações)
 let classicDecade = '';           // '' | '1980' | '1990' | '2000' | '2010'
 let exploreCat = 'you';
 
@@ -806,6 +842,9 @@ export function gmGoogle(rawgId) {
 }
 
 // ---------- Página em tela cheia de um jogo do Explorar ----------
+// A capa PRINCIPAL é vertical (box art); a arte horizontal da RAWG vira o
+// fundo e o banner "capa de Facebook". Se a vertical não for achada, mostra
+// a horizontal mesmo (é melhor que nada).
 export async function gmXOpen(rawgId) {
     const g = exploreById.get(rawgId) || plannedDeck.find(x => x.rawgId === rawgId);
     if (!g) return;
@@ -819,13 +858,16 @@ export async function gmXOpen(rawgId) {
     el.id = 'gm-xpage';
     el.className = 'gm-xpage';
     if (bannerSrc) el.classList.add('with-banner');
+    // A capa do hero começa com a horizontal (placeholder) — a vertical entra
+    // logo abaixo, sem re-render, quando a busca em segundo plano responde
+    const heroImg = g._vcover || img;
     el.innerHTML = `
         ${img ? `<div class="gp-bg"><img src="${esc(img)}" alt=""></div>` : ''}
         <div class="gp-scroll">
             <button type="button" class="gp-back" onclick="gmXClose()">‹ Voltar</button>
             ${bannerSrc ? `<div class="gp-banner"><img src="${esc(resizeUrl(bannerSrc, 1280))}" alt="" onclick="window.viewImage && window.viewImage('${esc(bannerSrc)}')"></div>` : ''}
             <div class="gp-hero">
-                ${img ? `<img class="gp-cover" src="${esc(img)}" alt="">` : `<div class="gp-cover gp-cover-empty">${esc(g.title.slice(0, 2))}</div>`}
+                ${heroImg ? `<img class="gp-cover" id="gm-x-hero" src="${esc(heroImg)}" alt="">` : `<div class="gp-cover gp-cover-empty">${esc(g.title.slice(0, 2))}</div>`}
                 <div class="gp-hero-info">
                     <span class="gm-match gm-match-${m >= 90 ? 'hi' : m >= 70 ? 'mid' : 'lo'}">${m}% Match</span>
                     <h2>${esc(g.title)}</h2>
@@ -848,6 +890,16 @@ export async function gmXOpen(rawgId) {
     document.body.appendChild(el);
     if (window.zlNavPush) window.zlNavPush(() => { if (document.getElementById('gm-xpage')) { gmXClose(); return true; } return false; });
     requestAnimationFrame(() => el.classList.add('open'));
+    // Capa vertical em paralelo com a descrição — assim que chega, troca o hero
+    if (rawgId > 0 && !g._vcover) {
+        autoVerticalCover(g.title, rawgId).then(cov => {
+            if (cov && cov.data) {
+                g._vcover = cov.data;
+                const hero = document.getElementById('gm-x-hero');
+                if (hero && el.contains(hero)) hero.src = cov.data;   // ainda é a página deste jogo
+            }
+        }).catch(() => {});
+    }
     try {
         const d = await getGameDetails(rawgId);
         const box = document.getElementById('gm-xdesc');
