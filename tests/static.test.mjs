@@ -82,6 +82,10 @@ test('Botões: todo manipulador de evento chama função que existe no window', 
             }
         }
     }
+    // funções removidas do app não podem estar referenciadas no HTML
+    for (const gone of ['setHomeView', 'setWishView', 'toggleCompact']) {
+        if (bound.has(gone)) missing.add(`REMOVIDA mas ainda no window: ${gone}`);
+    }
     assertEq([...missing].sort().join(', '), '', 'onclick chamando função sem binding no window');
 });
 
@@ -108,7 +112,7 @@ test('Módulos: todo import nomeado existe como export no módulo alvo', () => {
 // ---------- 4) GUARDA DE HTML: ids essenciais usados pelo JS existem no index.html ----------
 test('HTML: ids essenciais referenciados pelo JS existem no index.html', () => {
     const html = read(join(ROOT, 'index.html'));
-    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades'])
+    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades', 'quick-match', 'qm-body', 'qm-count', 'sh-tiny'])
         assert(html.includes(`id="${id}"`), `index.html deveria ter #${id}`);
 });
 

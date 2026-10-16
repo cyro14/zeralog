@@ -45,12 +45,6 @@ export function changeTheme(theme) {
     if (document.getElementById('tab-stats').classList.contains('active')) updateStatsAndCharts();   // gráficos pegam as cores do tema
 }
 
-export function toggleCompact(val) { 
-    appData.settings.compact = val; 
-    document.body.classList.toggle('compact-mode', val); 
-    saveData(); 
-}
-
 export function toggleShelfPlain(val) {
     appData.settings.shelfPlain = !!val;
     document.body.classList.toggle('shelf-plain', !!val);
@@ -59,13 +53,12 @@ export function toggleShelfPlain(val) {
 
 export function saveStateForUndo() { setBackupData(JSON.stringify(appData)); }
 
-export function undoAction() { 
-    if (backupData) { 
-        setAppData(JSON.parse(backupData)); 
-        document.body.classList.toggle('compact-mode', appData.settings.compact); 
-        saveData(() => { render(); filterGames(); }); 
-        document.getElementById('undo-toast').classList.remove('show'); 
-        setBackupData(null); 
+export function undoAction() {
+    if (backupData) {
+        setAppData(JSON.parse(backupData));
+        saveData(() => { render(); filterGames(); });
+        document.getElementById('undo-toast').classList.remove('show');
+        setBackupData(null);
     } 
 }
 
@@ -473,7 +466,6 @@ export function render() {
     renderWishlist();
     renderFilterBars();
     renderQuickMatch();
-    renderViewToggles();
     renderFinishedTab();
     filterGames();
     checkNewAchievements();
@@ -496,7 +488,7 @@ export function renderFinishedTab() {
         activeChip.innerText = sortLabels[appData.settings.finishedSort] + (appData.settings.finishedSortDir === 'asc' ? ' ↑' : ' ↓');
     }
 
-    const view = ['timeline', 'shelf'].includes(appData.settings.finishedView) ? appData.settings.finishedView : 'list';
+    const view = appData.settings.finishedView === 'timeline' ? 'timeline' : 'shelf';   // "list" (cards) foi removido: sempre prateleira ou timeline
     ['list', 'timeline', 'shelf'].forEach(v => document.getElementById(`fin-view-${v}`).classList.toggle('active', view === v));
     document.getElementById('fin-sort-bar').style.display = view === 'timeline' ? 'none' : '';
 
@@ -1040,16 +1032,10 @@ export function saveGame() {
     triggerToast(gameId ? 'Informações atualizadas.' : (wish ? 'Adicionado à wishlist.' : 'Jogo adicionado com sucesso!'));
 }
 
-// ================= PRATELEIRA (SHELF VIEW) =================
-export function fillList(listEl, games, shelf = appData.settings.homeView === 'shelf') {
-    listEl.classList.toggle('shelf', !!shelf);
-    games.forEach(g => listEl.appendChild(shelf ? createShelfItem(g) : createGameElement(g)));
-}
-
-export function renderViewToggles() {
-    const v = appData.settings.homeView === 'shelf' ? 'shelf' : 'list';
-    document.getElementById('home-view-list').classList.toggle('active', v === 'list');
-    document.getElementById('home-view-shelf').classList.toggle('active', v === 'shelf');
+// ================= PRATELEIRA (única visualização da fila) =================
+export function fillList(listEl, games) {
+    listEl.classList.add('shelf');
+    games.forEach(g => listEl.appendChild(createShelfItem(g)));
 }
 
 export function createShelfItem(g, kind = 'game') {
@@ -1513,9 +1499,6 @@ export function renderWishlist() {
     const all = appData.wishlist || [];
     document.getElementById('count-wish').innerText = all.length;
     Object.keys(WISH_SORTS).forEach(k => { const el = document.getElementById(`sort-wish-${k}`); if (el) el.classList.toggle('active', appData.settings.wishSort === k); });
-    const shelf = appData.settings.wishView === 'shelf';
-    document.getElementById('wish-view-list').classList.toggle('active', !shelf);
-    document.getElementById('wish-view-shelf').classList.toggle('active', shelf);
     box.innerHTML = '';
     renderWishSummary(all);
     if (!all.length) { box.innerHTML = '<div class="empty-state">Sua wishlist está vazia. Adicione os jogos que pretende comprar ou baixar.</div>'; return; }
@@ -1526,8 +1509,8 @@ export function renderWishlist() {
         cat.className = `category wish-sec wish-${sec.key}`;
         cat.innerHTML = `<div class="category-header"><div class="cat-title-area"><h2>${sec.title}</h2><span class="chip">${sec.list.length}</span></div></div><div class="game-list-wrapper"><ul class="game-list"></ul></div>`;
         const ul = cat.querySelector('ul');
-        ul.classList.toggle('shelf', shelf);
-        sec.list.forEach(w => ul.appendChild(shelf ? createShelfItem(w, 'wish') : createWishElement(w)));
+        ul.classList.add('shelf');
+        sec.list.forEach(w => ul.appendChild(createShelfItem(w, 'wish')));
         box.appendChild(cat);
     });
     syncReleaseWatch();
@@ -1610,8 +1593,7 @@ export function askDeleteWish(id) {
 }
 
 // ================= LINHA DO TEMPO (ZERADOS) =================
-export function setFinishedView(view) { appData.settings.finishedView = ['timeline', 'shelf'].includes(view) ? view : 'list'; saveData(() => render()); }
-export function setHomeView(view) { appData.settings.homeView = view === 'shelf' ? 'shelf' : 'list'; saveData(() => render()); }
+export function setFinishedView(view) { appData.settings.finishedView = view === 'timeline' ? 'timeline' : 'shelf'; saveData(() => render()); }   // prateleira ou linha do tempo (o modo "cards" foi removido)
 export function setTimelineDir() { appData.settings.timelineDir = appData.settings.timelineDir === 'asc' ? 'desc' : 'asc'; saveData(() => render()); }
 
 function parseFinishedDate(str) {
@@ -1961,14 +1943,13 @@ export function importBackup(event) {
             if (imported && imported.games) { 
                 saveStateForUndo(); 
                 setAppData(migrateData(imported)); 
-                if (!appData.settings) appData.settings = { sort: 'manual', compact: false, finishedSortDir: 'desc', homeSortDir: 'asc' }; 
+                if (!appData.settings) appData.settings = { sort: 'manual', compact: false, finishedSortDir: 'desc', homeSortDir: 'asc' };
                 if (!appData.settings.homeSortDir) appData.settings.homeSortDir = 'asc';
-                if (!appData.collapsedCats) appData.collapsedCats =[]; 
+                if (!appData.collapsedCats) appData.collapsedCats =[];
                 if (!appData.platforms) appData.platforms = defaultData.platforms;
-                document.body.classList.toggle('compact-mode', appData.settings.compact); 
-                saveData(() => render()); 
-                closeModal('modal-backup-info'); 
-                triggerToast('Restaurado!'); 
+                saveData(() => render());
+                closeModal('modal-backup-info');
+                triggerToast('Restaurado!');
             } 
         } catch (err) { alert("Erro ao ler o arquivo."); } 
         event.target.value = ''; 
@@ -2042,7 +2023,6 @@ export function openSettings() {
     updateStorageMeter();
     paintNotifySettings();
     renderSteamSettings();   // painel da Steam (status, botões, chave)
-    document.getElementById('compact-toggle').checked = appData.settings.compact;
     document.getElementById('shelf-plain-toggle').checked = !!appData.settings.shelfPlain;
     cancelEditPlatform();
     renderPlatformAdmin();

@@ -46,6 +46,10 @@ export function migrateData(data) {
     ['categories', 'games', 'wikis', 'wishlist', 'collapsedCats', 'unlockedAchievements', 'savedFilters'].forEach(k => { if (!Array.isArray(data[k])) data[k] = []; });
     if (!Array.isArray(data.platforms)) data.platforms = clone(defaultData.platforms);
     data.settings = { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', wishSort: 'release', wishView: 'shelf', homeView: 'shelf', platformDisplay: 'icon', shelfPlain: true, autoCoverPref: 'vertical', ...(isObj(data.settings) ? data.settings : {}) };   // shelfPlain/autoCoverPref: padrões ligados (quem mudou fica como está)
+    // O modo "cards" (lista) foi removido: quem tinha 'list' em qualquer aba volta para 'shelf'
+    if (data.settings.homeView === 'list') data.settings.homeView = 'shelf';
+    if (data.settings.wishView === 'list') data.settings.wishView = 'shelf';
+    if (data.settings.finishedView === 'list') data.settings.finishedView = 'shelf';
     // Uma única vez: abrir direto no modo Prateleira (novo padrão visual)
     if (!data.settings.vShelfDefault) { data.settings.homeView = 'shelf'; data.settings.wishView = 'shelf'; data.settings.finishedView = 'shelf'; data.settings.vShelfDefault = 1; }
     if (!isObj(data.settings.steam)) data.settings.steam = {};   // login/sync da Steam (id, chave, categoria)

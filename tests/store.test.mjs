@@ -40,3 +40,14 @@ test('migrateData: filtros salvos por aba sempre existem como listas', () => {
     for (const t of ['home', 'finished', 'wish'])
         assert(Array.isArray(d.settings.filters[t]), `filters.${t} é lista`);
 });
+
+test('migrateData: o modo "cards" foi removido — quem tinha "list" volta para "shelf"', () => {
+    // vShelfDefault=1 simula usuário existente (a migração one-time já rodou)
+    const d = migrateData({ settings: { homeView: 'list', wishView: 'list', finishedView: 'list', vShelfDefault: 1 } });
+    assertEq(d.settings.homeView, 'shelf', 'home');
+    assertEq(d.settings.wishView, 'shelf', 'wish');
+    assertEq(d.settings.finishedView, 'shelf', 'finished');
+    // quem já tinha shelf/timeline não é mexido
+    const d2 = migrateData({ settings: { homeView: 'shelf', finishedView: 'timeline', vShelfDefault: 1 } });
+    assertEq(d2.settings.finishedView, 'timeline', 'timeline preservado');
+});

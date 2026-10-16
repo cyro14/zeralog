@@ -80,17 +80,16 @@
 
     <!-- HOME TAB -->
     <div id="tab-home" class="tab-content active">
-        <button class="btn-roulette" onclick="spinRoulette()"><span class="ic-lead" data-icon="dice"></span>Sortear: o que jogar agora?</button>
-
-        <details class="quick-match" id="quick-match">
-            <summary><span class="ic-lead" data-icon="sliders" data-size="1em"></span>Quick Match: por humor<span class="qm-count" id="qm-count"></span></summary>
-            <div id="qm-body" class="qm-body"></div>
+        <details class="btn-roulette-wrap" id="quick-match">
+            <summary class="btn-roulette">
+                <span class="ic-lead" data-icon="dice"></span>Sortear: o que jogar agora?
+                <span class="qm-count" id="qm-count"></span>
+            </summary>
+            <div class="qm-expanded">
+                <button type="button" class="pill-btn primary qm-spin" onclick="spinRoulette()"><span data-icon="dice" data-size="1.1em"></span> Sortear agora!</button>
+                <div id="qm-body" class="qm-body"></div>
+            </div>
         </details>
-        
-        <div class="view-toggle" role="group" aria-label="Modo de exibição da fila">
-            <button type="button" id="home-view-list" onclick="setHomeView('list')">Cards</button>
-            <button type="button" id="home-view-shelf" onclick="setHomeView('shelf')">Prateleira</button>
-        </div>
 
         <div class="tab-tools" data-tab="home">
             <button type="button" class="tool-btn" onclick="openFilters('home')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-home" style="display:none"></span></button>
@@ -183,10 +182,6 @@
             <button type="button" onclick="openGameModal('wishlist')">+ Desejo</button>
         </div>
         <div id="wish-summary"></div>
-        <div class="view-toggle" role="group" aria-label="Modo de exibição dos desejos">
-            <button type="button" id="wish-view-list" onclick="setWishView('list')">Cards</button>
-            <button type="button" id="wish-view-shelf" onclick="setWishView('shelf')">Prateleira</button>
-        </div>
         <div class="tab-tools" data-tab="wish">
             <button type="button" class="tool-btn" onclick="openFilters('wish')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-wish" style="display:none"></span></button>
             <button type="button" class="tool-btn" onclick="openShare('wish')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
@@ -206,7 +201,6 @@
     <!-- FINISHED TAB -->
     <div id="tab-finished" class="tab-content">
         <div class="view-toggle" role="group" aria-label="Modo de exibição">
-            <button type="button" id="fin-view-list" onclick="setFinishedView('list')">Lista</button>
             <button type="button" id="fin-view-timeline" onclick="setFinishedView('timeline')">Linha do tempo</button>
             <button type="button" id="fin-view-shelf" onclick="setFinishedView('shelf')">Prateleira</button>
         </div>
@@ -335,7 +329,7 @@
                     <button type="button" class="set-card" onclick="openSettingsSection('display')">
                         <span class="set-card-ic" data-icon="monitor" data-size="1.5em"></span>
                         <strong>Exibição</strong>
-                        <small>Cards e compacto</small>
+                        <small>Prateleira e exibição</small>
                     </button>
                     <button type="button" class="set-card" onclick="openSettingsSection('data')">
                         <span class="set-card-ic" data-icon="library" data-size="1.5em"></span>
@@ -417,7 +411,6 @@
                     <button type="button" id="plat-disp-name" onclick="setPlatformDisplay('name')">Nome</button>
                 </div>
             </div>
-            <div class="setting-row"><label style="font-weight: bold;">Modo Compacto:</label><input type="checkbox" id="compact-toggle" onchange="toggleCompact(this.checked)" style="width: 20px; height: 20px; accent-color: var(--accent-playing);"></div>
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 4px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                     <label for="shelf-plain-toggle" style="font-weight: bold;">Prateleira limpa (sem caixinha):</label>

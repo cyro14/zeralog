@@ -156,7 +156,7 @@ input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
 button { background-color: var(--accent-add); color: var(--on-accent); border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
 button:hover { opacity: 0.8; }
 .btn-add-cat { display: block; width: 100%; padding: 15px; margin-top: 10px; font-size: 1.1em; }
-.btn-roulette { background-color: var(--accent-playing); display: block; width: 100%; padding: 15px; margin-bottom: 20px; font-size: 1.1em; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+/* (o .btn-roulette solto foi unificado com o Quick Match num único <details> .btn-roulette-wrap) */
 
 .btn-icon { background-color: transparent; font-size: 1.2em; padding: 5px; border-radius: 50%; color: var(--text-main); }
 .btn-icon:hover { background-color: rgba(128, 128, 128, 0.2); }
@@ -570,11 +570,16 @@ body.session-on { padding-top: calc(20px + 42px + env(safe-area-inset-top, 0px))
 .session-actions button { flex: 1 1 auto; }
 
 /* ===== Quick Match ===== */
-.quick-match { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; margin: 12px 0 4px; }
-.quick-match summary { cursor: pointer; padding: 12px 14px; font-weight: 700; display: flex; align-items: center; list-style: none; }
-.quick-match summary::-webkit-details-marker { display: none; }
-.quick-match summary .qm-count { margin-left: auto; font-size: 0.8em; font-weight: 600; color: var(--text-muted); }
-.qm-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+/* Sortear/Quick Match: UM botão que expande para mostrar os filtros de humor.
+   O summary tem a mesma cara do botão antigo (azul, largo, chamativo). */
+.btn-roulette-wrap { margin-bottom: 20px; border-radius: 12px; overflow: hidden; }
+.btn-roulette-wrap summary { background-color: var(--accent-playing); display: flex; width: 100%; padding: 15px; font-size: 1.1em; font-weight: 700; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); cursor: pointer; list-style: none; align-items: center; gap: 8px; }
+.btn-roulette-wrap summary::-webkit-details-marker { display: none; }
+.btn-roulette-wrap[open] summary { border-radius: 12px 12px 0 0; margin-bottom: 0; }
+.btn-roulette-wrap summary .qm-count { margin-left: auto; font-size: 0.75em; font-weight: 600; color: var(--on-accent); opacity: 0.8; }
+.qm-expanded { background: var(--card-bg); border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 12px 12px; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.qm-spin { align-self: stretch; padding: 12px; font-size: 1em; }
+.qm-body { display: flex; flex-direction: column; gap: 12px; }
 .qm-group { display: flex; flex-direction: column; gap: 6px; }
 .qm-label { font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; color: var(--text-muted); }
 .qm-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
