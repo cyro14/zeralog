@@ -211,7 +211,7 @@ body {
    perfil como círculo no canto superior direito, salvar e notificações ao lado. */
 @media (min-width: 900px) {
     body {
-        padding-left: 200px;
+        padding-left: 220px;
         padding-top: 16px;
         padding-right: 20px;
         padding-bottom: 20px;

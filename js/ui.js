@@ -492,7 +492,7 @@ export function renderFinishedTab() {
     }
 
     const view = appData.settings.finishedView === 'timeline' ? 'timeline' : 'shelf';   // "list" (cards) foi removido: sempre prateleira ou timeline
-    ['list', 'timeline', 'shelf'].forEach(v => document.getElementById(`fin-view-${v}`).classList.toggle('active', view === v));
+    ['timeline', 'shelf'].forEach(v => { const el = document.getElementById(`fin-view-${v}`); if (el) el.classList.toggle('active', view === v); });
     document.getElementById('fin-sort-bar').style.display = view === 'timeline' ? 'none' : '';
 
     if (finishedGames.length === 0) {
