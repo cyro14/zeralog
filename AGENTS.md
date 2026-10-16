@@ -80,6 +80,14 @@ pegariam os dois hoje.
   (o teste de integridade exige), `levelFromXp`/`gamerXp`/`rankOf` (níveis são
   derivados das conquistas — nada é migrado), `buildContext` alimenta os testes
   de detecção. Testes: `tests/achievements.test.mjs`.
+- `js/icons.js` — ícones Phosphor + `STORE_ICONS`/`brandImg`: os logos das lojas
+  (Steam, GOG, Epic, Itch.io, Amazon Games) usam SEMPRE `brandImg` (classe
+  `.brand-ico`) em hub, categoria e plataforma — é o que mantém a proporção
+  igual em todo lugar. O teste confere que todo `icons/...` citado existe.
+- `js/stores.js` + `js/steam.js` — categorias e plataformas das lojas ganham o
+  logo pela passada idempotente `applyStoreCatIcons()` (boot): preserva ícone
+  que o usuário escolheu, só troca os padrões antigos do app.
+  Testes: `tests/stores.test.mjs`.
 - `js/share.js` — imagens compartilháveis: TODAS levam o link
   `anywheregamer.blogspot.com/p/zeralog.html` no rodapé (teste confere), a
   janela `#modal-share` é tela cheia, e o Gamer ID (foto, nível, contadores,

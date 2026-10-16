@@ -84,6 +84,19 @@ export const platformIcons = {
     'default': icon('gamepad')
 };
 
+// Logos das lojas/conexões (arquivos da pasta /icons). O MESMO HTML (brandImg) é
+// usado no hub de Conexões, no ícone da plataforma da loja e no ícone da
+// categoria dela — assim todos ficam com a mesma proporção (quadradinho 1.2em,
+// igual aos ícones de plataforma; dentro de títulos de categoria vira 1em).
+export const STORE_ICONS = {
+    'Steam': 'icons/Steam.webp',
+    'GOG': 'icons/gog-galaxy.jpg',
+    'Epic Games': 'icons/Epic_Games_logo.svg.webp',
+    'Itch.io': 'icons/app-icon.svg',
+    'Amazon Games': 'icons/amazon_games_icon_by_reiloucobr_dern7rm-fullview.png'
+};
+export const brandImg = src => `<img src="${src}" alt="" class="brand-ico">`;
+
 export const iconNames = Object.keys(P);
 
 // Preenche os <span data-icon="nome"> do HTML estático

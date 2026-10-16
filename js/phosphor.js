@@ -1,4 +1,4 @@
-﻿// Ícones Phosphor (https://phosphoricons.com, licença MIT) via fonte oficial na CDN do jsDelivr.
+// Ícones Phosphor (https://phosphoricons.com, licença MIT) via fonte oficial na CDN do jsDelivr.
 // Guardamos só {name, weight}; o CSS do peso usado é carregado sob demanda.
 // Sem internet na primeira vez, o ícone não aparece (e o nome da categoria continua visível).
 import { esc } from './gameApi.js';
@@ -34,6 +34,13 @@ export function phHtml(ic) {
     const w = validWeight(ic.weight);
     ensurePhosphorCss(w);
     return `<i class="ph-ico ${cls(w)} ph-${ic.name}" aria-hidden="true"></i>`;
+}
+
+// Ícone de categoria/plataforma que pode ser Phosphor ({name, weight}) OU um
+// HTML pronto (logos de loja vindos de brandImg, ex.: Steam, GOG, Epic...).
+export function anyIconHtml(ic) {
+    if (typeof ic === 'string') return ic.includes('<') ? ic : '';
+    return phHtml(ic);
 }
 
 // Garante o CSS de ícones Phosphor que já estão salvos (categorias e plataformas)

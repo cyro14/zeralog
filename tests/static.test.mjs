@@ -2,7 +2,7 @@
 // coisa rodar: arquivo com encoding quebrado, botão chamando função que não existe
 // no window, e import de nome que o módulo alvo não exporta.
 import { test, assert, assertEq } from './shim.mjs';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -110,4 +110,17 @@ test('HTML: ids essenciais referenciados pelo JS existem no index.html', () => {
     const html = read(join(ROOT, 'index.html'));
     for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades'])
         assert(html.includes(`id="${id}"`), `index.html deveria ter #${id}`);
+});
+
+// ---------- 5) GUARDA DE ÍCONES: todo arquivo icons/... citado no código existe ----------
+// Um logo renomeado ou excluído quebraria o hub, plataformas e categorias.
+test('Ícones: todo icons/... referenciado no código existe na pasta', () => {
+    const missing = [];
+    const re = /icons\/[\w.\-]+\.(?:svg|webp|png|jpe?g)/g;
+    for (const p of [join(ROOT, 'index.html'), ...walk(JS)]) {
+        for (const m of read(p).matchAll(re)) {
+            if (!existsSync(join(ROOT, m[0]))) missing.push(`${rel(p)}: ${m[0]}`);
+        }
+    }
+    assertEq([...new Set(missing)].join(', '), '', 'arquivos de ícone faltando');
 });

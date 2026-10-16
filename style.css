@@ -1200,6 +1200,13 @@ body.gp-open { overflow: hidden; }
 .gp-sec[open] summary::after { transform: rotate(90deg); }
 .gp-sec-body { padding: 0 16px 16px; color: var(--text-muted); font-size: 0.95em; line-height: 1.6; }
 
+/* Logos das lojas (Steam, GOG, Epic, Itch.io, Amazon Games): o MESMO tamanho em
+   qualquer lugar que apareçam — chip de plataforma, categoria e afins.
+   Dentro de títulos de categoria (.cat-ico tem fonte maior) encolhe para casar
+   com a altura dos ícones Phosphor. */
+.brand-ico { width: 1.2em; height: 1.2em; vertical-align: middle; border-radius: 4px; object-fit: contain; flex-shrink: 0; }
+.cat-ico .brand-ico { width: 1em; height: 1em; }
+
 /* Janela de compartilhamento EM TELA CHEIA: o usuário vê exatamente o que vai
    compartilhar, com a prévia grande no meio da tela. */
 #modal-share { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: none; border-radius: 0; padding: 0; background: var(--bg-color); overflow: hidden; }

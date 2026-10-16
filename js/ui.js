@@ -6,7 +6,7 @@ import { renderStorageSettings } from './storage-ui.js';
 import { applyFilters, renderFilterBars, activeCount } from './filters.js';
 import { releaseState, countdownText, fmtDate, daysUntil, refreshReleaseDates, syncReleaseWatch, askNotifyIfNeeded } from './releases.js';
 import { applyTheme, renderThemePicker } from './themes.js';
-import { phHtml, openIconPicker } from './phosphor.js';
+import { phHtml, openIconPicker, anyIconHtml } from './phosphor.js';
 import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
 import { searchGames, getGameDetails, getGameScreenshots, shotsGalleryHtml, viewImage, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
@@ -450,7 +450,7 @@ export function render() {
         const catDiv = document.createElement('div'); catDiv.className = `category ${appData.collapsedCats.includes(cat.id) ? 'collapsed' : ''}`; catDiv.id = cat.id;
         catDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${cat.id}', event)">
-                <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span>${cat.icon ? `<span class="cat-ico">${phHtml(cat.icon)}</span>` : ''}<h2>${esc(cat.name)}</h2></div>
+                <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span>${cat.icon ? `<span class="cat-ico">${anyIconHtml(cat.icon)}</span>` : ''}<h2>${esc(cat.name)}</h2></div>
                 <div class="cat-actions">
                     ${steamOn ? `<button class="btn-icon" onclick="steamSyncUI()" title="Sincronizar com a Steam (jogos e horas)" aria-label="Sincronizar com a Steam">${icon('refresh')}</button>` : ''}
                     <button class="btn-icon" onclick="moveCategory('${cat.id}', -1)" title="Mover para Cima">${ICONS.up}</button>
@@ -798,7 +798,7 @@ export function pickCategoryIcon() {
 }
 export function clearCategoryIcon() { catIconDraft = null; paintCatIcon(); }
 export function openCatModal() { document.getElementById('cat-modal-title').innerText = 'Nova Categoria'; document.getElementById('edit-cat-id').value = ''; document.getElementById('cat-name').value = ''; catIconDraft = null; paintCatIcon(); document.getElementById('modal-cat').showModal(); }
-export function openEditCatModal(catId) { const cat = appData.categories.find(c => c.id === catId); document.getElementById('cat-modal-title').innerText = 'Editar Categoria'; document.getElementById('edit-cat-id').value = cat.id; document.getElementById('cat-name').value = cat.name; catIconDraft = cat.icon ? { ...cat.icon } : null; paintCatIcon(); document.getElementById('modal-cat').showModal(); }
+export function openEditCatModal(catId) { const cat = appData.categories.find(c => c.id === catId); document.getElementById('cat-modal-title').innerText = 'Editar Categoria'; document.getElementById('edit-cat-id').value = cat.id; document.getElementById('cat-name').value = cat.name; catIconDraft = (cat.icon && typeof cat.icon === 'object') ? { ...cat.icon } : null; paintCatIcon(); document.getElementById('modal-cat').showModal(); }   // logo de loja (string) não vai pro picker: se salvar sem escolher, o boot recoloca
 export function saveCategory() {
     const name = document.getElementById('cat-name').value.trim();
     const editId = document.getElementById('edit-cat-id').value;

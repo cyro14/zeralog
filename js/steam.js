@@ -12,7 +12,7 @@
 //    com as horas jogadas; as capas verticais são baixadas e salvas no app em segundo plano.
 import { appData, saveData } from './store.js';
 import { esc, blobToSmallJpeg, searchGames, guessFranchise } from './gameApi.js';
-import { platformIcons } from './icons.js';
+import { platformIcons, brandImg, STORE_ICONS } from './icons.js';
 import { syncShow, syncHide } from './syncbar.js';
 import { renderShopHub } from './stores.js';
 
@@ -150,11 +150,11 @@ export function steamLogout() {
     hooks.toast('Steam desconectada.', false);
 }
 
-// ---------- categoria "Steam" + plataforma "Steam" ----------
+// ---------- categoria "Steam" + plataforma "Steam" (com o logo de verdade) ----------
 function ensureSteamRefs() {
     let cat = appData.categories.find(c => c.id === st().catId) || appData.categories.find(c => normName(c.name) === 'steam');
-    if (!cat) { cat = { id: 'c' + Date.now(), name: 'Steam', icon: { name: 'steam-logo', weight: 'fill' } }; appData.categories.unshift(cat); }   // categorias novas entram primeiro na ordem
-    if (!cat.icon) cat.icon = { name: 'steam-logo', weight: 'fill' };
+    if (!cat) { cat = { id: 'c' + Date.now(), name: 'Steam' }; appData.categories.unshift(cat); }   // categorias novas entram primeiro na ordem
+    if (!cat.icon || (typeof cat.icon === 'object' && cat.icon.name === 'steam-logo')) cat.icon = brandImg(STORE_ICONS['Steam']);   // phosphor antigo vira o logo webp
     if (!appData.platforms.some(p => p.name === 'Steam')) appData.platforms.push({ name: 'Steam', icon: platformIcons['Steam'] });
     appData.settings.steam = { ...st(), catId: cat.id };
     return cat;

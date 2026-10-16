@@ -7,7 +7,7 @@
 import { appData, saveData } from './store.js';
 import { searchGames, esc, normText, coverToDataURL } from './gameApi.js';
 import { autoVerticalCover } from './covers.js';
-import { platformIcons } from './icons.js';
+import { platformIcons, brandImg, STORE_ICONS } from './icons.js';
 import { syncShow, syncHide } from './syncbar.js';
 
 // Mesmo Cloudflare Worker da Steam (js/steam.js): atualize-o com steam-proxy/worker.js novo,
@@ -60,17 +60,31 @@ let hooks = { render: () => {}, toast: () => {}, undo: () => {} };
 const $ = id => document.getElementById(id);
 const st = k => { const s = appData.settings.stores || (appData.settings.stores = {}); return s[k] || (s[k] = {}); };
 
-// Categoria e plataforma próprias de cada loja (criadas na primeira importação)
+// Categoria e plataforma próprias de cada loja (criadas na primeira importação).
+// As duas ganham o logo da loja como ícone.
 function ensureRefs(key) {
     const s = st(key), S = STORES[key];
     let cat = appData.categories.find(c => c.id === s.catId) || appData.categories.find(c => normText(c.name) === normText(S.name));
     if (!cat) { cat = { id: 'c' + Date.now(), name: S.name }; appData.categories.push(cat); }
+    if (!cat.icon) cat.icon = brandImg(STORE_ICONS[S.name]);
     if (!appData.platforms.some(p => normText(p.name) === normText(S.name))) {
-        const img = { gog: 'icons/gog.svg', epic: 'icons/epic.svg', itch: 'icons/itch.svg', amazon: 'icons/amazon.svg' }[key];
-        appData.platforms.push({ name: S.name, icon: img ? `<img src="${img}" alt="" style="width: 1.2em; height: 1.2em; vertical-align: middle; border-radius: 4px;">` : platformIcons.default });
+        appData.platforms.push({ name: S.name, icon: brandImg(STORE_ICONS[S.name]) });
     }
     s.catId = cat.id;
     return cat;
+}
+
+// Passada do boot: coloca o logo de cada loja (Steam incluída) na categoria e na
+// plataforma dela. Idempotente — preserva ícone que o usuário escolheu por conta
+// própria; só troca os padrões antigos do app (sem ícone, phosphor "steam-logo"
+// ou os SVGs genéricos das versões anteriores).
+export function applyStoreCatIcons() {
+    Object.entries(STORE_ICONS).forEach(([name, src]) => {
+        const cat = appData.categories.find(c => normText(c.name) === normText(name));
+        if (cat && (!cat.icon || (typeof cat.icon === 'object' && cat.icon.name === 'steam-logo'))) cat.icon = brandImg(src);
+        const p = appData.platforms.find(pl => normText(pl.name) === normText(name));
+        if (p && (!p.icon || /icons\/(gog|epic|itch|amazon)\.svg/.test(String(p.icon)))) p.icon = brandImg(src);
+    });
 }
 
 function newGame(key, title, catId) {
@@ -583,6 +597,7 @@ export async function itchSync() {
 
 export function initStores(h) {
     hooks = { ...hooks, ...h };
+    applyStoreCatIcons();   // logos nas categorias/plataformas das lojas (inclusive retroativo)
     const dlg = $('modal-settings');
     if (dlg) dlg.addEventListener('toggle', () => { if (dlg.open) renderAllStoreStatus(); });
     renderAllStoreStatus();
