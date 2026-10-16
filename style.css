@@ -1200,6 +1200,38 @@ body.gp-open { overflow: hidden; }
 .gp-sec[open] summary::after { transform: rotate(90deg); }
 .gp-sec-body { padding: 0 16px 16px; color: var(--text-muted); font-size: 0.95em; line-height: 1.6; }
 
+/* Janela de compartilhamento EM TELA CHEIA: o usuário vê exatamente o que vai
+   compartilhar, com a prévia grande no meio da tela. */
+#modal-share { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: none; border-radius: 0; padding: 0; background: var(--bg-color); overflow: hidden; }
+#modal-share::backdrop { background: var(--bg-color); }
+#modal-share .modal-form { display: flex; flex-direction: column; width: 100%; height: 100%; padding: 0; gap: 0; box-sizing: border-box; }
+#modal-share .flt-top { position: sticky; top: 0; z-index: 2; background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 14px 16px; margin: 0; }
+#modal-share .share-controls { padding: 12px 16px 0; display: flex; flex-direction: column; gap: 10px; }
+#modal-share .share-controls .view-toggle { align-self: flex-start; }
+#modal-share .share-controls #sh-title { background: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 999px; padding: 8px 14px; font-size: 0.95em; box-sizing: border-box; }
+#modal-share .share-preview { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 14px 16px; overflow: auto; background: color-mix(in srgb, var(--bg-color) 80%, #000); }
+#modal-share .share-preview img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); }
+#modal-share .share-pages { display: flex; align-items: center; justify-content: center; gap: 10px; padding-bottom: 4px; }
+#modal-share .modal-actions { position: sticky; bottom: 0; background: var(--card-bg); border-top: 1px solid var(--border-color); padding: 12px 16px; margin: 0; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+
+/* Nível/XP, conquistas e bio na aba Perfil */
+.gm-level-card { display: flex; align-items: center; gap: 14px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 14px 16px; margin: 12px 0 0; flex-wrap: wrap; }
+.gm-lv-badge { width: 74px; height: 74px; border-radius: 18px; background: linear-gradient(45deg, var(--accent-playing), var(--accent-finished)); color: var(--on-accent); display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+.gm-lv-badge span { font-size: 1.7em; font-weight: 900; line-height: 1; }
+.gm-lv-badge small { font-size: 0.55em; font-weight: 800; letter-spacing: 0.08em; opacity: 0.85; }
+.gm-lv-info { flex: 1; min-width: 180px; }
+.gm-lv-info strong { font-size: 1.05em; }
+.gm-lv-bar { height: 10px; border-radius: 5px; background: color-mix(in srgb, var(--text-muted) 25%, transparent); margin: 8px 0 6px; overflow: hidden; }
+.gm-lv-bar span { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--accent-playing), var(--accent-finished)); transition: width 0.4s; }
+.gm-lv-info small { color: var(--text-muted); font-size: 0.78em; }
+.gm-ach-mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 8px; padding: 12px 16px 16px; }
+.gm-ach-it { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 6px; }
+.gm-ach-it span { font-size: 0.72em; font-weight: 700; color: var(--text-main); }
+.gm-ach-it small { font-size: 0.68em; color: var(--accent-finished); font-weight: 700; }
+.gm-ach-it.off { opacity: 0.45; filter: grayscale(1); }
+.gm-ach-it:not(.off) { border-color: color-mix(in srgb, var(--accent-finished) 55%, var(--border-color)); }
+#gm-bio { width: 100%; box-sizing: border-box; background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; font: inherit; resize: vertical; }
+
 /* Créditos (desenvolvedora/publicadora) e galeria de screenshots abaixo da descrição */
 .gp-extra { padding: 0 16px 16px; }
 .gp-cred { margin-top: 10px; font-size: 0.88em; color: var(--text-muted); }

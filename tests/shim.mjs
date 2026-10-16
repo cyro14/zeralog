@@ -27,14 +27,38 @@ const byId = new Map();
 export const created = [];
 export function elById(id) { return byId.get(id); }
 
+// contexto 2D falso: no-ops para tudo, mas fillText/strokeText GRAVAM o texto
+// desenhado em el._texts — assim os testes conferem o CONTEÚDO das imagens.
+function ctx2dStub(el) {
+    const texts = [];
+    el._texts = texts;
+    const grad = () => ({ addColorStop() {} });
+    return new Proxy({}, {
+        get(t, k) {
+            if (typeof k === 'symbol') return undefined;
+            if (k === 'measureText') return s => ({ width: String(s).length * 8 });
+            if (k === 'createLinearGradient' || k === 'createRadialGradient' || k === 'createPattern') return grad;
+            if (k === 'fillText' || k === 'strokeText') return s => { texts.push(String(s)); };
+            if (k === 'getImageData') return () => ({ data: new Uint8ClampedArray(4 * 24 * 24) });
+            if (k === 'createImageData') return () => ({ data: new Uint8ClampedArray(4) });
+            return t[k] !== undefined ? t[k] : () => undefined;
+        },
+        set(t, k, v) { t[k] = v; return true; }
+    });
+}
+
 function makeEl() {
     const el = {
-        innerHTML: '', className: '', id: '', value: '', hidden: false, files: [], dataset: {}, style: {}, isConnected: true, _cls: [],
+        innerHTML: '', className: '', id: '', value: '', hidden: false, files: [], dataset: {}, style: {}, isConnected: true, _cls: [], _shown: 0, _texts: [],
         classList: { add(...c) { el._cls.push(...c); }, remove() {}, toggle() {}, contains: () => false },
         appendChild(c) { return c; }, addEventListener() {}, removeEventListener() {}, remove() {},
         querySelector: () => makeEl(), querySelectorAll: () => [], closest: () => makeEl(),
         contains: () => true, getBoundingClientRect: () => ({ top: 0, bottom: 10, left: 10, right: 100, width: 90 }),
         click() {}, focus() {}, blur() {}, close() {},
+        showModal() { el._shown++; },  // <dialog> aberto (a tela cheia de compartilhar)
+        getContext() { if (!el._ctx2d) el._ctx2d = ctx2dStub(el); return el._ctx2d; },
+        toBlob(cb) { setTimeout(() => cb(new Blob(['x'], { type: 'image/png' })), 0); },
+        toDataURL() { return 'data:image/png;base64,TESTE'; },
     };
     return el;
 }
@@ -64,6 +88,11 @@ function installGlobals() {
     globalThis.prompt = globalThis.prompt || (() => null);
     if (!globalThis.dispatchEvent) globalThis.dispatchEvent = () => true;
     if (!globalThis.CustomEvent) globalThis.CustomEvent = class { constructor(type, opts) { this.type = type; this.detail = opts && opts.detail; } };
+    // peças de canvas/imagem usadas pelos desenhos de compartilhamento (share.js)
+    if (!globalThis.getComputedStyle) globalThis.getComputedStyle = () => ({ getPropertyValue: () => '' });
+    if (!globalThis.Image) globalThis.Image = class { constructor() { this.width = 300; this.height = 200; } set src(v) { setTimeout(() => this.onload && this.onload(), 0); } };
+    if (!globalThis.Path2D) globalThis.Path2D = class { constructor() {} };
+    if (!globalThis.URL.createObjectURL) { globalThis.URL.createObjectURL = () => 'blob:teste'; globalThis.URL.revokeObjectURL = () => {}; }
 }
 installGlobals();
 

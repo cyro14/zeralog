@@ -7,6 +7,8 @@ import { listGames, esc, normText, resizeUrl, guessFranchise, getGameDetails, se
 import { autoVerticalCover } from './covers.js';
 import { icon } from './icons.js';
 import { fetchPersona } from './steam.js';
+import { ACHIEVEMENTS, gamerXp, levelFromXp, rankOf } from './achievements.js';
+import { openGamerIdShare } from './share.js';
 
 const gm = () => appData.gamematch || (appData.gamematch = {});
 let DEPS = { toast: (m) => console.log(m), render: null };   // injetado por initGameMatch (main.js)
@@ -900,6 +902,10 @@ export function renderGmProfile() {
     const steam = appData.settings.steam || {};
     const photo = appData.settings.userPhoto || steam.avatar || '';
     const name = p.name || steam.persona || 'Seu Gamer';
+    // Nível/XP: somados das conquistas desbloqueadas
+    const xp = gamerXp(), lvl = levelFromXp(xp), rank = rankOf(lvl.level);
+    const unlocked = new Set(appData.unlockedAchievements || []);
+    const bio = String(appData.settings.profileBio || '').trim();
     el.innerHTML = `
     <div class="gm-p-head">
         ${photo ? `<img class="gm-p-photo" src="${esc(photo)}" alt="Foto de ${esc(name)}">` : `<div class="gm-p-avatar">${esc((name || 'G')[0].toUpperCase())}</div>`}
@@ -914,6 +920,28 @@ export function renderGmProfile() {
         ${appData.settings.userPhoto ? `<button type="button" class="pill-btn" id="gp-photo-del" title="Volta para a foto da Steam (ou para a inicial)">${icon('trash', { size: '1em' })} Remover</button>` : ''}
         <input type="file" id="gp-photo-file" accept="image/*" hidden>
     </div>
+    <div class="gm-level-card">
+        <div class="gm-lv-badge"><span>${lvl.level}</span><small>NÍVEL</small></div>
+        <div class="gm-lv-info">
+            <strong>${esc(rank)}</strong>
+            <div class="gm-lv-bar"><span style="width:${lvl.pct}%"></span></div>
+            <small>${lvl.into}/${lvl.need} XP para o nível ${lvl.level + 1} · ${xp} XP de conquistas</small>
+        </div>
+        <button type="button" class="pill-btn primary" id="gm-share-id">${icon('share', { size: '1em' })} Compartilhar Gamer ID</button>
+    </div>
+    <details class="gp-sec" open>
+        <summary>${icon('star', { size: '1em' })} Conquistas (${unlocked.size}/${ACHIEVEMENTS.length})</summary>
+        <div class="gm-ach-mini">
+            ${ACHIEVEMENTS.map(a => `<div class="gm-ach-it ${unlocked.has(a.id) ? '' : 'off'}" title="${esc(a.desc)}">${icon(a.icon, { size: '1.25em' })}<span>${esc(a.name)}</span><small>+${a.xp} XP</small></div>`).join('')}
+        </div>
+    </details>
+    <details class="gp-sec" open>
+        <summary>${icon('pen', { size: '1em' })} Sobre você (aparece no seu Gamer ID)</summary>
+        <div class="gp-sec-body">
+            <textarea id="gm-bio" rows="3" placeholder="Ex.: RPG de turnos acima de tudo. Zerando o backlog uma sessão por dia.">${esc(bio)}</textarea>
+            <div><button type="button" class="pill-btn" id="gm-bio-save" style="margin-top: 8px;">Salvar descrição</button></div>
+        </div>
+    </details>
     <div class="gm-p-chips">
         ${(p.genres || []).map(x => `<span class="chip chip-accent">${esc(x)}</span>`).join('')}
         ${(p.platforms || []).map(x => `<span class="chip">${esc(x)}</span>`).join('')}
@@ -956,6 +984,17 @@ export function renderGmProfile() {
     }
     const delBtn = el.querySelector('#gp-photo-del');
     if (delBtn) delBtn.addEventListener('click', () => { delete appData.settings.userPhoto; saveData(null); renderGmProfile(); });
+    // Botão do Gamer ID (abre a tela cheia de compartilhamento com o perfil)
+    const idBtn = el.querySelector('#gm-share-id');
+    if (idBtn) idBtn.addEventListener('click', () => openGamerIdShare());
+    // Descrição livre do perfil (vai no Gamer ID compartilhado)
+    const bioSave = el.querySelector('#gm-bio-save');
+    if (bioSave) bioSave.addEventListener('click', () => {
+        const ta = el.querySelector('#gm-bio');
+        appData.settings.profileBio = String((ta && ta.value) || '').trim();
+        saveData(null);
+        toast('Descrição salva!');
+    });
     // Steam conectada: se ainda não buscou o avatar (ou salvou o de 64px de versões
     // antigas), busca o avatarfull em segundo plano e atualiza quando chegar
     const oldAvatar = steam.avatar && steam.avatar.includes('_medium');

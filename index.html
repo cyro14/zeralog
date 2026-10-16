@@ -797,21 +797,23 @@
 
     <dialog id="modal-share" class="share-dialog-img">
         <div class="modal-form">
-            <div class="flt-top"><h3 style="margin: 0;">Compartilhar imagem</h3><button type="button" class="icon-btn" onclick="closeModal('modal-share')" aria-label="Fechar"><span data-icon="x"></span></button></div>
-            <div id="sh-style-row" class="view-toggle" role="group" aria-label="Estilo da imagem">
-                <button type="button" id="sh-style-shelf" onclick="shareSetStyle('shelf')">Prateleira</button>
-                <button type="button" id="sh-style-cards" onclick="shareSetStyle('cards')">Cards</button>
+            <div class="flt-top"><h3 style="margin: 0;" id="sh-heading">Compartilhar imagem</h3><button type="button" class="icon-btn" onclick="closeModal('modal-share')" aria-label="Fechar"><span data-icon="x"></span></button></div>
+            <div class="share-controls">
+                <div id="sh-style-row" class="view-toggle" role="group" aria-label="Estilo da imagem">
+                    <button type="button" id="sh-style-shelf" onclick="shareSetStyle('shelf')">Prateleira</button>
+                    <button type="button" id="sh-style-cards" onclick="shareSetStyle('cards')">Cards</button>
+                </div>
+                <input type="text" id="sh-title" placeholder="Título da imagem" oninput="shareTitleChanged()">
+                <label class="flag-row" id="sh-titles-row"><input type="checkbox" id="sh-titles" onchange="shareTitlesChanged()"><span>Mostrar os nomes dos jogos na prateleira</span></label>
+                <label class="flag-row" style="margin-top: -8px;"><input type="checkbox" id="sh-chips" checked onchange="shareTitlesChanged()"><span>Mostrar selos e tags nos cards</span></label>
+                <div id="sh-status" class="rawg-msg"></div>
+                <div id="sh-pages" class="share-pages" style="display: none;">
+                    <button type="button" class="pill-btn" onclick="sharePage(-1)">‹ Anterior</button>
+                    <span id="sh-page-label"></span>
+                    <button type="button" class="pill-btn" onclick="sharePage(1)">Próxima ›</button>
+                </div>
             </div>
-            <input type="text" id="sh-title" placeholder="Título da imagem" oninput="shareTitleChanged()">
-            <label class="flag-row" id="sh-titles-row"><input type="checkbox" id="sh-titles" onchange="shareTitlesChanged()"><span>Mostrar os nomes dos jogos na prateleira</span></label>
-            <label class="flag-row" style="margin-top: -8px;"><input type="checkbox" id="sh-chips" checked onchange="shareTitlesChanged()"><span>Mostrar selos e tags nos cards</span></label>
-            <div id="sh-status" class="rawg-msg"></div>
             <div class="share-preview"><img id="sh-preview" alt="Prévia da imagem"></div>
-            <div id="sh-pages" class="share-pages" style="display: none;">
-                <button type="button" class="pill-btn" onclick="sharePage(-1)">‹ Anterior</button>
-                <span id="sh-page-label"></span>
-                <button type="button" class="pill-btn" onclick="sharePage(1)">Próxima ›</button>
-            </div>
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="closeModal('modal-share')">Fechar</button>
                 <button class="btn-cancel" id="sh-share-btn" onclick="shareShare()">Compartilhar</button>

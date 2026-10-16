@@ -43,7 +43,10 @@ Convenções do `tests/shim.mjs`:
 - `assert(cond, msg)` / `assertEq(a, b, msg)` / `skipTest(motivo)`.
 - `mockFetch([['pedaço-da-url', resposta], ...])` para testes sem rede;
   `elById(id)` lê o que foi pintado; `created[0]` é o último elemento criado.
-- A suíte inteira roda em ~10s, sem nenhuma dependência externa (npm install
+- Para telas que desenham em canvas (share.js): o shim finge o contexto 2D e
+  **grava todo texto desenhado em `el._texts`** — teste o CONTEÚDO da imagem
+  por ali (ex.: nível, bio e o link do blog no Gamer ID).
+- A suíte inteira roda em ~15s, sem nenhuma dependência externa (npm install
   não é necessário — e não adicione dependências).
 
 **Guarde um bug de cada classe para sempre:** o bug do `ic` (variável de
@@ -73,5 +76,14 @@ pegariam os dois hoje.
   usuário, atalhos de capa/fundo). Testes: `tests/ui.test.mjs`.
 - `js/steam.js` — persona/avatar (sempre `avatarfull`), chave, logout.
   Testes: `tests/steam.test.mjs`.
+- `js/achievements.js` — gamificação: toda conquista tem `xp` único e positivo
+  (o teste de integridade exige), `levelFromXp`/`gamerXp`/`rankOf` (níveis são
+  derivados das conquistas — nada é migrado), `buildContext` alimenta os testes
+  de detecção. Testes: `tests/achievements.test.mjs`.
+- `js/share.js` — imagens compartilháveis: TODAS levam o link
+  `anywheregamer.blogspot.com/p/zeralog.html` no rodapé (teste confere), a
+  janela `#modal-share` é tela cheia, e o Gamer ID (foto, nível, contadores,
+  bio e prateleira de jogando) é renderizado por `renderGamerId()`.
+  Testes: `tests/share.test.mjs`.
 - `index.html` — onclicks, ids usados pelo JS, encoding.
   Testes: `tests/static.test.mjs`.

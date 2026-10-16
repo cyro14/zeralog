@@ -2,8 +2,10 @@
 // (inclusive já filtrados). Desenhadas direto num canvas, com as cores do tema e as logos do app.
 import { appData } from './store.js';
 import { fmtDate, daysUntil, countdownText } from './releases.js';
+import { ACHIEVEMENTS, gamerXp, levelFromXp, rankOf } from './achievements.js';
 
 const W = 1080;
+const BLOG_URL = 'anywheregamer.blogspot.com/p/zeralog.html';
 const FONT = '"Segoe UI", Roboto, system-ui, -apple-system, "Helvetica Neue", sans-serif';
 const LOGO_PATH = 'M4 4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4H4ZM4 6H20V12H4V6ZM10.59 17.41L7 13.83L8.41 12.41L10.59 14.58L15.59 9.59L17 11L10.59 17.41Z';
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -138,6 +140,10 @@ function footer(ctx, y, p, light) {
     drawLogo(ctx, x, y - 27, 54, p);
     ctx.textAlign = 'left'; ctx.fillStyle = fg; ctx.fillText(a, x + 68, y + 2);
     ctx.fillStyle = p.play; ctx.fillText(b, x + 68 + wa, y + 2);
+    // Link do app: presente em TODAS as imagens compartilháveis
+    ctx.font = `600 22px ${FONT}`; ctx.textAlign = 'center';
+    ctx.fillStyle = light ? 'rgba(255,255,255,0.72)' : p.muted;
+    ctx.fillText(BLOG_URL, W / 2, y + 34);
 }
 function header(ctx, p, title, subtitle, light) {
     const fg = light ? '#fff' : p.text, mu = light ? 'rgba(255,255,255,0.75)' : p.muted;
@@ -369,6 +375,85 @@ export async function renderCards(items, o) {
     return c;
 }
 
+// ---------- 4) Gamer ID: o perfil do jogador como imagem ----------
+// Foto, nível/XP, contadores, bio e a prateleira do que está jogando.
+export async function renderGamerId() {
+    const p = pal();
+    const steam = appData.settings.steam || {};
+    const gm = appData.gamematch || {};
+    const name = (gm.profile && gm.profile.name) || steam.persona || 'Seu Gamer';
+    const bio = String(appData.settings.profileBio || '').trim();
+    const photo = appData.settings.userPhoto || steam.avatar || '';
+    const xp = gamerXp(), lvl = levelFromXp(xp), rank = rankOf(lvl.level);
+    const playing = appData.games.filter(g => g.state === 'playing' && !g.continuous).slice(0, 7);
+    const backlog = appData.games.filter(g => !g.continuous && g.state !== 'finished' && g.state !== 'playing').length;
+    const zerados = appData.games.filter(g => !g.continuous && g.state === 'finished').length;
+    const unCount = (appData.unlockedAchievements || []).length;
+
+    const tmp = document.createElement('canvas').getContext('2d'); tmp.font = `500 30px ${FONT}`;
+    const bioLines = bio ? wrap(tmp, bio, W - 180, 4).length : 0;
+    const gap = 20, cw = Math.min(150, (W - 112 - (playing.length - 1) * gap) / Math.max(1, playing.length)), ch = cw * 1.5;
+    const H = Math.round(560 + bioLines * 42 + (playing.length ? 44 + ch + 20 : 0) + 100);
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    backdrop(ctx, H, p, null);
+    // topo: logo + selo GAMER ID
+    drawLogo(ctx, 56, 48, 54, p);
+    ctx.font = `800 38px ${FONT}`; ctx.fillStyle = p.text; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('ZeraLog', 124, 76);
+    pill(ctx, W - 262, 52, 'GAMER ID', { size: 26, padX: 24, bg: p.play, fg: '#fff' });
+    // foto do perfil (círculo), com a inicial de fallback
+    const ax = 128, ay = 218, ar = 78;
+    const av = await loadImg(photo);
+    if (av) {
+        ctx.save(); ctx.beginPath(); ctx.arc(ax, ay, ar, 0, Math.PI * 2); ctx.clip();
+        const s = Math.max(ar * 2 / av.width, ar * 2 / av.height);
+        ctx.drawImage(av, ax - av.width * s / 2, ay - av.height * s / 2, av.width * s, av.height * s); ctx.restore();
+    } else {
+        const g = ctx.createLinearGradient(ax - ar, ay - ar, ax + ar, ay + ar); g.addColorStop(0, p.play); g.addColorStop(1, p.fin);
+        ctx.beginPath(); ctx.arc(ax, ay, ar, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = `900 64px ${FONT}`; ctx.textAlign = 'center';
+        ctx.fillText((name.trim()[0] || '?').toUpperCase(), ax, ay + 4);
+    }
+    ctx.beginPath(); ctx.arc(ax, ay, ar, 0, Math.PI * 2); ctx.lineWidth = 4; ctx.strokeStyle = rgba(p.play, 0.85); ctx.stroke();
+    // nome, título e barra de XP
+    const nx = ax + ar + 34;
+    ctx.textAlign = 'left'; ctx.font = `800 58px ${FONT}`; ctx.fillStyle = p.text;
+    ctx.fillText(ellipsis(ctx, name, W - nx - 220), nx, 182);
+    ctx.font = `600 30px ${FONT}`; ctx.fillStyle = p.muted;
+    ctx.fillText(`Nível ${lvl.level} · ${rank}`, nx, 234);
+    const bw = Math.min(520, W - nx - 60), bx = nx, by = 258;
+    rr(ctx, bx, by, bw, 20, 10); ctx.fillStyle = rgba(p.muted, 0.25); ctx.fill();
+    const g2 = ctx.createLinearGradient(bx, by, bx + bw, by); g2.addColorStop(0, p.play); g2.addColorStop(1, p.fin);
+    rr(ctx, bx, by, Math.max(20, bw * (lvl.into / lvl.need)), 20, 10); ctx.fillStyle = g2; ctx.fill();
+    ctx.font = `600 22px ${FONT}`; ctx.fillStyle = p.muted;
+    ctx.fillText(`${lvl.into}/${lvl.need} XP para o nível ${lvl.level + 1} · ${xp} XP · ${unCount}/${ACHIEVEMENTS.length} conquistas`, nx, by + 40);
+    // contadores
+    const sy = 356, sw = (W - 112 - 3 * 18) / 4, sh = 120;
+    [['Jogando', playing.length], ['No backlog', backlog], ['Zerados', zerados], ['Conquistas', unCount]].forEach(([label, n], i) => {
+        const x = 56 + i * (sw + 18);
+        rr(ctx, x, sy, sw, sh, 16); ctx.fillStyle = rgba(p.card, 0.92); ctx.fill();
+        rr(ctx, x, sy, sw, sh, 16); ctx.lineWidth = 1.5; ctx.strokeStyle = p.border; ctx.stroke();
+        ctx.textAlign = 'center'; ctx.font = `900 54px ${FONT}`; ctx.fillStyle = p.text; ctx.fillText(String(n), x + sw / 2, sy + 48);
+        ctx.font = `600 24px ${FONT}`; ctx.fillStyle = p.muted; ctx.fillText(label, x + sw / 2, sy + 92);
+    });
+    // bio livre
+    let y = sy + sh + 46;
+    if (bio) {
+        ctx.font = `italic 500 30px ${FONT}`; ctx.fillStyle = p.text; ctx.textAlign = 'left';
+        wrap(ctx, bio, W - 180, 4).forEach((l, i) => ctx.fillText(l, 56, y + i * 42));
+        y += bioLines * 42 + 26;
+    }
+    // prateleira do que está jogando
+    if (playing.length) {
+        ctx.font = `800 34px ${FONT}`; ctx.fillStyle = p.text; ctx.textAlign = 'left';
+        ctx.fillText('Jogando agora', 56, y + 14); y += 40;
+        for (let i = 0; i < playing.length; i++) await drawCart(ctx, playing[i], 56 + i * (cw + gap), y, cw, ch, p, false, false, true);
+    }
+    footer(ctx, H - 64, p, false);
+    return c;
+}
+
 // ---------- janela de compartilhamento ----------
 const $ = id => document.getElementById(id);
 const PER_PAGE = { shelf: 40, cards: 12 };
@@ -385,7 +470,8 @@ async function build() {
     status.textContent = 'Gerando a imagem...';
     try {
         let canvas;
-        if (S.kind === 'game') canvas = await renderGameCard(S.game);
+        if (S.kind === 'gamerid') canvas = await renderGamerId();
+        else if (S.kind === 'game') canvas = await renderGameCard(S.game);
         else {
             const per = PER_PAGE[S.style], pages = Math.max(1, Math.ceil(S.items.length / per));
             S.page = Math.min(S.page, pages - 1);
@@ -399,7 +485,7 @@ async function build() {
         S.blob = await blobOf(canvas);
         urls.forEach(u => URL.revokeObjectURL(u)); urls = [URL.createObjectURL(S.blob)];
         $('sh-preview').src = urls[0];
-        status.textContent = S.kind === 'game' ? '' : `${S.items.length} ${S.items.length === 1 ? 'jogo' : 'jogos'} na seleção.`;
+        status.textContent = S.kind === 'game' || S.kind === 'gamerid' ? '' : `${S.items.length} ${S.items.length === 1 ? 'jogo' : 'jogos'} na seleção.`;
     } catch (e) {
         console.error(e);
         status.textContent = 'Não consegui gerar a imagem (alguma capa externa bloqueou o canvas). Tente trocar as capas por imagens salvas no app.';
@@ -412,6 +498,7 @@ export function openShare({ items, mode, title, subtitle, style, gray }) {
     $('sh-style-row').style.display = '';
     $('sh-title').value = title; $('sh-title').style.display = ''; $('sh-titles-row').style.display = '';
     $('sh-titles').checked = items.length <= 24;
+    $('sh-heading').textContent = 'Compartilhar imagem';
     paintStyle();
     $('modal-share').showModal();
     build();
@@ -421,6 +508,15 @@ export function openCardGenerator(gameId) {
     if (!game) return;
     S = { kind: 'game', game, page: 0, blob: null, title: game.title };
     $('sh-style-row').style.display = 'none'; $('sh-title').style.display = 'none'; $('sh-titles-row').style.display = 'none'; $('sh-pages').style.display = 'none';
+    $('sh-heading').textContent = 'Cartão do jogo';
+    $('modal-share').showModal();
+    build();
+}
+// Gamer ID: o perfil (foto, nível, prateleira, contadores e bio) como imagem
+export function openGamerIdShare() {
+    S = { kind: 'gamerid', page: 0, blob: null, title: 'Meu Gamer ID' };
+    $('sh-style-row').style.display = 'none'; $('sh-title').style.display = 'none'; $('sh-titles-row').style.display = 'none'; $('sh-pages').style.display = 'none';
+    $('sh-heading').textContent = 'Seu Gamer ID';
     $('modal-share').showModal();
     build();
 }
