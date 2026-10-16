@@ -18,22 +18,23 @@
 3. [Funcionalidades](#funcionalidades)
 4. [Guia rápido de uso](#guia-rápido-de-uso)
 5. [Dados, backup e privacidade](#dados-backup-e-privacidade)
-6. [Serviços externos usados](#serviços-externos-usados)
-7. [Estrutura do projeto](#estrutura-do-projeto)
-8. [Rodando localmente](#rodando-localmente)
-9. [Modelo de dados](#modelo-de-dados)
-10. [Limitações conhecidas](#limitações-conhecidas)
-11. [Perguntas frequentes](#perguntas-frequentes)
-12. [Créditos](#créditos)
+6. [Banco de dados](#banco-de-dados)
+7. [Serviços externos usados](#serviços-externos-usados)
+8. [Estrutura do projeto](#estrutura-do-projeto)
+9. [Rodando localmente](#rodando-localmente)
+10. [Modelo de dados](#modelo-de-dados)
+11. [Limitações conhecidas](#limitações-conhecidas)
+12. [Perguntas frequentes](#perguntas-frequentes)
+13. [Créditos](#créditos)
 
 ---
 
 ## Visão geral
 
-- **Sem cadastro e sem backend.** Tudo fica salvo no `localStorage` do seu navegador. Você é dono dos dados e pode exportá-los a qualquer momento em um arquivo `.json`.
+- **Sem cadastro e sem servidor.** Tudo fica salvo no **IndexedDB** do seu navegador (banco local, com espaço para milhares de capas). Você é dono dos dados e pode exportá-los a qualquer momento em um arquivo `.json`.
 - **Feito para o celular.** Layout pensado para telas verticais, com ajustes para paisagem e desktop. Instalável como PWA.
 - **Automático quando você quer, manual quando precisa.** Digitou o nome do jogo? O app busca capa, gêneros, data de lançamento, nota do Metacritic, descrição e tempo médio. Prefere preencher na mão? Todos os campos continuam editáveis.
-- **Mais que uma lista.** Wishlist, Timer de Sessão, diário de bordo, linha do tempo, prateleira de cartuchos, franquias, gráficos de gênero e conquistas.
+- **Mais que uma lista.** Wishlist, Timer de Sessão com pausa e notificação na barra do celular, diário de bordo, linha do tempo, prateleira de cartuchos, franquias com busca de novos jogos, gráficos de gênero, capas verticais automáticas com recorte, 12 temas e conquistas, wishlist com datas de lançamento e avisos, filtros universais e imagens bonitas para compartilhar.
 
 ## Galeria
 
@@ -55,6 +56,32 @@ Capturas geradas com dados de exemplo (as capas são ilustrações de teste).
 |:---:|:---:|:---:|
 | ![Contínuos](docs/screenshots/10-continuos.jpg) | ![Wiki](docs/screenshots/11-wiki.jpg) | ![Cadastro automático](docs/screenshots/12-adicionar-automatico.jpg) |
 
+| Estatísticas em submenus | Franquia em sanfona | Adicionar da franquia |
+|:---:|:---:|:---:|
+| ![Submenus](docs/screenshots/14-estatisticas-submenus.jpg) | ![Sanfona](docs/screenshots/15-franquia-sanfona.jpg) | ![Adicionar da franquia](docs/screenshots/16-franquia-adicionar.jpg) |
+
+| Buscador de capas | Temas | Tema Oceano |
+|:---:|:---:|:---:|
+| ![Capas](docs/screenshots/17-buscador-de-capas.jpg) | ![Temas](docs/screenshots/18-temas.jpg) | ![Oceano](docs/screenshots/19-tema-oceano.jpg) |
+
+| Tema Papel | Tema Game Boy |
+|:---:|:---:|
+| ![Papel](docs/screenshots/20-tema-papel.jpg) | ![Game Boy](docs/screenshots/21-tema-gameboy.jpg) |
+
+| Recorte de capa | Imagem inteira | Sessão pausada | Configurações |
+|:---:|:---:|:---:|:---:|
+| ![Recorte](docs/screenshots/22-recorte-capa.jpg) | ![Imagem inteira](docs/screenshots/23-recorte-imagem-inteira.jpg) | ![Sessão pausada](docs/screenshots/24-sessao-pausada.jpg) | ![Configurações](docs/screenshots/25-configuracoes-sessao-capas.jpg) |
+
+| Wishlist com lançamentos | Painel de filtros | Prateleira filtrada |
+|:---:|:---:|:---:|
+| ![Wishlist](docs/screenshots/26-wishlist-lancamentos.jpg) | ![Filtros](docs/screenshots/27-filtros-painel.jpg) | ![Filtro na prateleira](docs/screenshots/28-filtro-prateleira.jpg) |
+
+Imagens geradas para compartilhar:
+
+| Prateleira filtrada | Cards dos zerados | Cartão de um jogo | Wishlist |
+|:---:|:---:|:---:|:---:|
+| ![Prateleira](docs/screenshots/29-imagem-prateleira-filtrada.jpg) | ![Cards](docs/screenshots/30-imagem-cards-zerados.jpg) | ![Cartão](docs/screenshots/31-cartao-do-jogo.jpg) | ![Wishlist](docs/screenshots/32-imagem-wishlist.jpg) |
+
 Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 
 ---
@@ -63,15 +90,15 @@ Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 
 ### 1. Fila e organização
 
-- **Categorias personalizadas.** Crie, renomeie, reordene (setas) e exclua categorias (ex.: "RPGs", "Aventura"). Cada categoria pode ser recolhida.
+- **Categorias personalizadas.** Crie, renomeie, reordene (setas) e exclua categorias (ex.: "RPGs", "Aventura"). Cada categoria pode ser recolhida e ganhar um **ícone da biblioteca [Phosphor](https://phosphoricons.com)** (veja [Ícones](#14-ícones-phosphor-e-plataformas-como-ícone)).
 - **Jogando Atualmente.** Os jogos marcados como "Jogando" sobem para uma seção destacada no topo.
-- **Plataformas editáveis.** PC, Nintendo, Playstation, Xbox e Mobile vêm de fábrica, com ícones em SVG. Adicione outras, renomeie ou troque o ícone por uma imagem sua (há atalho para buscar o logo no Google).
+- **Plataformas editáveis.** PC, Nintendo, Playstation, Xbox e Mobile vêm de fábrica, com ícones em SVG. Adicione outras, renomeie e troque o ícone por um **Phosphor**, por uma imagem sua ou por um logo achado no Google. Nos cards, a plataforma aparece como **ícone** (em vez do nome), com opção de voltar ao nome em Configurações.
 - **Filtros e busca.**
   - Barra de busca por título, franquia, **emulado**, **console original**, **dificuldade** e **contínuo** (ex.: digite `emulado`, `super nintendo` ou `dificil`; funciona sem acento).
   - Chips de plataforma e filtro **Portáteis** ("Ideal para portáteis").
 - **Ordenação da fila:** Manual, A-Z, Tempo e Portátil (crescente/decrescente).
 - **Modo compacto** (Configurações): lista densa, sem capas.
-- **Temas:** Escuro, Claro, Rosa Pastel e Drácula (Neon).
+- **12 temas** com seletor visual em Configurações: Escuro, Preto Total (AMOLED), Claro, Papel (sépia), Oceano, Floresta, Pôr do Sol, Nord, Drácula, Rosa Pastel, Game Boy e Alto Contraste. Cada tema tem contraste revisado e ajusta os controles nativos do navegador (listas, datas, barras de rolagem).
 - **Desfazer.** Ações de edição e exclusão aparecem com um aviso "Desfazer".
 
 ### 2. Cadastro de jogos (automático ou manual)
@@ -79,7 +106,11 @@ Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 - **Busca automática (botão 🌐 Auto).** Digite o nome, toque em **Auto** e escolha o jogo certo entre até 6 resultados. O app preenche **capa**, **descrição**, **gêneros** (traduzidos para PT), **data de lançamento**, **nota Metacritic** e **tempo médio** (via RAWG).
 - **Tudo editável.** Revise antes de salvar. Os campos extras ficam em "Mais detalhes".
 - **Atalhos úteis:** buscar o tempo no **HowLongToBeat**, a nota no **Metacritic** e a capa no Google.
-- **Capa leve.** A imagem é reduzida e salva em JPEG pequeno para não estourar o limite do `localStorage`.
+- **Capa leve.** A imagem é reduzida (lado maior de 420 px) e salva em JPEG pequeno. Como o banco é o IndexedDB, não existe mais o limite de ~5 MB do `localStorage`; em Configurações → **Banco de dados** você vê quanto espaço está usando.
+- **Capa vertical sempre que possível.** Ao usar a busca automática (🌐 Auto), o app procura sozinho a **capa vertical**: na **SteamGridDB** (com sua chave gratuita opcional), na **Steam** (600×900, achada pelo link da loja que a RAWG informa), no **HowLongToBeat** e na **Wikipédia**. Só se não achar nenhuma é que usa a arte horizontal da RAWG, e então avisa para você recortar.
+- **Recortar a capa.** O botão **Recortar** (no cadastro, e em **Recortar a capa** ao tocar na capa de um jogo) abre um recorte 2:3: arraste para posicionar, use o controle (ou a pinça/roda do mouse) para ampliar, **Preencher** para cobrir tudo ou **Imagem inteira** para encaixar a arte horizontal toda sobre um fundo desfocado.
+- **Trocar capa.** O buscador mostra as candidatas (Wikipédia, Steam e artes da RAWG) e você escolhe; as horizontais abrem direto o recorte. Fotos enviadas por você também podem ser recortadas.
+- **Capas da biblioteca inteira.** Em Configurações → **Capas verticais**, o botão **Buscar capas verticais da biblioteca** troca as capas horizontais ou ausentes por verticais, jogo a jogo, com progresso, opção de parar e **Desfazer**.
 - **Campos do jogo:** plataforma, tempo estimado (horas ou minutos), franquia, horas jogadas, diário de bordo, "Ideal para portáteis".
 - **Editar também os zerados.** Jogos concluídos têm o botão **ⓘ Dados do jogo** (editar e buscar automaticamente) e o botão de **editar conclusão** (nota, data, 100%, review).
 
@@ -106,16 +137,27 @@ Alterne **Cards ↔ Prateleira** na Fila e **Lista ↔ Linha do tempo ↔ Pratel
 - **toque em um cartucho** para abrir os detalhes (capa grande, selos, horas, review ou diário) e as ações rápidas: iniciar sessão, jogar agora, compartilhar, wiki, dados do jogo e editar conclusão;
 - busca e filtros continuam funcionando na prateleira.
 
-### 6. Wishlist (Desejos)
+### 6. Wishlist (Desejos): lançamentos e avisos
 
-- Aba própria para os jogos que você ainda quer comprar ou baixar, com o mesmo cadastro (inclusive busca automática), **observação** (preço, loja, link) e **categoria de destino**.
-- **Para a fila** e **Jogar agora** movem o jogo com um clique, levando capa, dados e franquia, sem redigitar nada.
+- Aba própria para os jogos que você quer comprar ou baixar, com o mesmo cadastro (inclusive a busca automática), **observação** (preço, loja, link) e **categoria de destino**.
+- **Data de lançamento.** O app puxa a data pela RAWG e mostra **data completa e contagem regressiva** ("Lança em 12 dias", "Lançado há 3 meses", "Data a confirmar"). A lista se organiza em **Em breve** (do lançamento mais próximo), **Já lançados** e **Sem data**, com ordenação por Lançamento, Adicionado, A-Z ou Nota e modo **Cards ou Prateleira**. Um resumo no topo mostra os lançamentos futuros e o próximo.
+- **Avisar quando lançar.** Se a data for futura, aparece a caixinha **Avisar quando lançar** (no cadastro e em cada card). No dia do lançamento o app avisa com uma notificação e um aviso na tela.
+  - O app confere ao abrir, ao voltar para ele e a cada hora com ele aberto.
+  - No Android com o app instalado, o service worker também confere **em segundo plano** (Periodic Background Sync, sem rede, só comparando as datas salvas). O horário é decidido pelo navegador, então pode atrasar; sem um servidor de notificações push não há garantia de hora exata.
+- **Datas sempre em dia.** Uma vez por dia o app atualiza as datas dos jogos ainda não lançados (ou sem data), e o botão **Atualizar datas** força a conferência. Se um lançamento for adiado, o aviso é rearmado.
+- **Para a fila** e **Jogar agora** movem o jogo com um clique, levando capa, dados e franquia.
 
-### 7. Timer de Sessão (modo imersivo)
+### 7. Timer de Sessão (modo imersivo) e notificação
 
-- Jogos em "Jogando" têm um botão ▶. Ao tocar, uma **barra discreta fixa no topo** mostra o jogo e o cronômetro em tempo real.
-- O horário de início fica salvo: o tempo continua correto mesmo se você **fechar a aba ou recarregar**.
-- Ao **Encerrar**, você ajusta os minutos (se fez pausas), vê a prévia "3,5h → 4,5h" e escolhe **Somar às horas**, **Descartar** ou **Continuar jogando**. Também pode **anotar no diário** na hora.
+- Jogos em "Jogando" têm um botão ▶. Ao tocar, uma **barra discreta fixa no topo** mostra o jogo, o cronômetro em tempo real e os botões **Pausar/Retomar** e **Finalizar**.
+- **Pausa de verdade:** o tempo parado não conta, e a barra fica âmbar enquanto pausada.
+- **Na barra de notificações do celular.** Ao iniciar a primeira sessão o app pede permissão para notificar. Com ela, aparece uma notificação ("Hades · Em sessão", com o tempo jogado) com os botões **Pausar/Retomar** e **Finalizar**:
+  - **Pausar/Retomar** funcionam direto na notificação, **mesmo com o app fechado**;
+  - **Finalizar** abre o app já na tela de fim de sessão, onde você confirma os minutos;
+  - o tempo na notificação é atualizado a cada minuto enquanto o app está ativo (o horário de início aparece sempre).
+  - Em Configurações dá para ligar/desligar (**Sessão na barra de notificações**) e ver se a permissão está liberada.
+- O estado da sessão fica salvo no navegador (e no IndexedDB, que o service worker `sw.js` lê): o tempo continua correto mesmo se você **fechar a aba ou recarregar**.
+- Ao **Finalizar**, você ajusta os minutos, vê a prévia "3,5h → 4,5h" e escolhe **Somar às horas**, **Descartar** ou **Continuar jogando**. Também pode **anotar no diário** na hora.
 - Uma sessão por vez.
 
 ### 8. Diário de Bordo
@@ -153,12 +195,42 @@ Cada jogo tem um botão de **lupa** que abre a wiki dele numa janela do próprio
 - **Localizar no texto (Ctrl+F).** Botão de lupa ou **Ctrl+F**: destaca todas as ocorrências (sem diferenciar maiúsculas ou acentos), mostra "3/12", navega com **Enter / Shift+Enter** e **Esc** fecha só a busca.
 - O conteúdo é buscado pela API e **sanitizado** (sem scripts, estilos ou eventos embutidos), por isso funciona mesmo em sites que bloqueiam iframe.
 
-### 12. Estatísticas
+### 11b. Filtros universais
 
-- **Painéis gerais:** zerados, jogando, fila, 100%, horas estimadas e gráfico de distribuição.
-- **Gêneros e distribuição.** Gráfico de pizza/rosca (Chart.js) com a proporção dos gêneros, legenda com contagem e %, bases **Jogados**, **Só zerados** (com filtro por **ano**) ou **Biblioteca inteira**. Sem Chart.js (offline), o app desenha uma pizza em SVG equivalente.
-- **Franquias.** Agrupe jogos por franquia/coleção (Zelda, Metroid, Dark Souls...) e veja **barra e % de conclusão por franquia**, progresso geral e quantas estão completas. Clicar numa franquia filtra a lista.
-- **Jogos Contínuos.** Horas isoladas por jogo (veja acima).
+Toda tela de jogos (**Fila, Zerados e Desejos**) tem o botão **Filtros**. Escolha **qualquer variável do app** e a própria tela mostra só os jogos que combinam:
+
+- **Categorias de filtro:** plataforma, gênero, franquia, categoria, status, dificuldade, **emulado** e **console original**, portátil, contínuo, 100%, tem capa, tem diário, wiki vinculada, **data de lançamento**, ainda não lançado, avisar no lançamento, **data em que zerou**, nota Metacritic, minha nota, tempo estimado, horas jogadas e texto (título, descrição, diário, review).
+- **Combinação:** vários filtros valem ao mesmo tempo (por exemplo, *emulado = sim* + *console = Super Nintendo* + *gênero = RPG*). Dentro de um mesmo filtro, vale qualquer valor marcado.
+- **Atalhos de data:** Este ano, Últimos 12 meses, Futuros e Já passou.
+- **Resultado na própria tela:** os filtros aparecem como chips removíveis; na **prateleira** o resultado vira uma prateleira nova, e as categorias sem resultado somem.
+- **Meus filtros:** salve uma combinação com um nome e reaplique depois. Os filtros ativos ficam salvos por tela.
+
+### 11c. Compartilhar imagens (jogo, cards e prateleira)
+
+O botão **Compartilhar** de cada tela (e o botão de compartilhar de um jogo zerado) gera uma imagem pronta para postar, com as cores do seu tema e as logos **ZeraLog x Anywhere Gamer**:
+
+- **Prateleira:** cartuchos sobre tábuas de madeira, selo dourado nos 100%, nota em cada capa e, se quiser, os nomes dos jogos.
+- **Cards:** lista em duas colunas com capa, plataforma (ícone), ano, gêneros e selos (nota, 100%, data, emulado, dificuldade, lançamento).
+- **Cartão de um jogo:** capa grande sobre fundo desfocado com a cor da capa, nota, selo 100%, plataforma, selos e um trecho da sua review.
+- A imagem respeita os **filtros ativos** (o subtítulo lista os filtros) e a ordem da tela. Mais de 40 jogos viram partes numeradas (12 por parte nos cards).
+- **Baixar imagem** salva um PNG; **Compartilhar** usa o menu do celular quando o navegador permite enviar arquivos.
+
+### 12. Estatísticas (em submenus)
+
+A aba **Status** é dividida em submenus, e a escolha fica salva:
+
+- **Visão geral:** zerados, jogando, fila, 100%, horas estimadas, nota média e gráfico de distribuição.
+- **Gêneros:** gráfico de pizza/rosca (Chart.js) com a proporção dos gêneros, legenda com contagem e %, bases **Jogados**, **Só zerados** (com filtro por **ano**) ou **Biblioteca inteira**. Sem Chart.js (offline), o app desenha uma pizza equivalente em SVG.
+- **Franquias:** veja abaixo.
+- **Contínuos:** horas isoladas por jogo (seção 9).
+- **Conquistas:** grade com todas as conquistas e o progresso (ex.: 12/21).
+
+**Franquias.** Agrupe jogos por franquia/coleção (Zelda, Metroid, Dark Souls...) e veja barra e % de conclusão por franquia, progresso geral e quantas estão completas.
+
+- **Toque em uma franquia** para abrir a lista dos jogos dela (capa, plataforma, status e nota; inclui os da wishlist). Uma franquia aberta por vez.
+- **Procurar mais jogos:** busca jogos da mesma série na RAWG (usa `game-series` quando você já tem jogos da franquia adicionados pela busca automática, mais uma busca pelo nome), escondendo os que você já tem.
+- **Toque em um resultado** para abrir o cadastro já preenchido (título, capa, gêneros, data, nota, descrição e franquia), na categoria que você mais usa para essa franquia. O botão **+ Desejo** manda direto para a wishlist.
+- **Ver na lista** filtra a Fila pela franquia. Jogos contínuos não entram na conta.
 
 ### 13. Conquistas
 
@@ -187,6 +259,13 @@ Cada jogo tem um botão de **lupa** que abre a wiki dele numa janela do próprio
 
 Ao atualizar o app, conquistas que você já cumpria são registradas em silêncio, sem uma enxurrada de avisos.
 
+### 14. Ícones Phosphor e plataformas como ícone
+
+- **Categorias com ícone.** Ao criar ou editar uma categoria, toque em **Escolher ícone (Phosphor)**: busque por qualquer nome em inglês (`sword`, `ghost`, `game-controller`...) entre todos os ícones da biblioteca ou use as sugestões para jogos, e escolha o estilo (Regular, Negrito, Preenchido, Duotone, Leve ou Fino). O ícone aparece no cabeçalho da categoria.
+- **Plataformas com ícone Phosphor.** Em Configurações → Editar Plataformas, o botão de formas abre o mesmo seletor.
+- **Plataforma como ícone nos cards.** Fila, zerados, linha do tempo, wishlist, franquias e detalhes mostram o **ícone da plataforma** (com o nome como dica). Em Configurações → **Plataforma nos cards** dá para alternar entre **Ícone** e **Nome**.
+- Os ícones Phosphor (licença MIT) são carregados da CDN do jsDelivr sob demanda; só o nome e o estilo ficam salvos. Sem internet na primeira vez, o ícone não aparece (o nome continua visível).
+
 ---
 
 ## Guia rápido de uso
@@ -201,22 +280,47 @@ Ao atualizar o app, conquistas que você já cumpria são registradas em silênc
 
 ## Dados, backup e privacidade
 
-- **Onde ficam os dados:** no `localStorage` do navegador (chave `myBacklogData`), mais a sessão em andamento (`zeralog_session`) e, se você configurar, a chave da RAWG (`zeralog_rawg_key`).
+- **Onde ficam os dados:** no **IndexedDB** do navegador (banco `zeralog-db`: os dados do app, uma tabela só de imagens e os pontos de restauração). No `localStorage` ficam apenas pequenas preferências: tema (`zeralog_theme`), chave da RAWG (`zeralog_rawg_key`) e a sessão em andamento (`zeralog_session`). Veja a seção [Banco de dados](#banco-de-dados).
 - **Backup:** o ícone de **disquete** abre o painel para **Baixar Backup (.json)** e **Restaurar Backup**. Faça backup antes de limpar os dados do navegador ou trocar de aparelho. Backups antigos são migrados automaticamente.
 - **Sem rastreamento.** O app não tem conta, analytics nem servidor próprio. Os dados só saem do aparelho quando você usa as buscas externas descritas abaixo.
 - **Redefinição geral** (em Configurações) apaga tudo; use com cuidado.
+
+## Banco de dados
+
+O ZeraLog grava tudo no **IndexedDB**, o banco do próprio navegador, em vez do `localStorage` (limite de ~5 MB, que enchia rápido com capas).
+
+- **Mais espaço, mais rápido.** Os dados leves ficam num registro pequeno e as **imagens numa tabela própria** (id → imagem). Salvar uma alteração grava só o registro leve e as imagens que mudaram, então continua instantâneo mesmo com centenas de capas.
+- **Gravação segura.** Cada salvamento é uma transação (ou grava tudo, ou nada). Se a gravação falhar (por exemplo, disco cheio), o app avisa na hora.
+- **Migração automática.** Na primeira abertura depois da atualização, os dados do `localStorage` são copiados para o novo banco, conferidos (quantidade de jogos e de imagens) e só então retirados do local antigo. Uma **cópia antiga** fica guardada por 14 dias (ou até você apagar em Configurações), e o primeiro **ponto de restauração** é "Antes da migração".
+- **Pontos de restauração.** O app guarda automaticamente um ponto por dia (os 7 mais recentes), com o estado dos dados no primeiro salvamento do dia. Em Configurações → Banco de dados você restaura qualquer um; as imagens que ainda estão no banco são mantidas.
+- **Dados ilegíveis ou incompletos.** Se o dado salvo estiver corrompido, o app guarda uma cópia (`myBacklogData_corrupt`) e abre limpo em vez de travar; dados antigos ou com campos faltando são normalizados sem apagar nada.
+- **Modo compatível.** Se o navegador não permitir IndexedDB (alguns modos privados, por exemplo), o app volta ao `localStorage` e avisa em Configurações que o limite é de ~5 MB.
+- **Backup continua igual.** O arquivo `.json` (com imagens) pode ser baixado e restaurado como antes, inclusive backups feitos em versões antigas.
+
+### Plano gratuito e Premium
+
+O código já separa o app do banco: `js/db.js` define uma interface única de provedor (`load`, `save`, pontos de restauração, espaço usado), hoje com os provedores IndexedDB e localStorage. Um provedor de nuvem (sincronização entre aparelhos) poderia ser registrado ali sem mexer no resto do app, e `js/plan.js` escolhe o provedor conforme o plano. **Para cobrar de verdade é preciso um servidor** (login, pagamento e validação da assinatura), porque qualquer trava feita só no navegador pode ser contornada. O guia completo, com opções e passos, está em [`docs/PREMIUM.md`](docs/PREMIUM.md).
+
+---
 
 ## Serviços externos usados
 
 | Serviço | Para quê | O que é enviado |
 |---|---|---|
 | [RAWG](https://rawg.io/apidocs) | Busca automática de dados e capas | Nome digitado e a chave de API |
+| [SteamGridDB](https://www.steamgriddb.com/api/v2) (opcional) | Capas verticais feitas pela comunidade | Nome do jogo e a sua chave de API |
 | APIs MediaWiki (Wikipédia, Yugipedia, Bulbapedia, Fandom e outras que você adicionar) | Leitor de wikis | Termos de busca e títulos de páginas |
+| [Wikipédia](https://www.mediawiki.org/wiki/Extension:PageImages) (`pageimages`) | Candidatas no buscador de capas | Nome do jogo |
+| CDN da Steam | Capa vertical 600×900 de jogos de PC | Nada (baixa a imagem) |
+| [Phosphor Icons](https://phosphoricons.com) via jsDelivr | Ícones de categorias e plataformas | Nada (baixa CSS e fonte) |
 | [Chart.js](https://www.chartjs.org/) (CDN) | Gráficos | Nada (carrega o script) |
-| [html2canvas](https://html2canvas.hertzen.com/) (CDN) | Imagem do cartão de compartilhamento | Nada (carrega o script) |
 | corsproxy.io (último recurso) | Baixar uma capa quando o site de origem bloqueia o acesso direto | URL da imagem |
 
-**Chave da RAWG.** O app traz uma chave padrão, que pode atingir o limite de uso. Se a busca automática falhar, crie uma chave gratuita em <https://rawg.io/apidocs> e cole em **Configurações → Chave da API RAWG**. O app mostra mensagens claras: chave recusada, limite atingido ou sem conexão.
+**Capas verticais sem chave extra.** Steam e Wikipédia são consultadas direto do navegador; a Steam só cobre jogos de PC e a Wikipédia depende de o artigo ter capa. Para os demais, use **Recortar** na arte horizontal.
+
+**Chave da RAWG.** O app traz uma chave padrão (a mesma é enviada ao navegador de quem usa o site, como é normal nas chaves públicas da RAWG), que pode atingir o limite de uso. Se a busca automática falhar, crie uma chave gratuita em <https://rawg.io/apidocs> e cole em **Configurações → Chave da API RAWG**. O app mostra mensagens claras: chave recusada, limite atingido ou sem conexão.
+
+**Chave da SteamGridDB (opcional).** Para priorizar as capas verticais da comunidade, crie a chave gratuita em <https://www.steamgriddb.com/profile/preferences/api> e cole em **Configurações → Capas e Busca → Chave da API SteamGridDB**. Sem a chave, as fontes sem login (Steam, HLTB e Wikipédia) continuam funcionando.
 
 ## Estrutura do projeto
 
@@ -225,22 +329,35 @@ zeralog/
 ├── index.html          # estrutura da página e diálogos
 ├── style.css           # estilos (temas, cards, prateleira, wiki, etc.)
 ├── manifest.json       # configuração do PWA
+├── sw.js               # service worker (notificação da sessão com Pausar/Finalizar)
+├── icons/              # ícones do app e da notificação
 ├── docs/screenshots/   # imagens usadas neste README
 └── js/
     ├── main.js         # ponto de entrada: liga os módulos e expõe as funções ao HTML
-    ├── store.js        # dados (appData), localStorage, migração de versões antigas
+    ├── store.js        # dados (appData), gravação no banco, migração de versões antigas
+    ├── db.js           # provedores de banco: IndexedDB (padrão) e localStorage (modo compatível)
+    ├── storage-ui.js   # Configurações → Banco de dados (espaço, pontos de restauração)
+    ├── plan.js         # plano Free/Premium (organização da interface; ver docs/PREMIUM.md)
     ├── ui.js           # renderização, modais, fila, zerados, wishlist, timeline, prateleira, estatísticas
     ├── gameApi.js      # busca automática (RAWG), capas, tratamento de erros
     ├── wiki.js         # leitor de wikis (MediaWiki), vínculo automático, Fandom, localizar no texto
     ├── session.js      # Timer de Sessão e entradas de diário
     ├── quickmatch.js   # filtros de humor e roleta
     ├── genres.js       # gráfico de gêneros (Chart.js + alternativa em SVG)
+    ├── franchises.js   # franquias em sanfona e busca de mais jogos da série
+    ├── filters.js      # filtros universais (campos, combinação, painel e chips)
+    ├── share.js        # imagens para compartilhar (cartão, prateleira, cards)
+    ├── releases.js     # datas de lançamento, contagem regressiva, avisos e atualização
+    ├── covers.js       # capas verticais (Steam e Wikipédia automáticas, buscador manual, lote)
+    ├── crop.js         # recorte de capa 2:3 (arrastar, zoom, imagem inteira)
+    ├── themes.js       # lista de temas e seletor visual
+    ├── phosphor.js     # seletor de ícones Phosphor (categorias e plataformas)
+    ├── platforms.js    # plataforma como ícone ou nome nos cards
     ├── achievements.js # conquistas
-    ├── card.js         # cartão de compartilhamento
     └── icons.js        # ícones SVG
 ```
 
-> `js/app.js` e `js/sw.js` são resquícios de versões anteriores e não são carregados pelo `index.html` atual.
+> `js/app.js` e `js/sw.js` são resquícios de versões anteriores e não são carregados. O service worker em uso é o **`sw.js` da raiz** (notificações da sessão; ele não faz cache de arquivos).
 
 ## Rodando localmente
 
@@ -261,11 +378,11 @@ Resumo do que é salvo (o objeto completo vai no backup `.json`):
 
 ```jsonc
 {
-  "settings": { "sort": "manual", "compact": false, "finishedView": "list", "homeView": "list" },
-  "categories": [{ "id": "c1", "name": "RPGs" }],
+  "settings": { "sort": "manual", "compact": false, "finishedView": "list", "homeView": "list", "statsPane": "overview", "platformDisplay": "icon" },
+  "categories": [{ "id": "c1", "name": "RPGs", "icon": { "name": "sword", "weight": "bold" } }],
   "platforms":  [{ "name": "PC", "icon": "<svg…>" }],
   "games": [{
-    "id": "g…", "catId": "c1", "title": "Hollow Knight", "platform": "PC",
+    "id": "g…", "catId": "c1", "title": "Hollow Knight", "platform": "PC", "rawgId": 1234,
     "state": null,                       // null (fila) | "playing" | "finished"
     "meta": "30h", "hoursPlayed": "12.5", "journalNotes": "[03/10/2026] …",
     "image": "data:image/jpeg;base64,…", "genres": ["Ação"], "released": "2017-02-24",
@@ -285,12 +402,14 @@ Resumo do que é salvo (o objeto completo vai no backup `.json`):
 ## Limitações conhecidas
 
 - **Tempo "para zerar":** a RAWG só fornece a **média de horas dos usuários dela**, não o tempo do HowLongToBeat (que não tem API pública). Por isso há o atalho para consultar o HLTB e ajustar manualmente.
-- **Capas:** a RAWG não tem box art; a imagem costuma ser uma arte horizontal do jogo, recortada ao centro na prateleira.
+- **Capas:** a RAWG não tem box art (só artes horizontais). Para capas verticais o app usa a Steam (só jogos de PC) e a Wikipédia (depende de o artigo ter capa). Consoles sem capa na Wikipédia ficam com a arte horizontal, que você recorta. As capas são imagens com direitos dos respectivos donos, guardadas apenas no seu navegador para uso pessoal.
+- **Notificação da sessão:** depende do navegador e da permissão. No Android (Chrome e navegadores baseados nele), funciona com o botão Pausar/Finalizar; no iPhone só em apps instalados na tela de início (iOS 16.4+). A notificação pode ser dispensada deslizando (a web não permite fixá-la), e o texto do tempo só atualiza com o app ativo; o horário de início fica sempre correto.
+- **Ícones Phosphor:** dependem da CDN na primeira carga; offline eles ficam ocultos.
 - **Descrição:** vem em inglês.
 - **Wikis:** funciona com wikis **MediaWiki** (Wikipédia, Fandom, Yugipedia, Bulbapedia...). Sites de outro tipo (ex.: Fextralife) não são suportados. O visual é um leitor simples, sem o tema original, e infoboxes complexas podem ficar básicas. A descoberta automática do Fandom tenta os endereços mais prováveis a partir do nome do jogo ou da franquia; se não achar, use **Outra wiki**.
-- **Armazenamento:** o `localStorage` tem limite (~5 MB). As capas são reduzidas, mas bibliotecas muito grandes podem chegar perto do limite; faça backups.
+- **Armazenamento:** o IndexedDB tem um limite que depende do aparelho e do navegador (em geral centenas de MB a vários GB), mostrado em Configurações. O navegador pode apagar dados de sites se faltar espaço no aparelho; o app pede "armazenamento protegido" e mostra se foi concedido. Faça backups de vez em quando.
 - **Sem sincronização entre aparelhos.** Use o backup `.json` para levar seus dados de um lugar para outro.
-- **Timer de Sessão:** uma sessão por vez e sem botão de pausa (ajuste os minutos ao encerrar).
+- **Timer de Sessão:** uma sessão por vez.
 - **Conquistas baseadas em contadores** (Hora de Jogar, Dedicação Total, Desejo Realizado) contam a partir da versão em que foram criadas.
 
 ## Perguntas frequentes
@@ -303,11 +422,15 @@ Resumo do que é salvo (o objeto completo vai no backup `.json`):
 
 **Por que um jogo não aparece na roleta?** A roleta e o Quick Match consideram só jogos da fila. Jogos em "Jogando", zerados e contínuos ficam de fora.
 
+**A notificação da sessão não aparece.** Toque em **Permitir notificações** em Configurações (ou libere nas configurações do site no navegador) e mantenha **Sessão na barra de notificações** ligada. No iPhone, instale o app na tela de início.
+
+**O app não puxou a capa vertical.** Nem todo jogo tem capa vertical na Steam ou na Wikipédia. Toque em **Recortar** e ajuste a arte horizontal, ou use **Trocar capa**.
+
 **Como mudar a wiki de um jogo?** Abra a lupa do jogo, escolha outra wiki no seletor, pesquise e toque em **Vincular a este jogo**.
 
 ## Créditos
 
 - Criado por **Cyro**, para a comunidade do blog **[Anywhere Gamer](https://anywheregamer.blogspot.com/)**, dedicado a jogar em qualquer lugar.
 - Dados de jogos: [RAWG](https://rawg.io/). Conteúdo das wikis: Wikipédia, Yugipedia, Bulbapedia, Fandom e outras, de acordo com as licenças de cada uma.
-- Bibliotecas: [Chart.js](https://www.chartjs.org/) e [html2canvas](https://html2canvas.hertzen.com/). Ícones de linha no estilo [Lucide](https://lucide.dev/).
+- Bibliotecas: [Chart.js](https://www.chartjs.org/) (gráficos) e [Phosphor Icons](https://phosphoricons.com) (MIT). Ícones de linha no estilo [Lucide](https://lucide.dev/). As imagens para compartilhar são desenhadas direto em canvas, sem biblioteca.
 - Metacritic e HowLongToBeat são marcas dos respectivos donos; o app apenas abre as buscas nesses sites.

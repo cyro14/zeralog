@@ -1,10 +1,21 @@
 import { icon, platformIcons } from './icons.js';
-import { getSession } from './session.js';
+import { getSession, paintNotifySettings } from './session.js';
 import { detectNewAchievements, renderAchievements } from './achievements.js';
 import { renderGenreStats } from './genres.js';
+import { renderStorageSettings } from './storage-ui.js';
+import { applyFilters, renderFilterBars, activeCount } from './filters.js';
+import { releaseState, countdownText, fmtDate, daysUntil, refreshReleaseDates, syncReleaseWatch, askNotifyIfNeeded } from './releases.js';
+import { applyTheme, renderThemePicker } from './themes.js';
+import { phHtml, openIconPicker, anyIconHtml } from './phosphor.js';
+import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
-import { searchGames, getGameDetails, coverToDataURL, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey } from './gameApi.js';
+import { searchGames, getGameDetails, getGameScreenshots, shotsGalleryHtml, viewImage, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
+import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade } from './covers.js';
+import { openCropper } from './crop.js';
+import { renderFranchiseStats } from './franchises.js';
+import { renderSteamSettings } from './steam.js';
 import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
+import { hasValidToken, getAccessToken, setAccessToken } from './igdb.js';
 
 let toastTimeout = null;
 export let chartInstance = null;
@@ -29,12 +40,21 @@ export function triggerToast(message, withUndo = true) {
 export function checkWelcome() { if (!localStorage.getItem('zeralog_welcomed')) document.getElementById('modal-welcome').showModal(); }
 export function closeWelcome() { localStorage.setItem('zeralog_welcomed', 'true'); closeModal('modal-welcome'); }
 export function closeModal(id) { document.getElementById(id).close(); }
-export function changeTheme(theme) { document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('zeralog_theme', theme); }
+export function changeTheme(theme) {
+    applyTheme(theme);
+    if (document.getElementById('tab-stats').classList.contains('active')) updateStatsAndCharts();   // gráficos pegam as cores do tema
+}
 
 export function toggleCompact(val) { 
     appData.settings.compact = val; 
     document.body.classList.toggle('compact-mode', val); 
     saveData(); 
+}
+
+export function toggleShelfPlain(val) {
+    appData.settings.shelfPlain = !!val;
+    document.body.classList.toggle('shelf-plain', !!val);
+    saveData();
 }
 
 export function saveStateForUndo() { setBackupData(JSON.stringify(appData)); }
@@ -56,20 +76,35 @@ export function switchTab(tabId) {
     document.getElementById(`tab-${tabId}`).classList.add('active');
     if(tabId === 'stats') updateStatsAndCharts();
     else filterGames();
+    document.body.classList.toggle('gm-tab', tabId === 'gamematch');
+    document.dispatchEvent(new CustomEvent('zeralog:tab-changed', { detail: { tab: tabId } }));
 }
 
 // ================= BUSCA AUTOMÁTICA (RAWG) =================
 let pendingCover = null;   // capa baixada, aguardando o "Salvar"
+let pendingWideCover = false;   // capa veio marcada como horizontal no seletor
+let pendingRawgId = null;  // id da RAWG do jogo escolhido na busca automática
+let pendingTba = false;     // RAWG informou lançamento "a confirmar"
 let lastResults = [];
 
+let currentCoverSrc = null;   // capa exibida no cadastro (nova ou já salva)
 function updateCoverPreview(src) {
+    currentCoverSrc = src || null;
     const el = document.getElementById('game-cover-preview');
     el.innerHTML = src ? `<img src="${esc(src)}" alt="Capa">` : '';
     el.style.display = src ? 'block' : 'none';
+    document.getElementById('cv-crop-btn').style.display = src ? '' : 'none';
+    document.getElementById('cv-remove-btn').style.display = src ? '' : 'none';
 }
 
 function resetAutoFill() {
     pendingCover = null;
+    pendingWideCover = false;
+    pendingRawgId = null;
+    pendingTba = false;
+    { const r = document.getElementById('game-wish-released'); r.value = ''; delete r.dataset.manual; }
+    document.getElementById('game-wish-notify').checked = false;
+    paintWishNotify();
     lastResults = [];
     document.getElementById('rawg-results').innerHTML = '';
     ['game-description', 'game-genres', 'game-released', 'game-metacritic', 'game-hours-played', 'game-journal-notes']
@@ -93,30 +128,143 @@ export async function fetchGameFromRAWG() {
             </button>`).join('');
     } catch (err) {
         console.error(err);
-        box.innerHTML = `<div class="rawg-msg rawg-err">${esc(describeError(err))} Você pode preencher manualmente.</div>`;
+        box.innerHTML = `<div class="rawg-msg rawg-err">${esc(describeError(err))} Buscando tempo de jogo e nota direto nas fontes (HLTB/Metacritic)...</div>`;
+        autoFillExternal(query);
     }
 }
 
-export async function pickRawgResult(i) {
-    const base = lastResults[i];
-    if (!base) return;
+// Preenche o formulário com um jogo da RAWG (busca automática ou sugestão de franquia)
+// A caixinha "avisar quando lançar" só aparece quando a data é de hoje ou futura
+export function paintWishNotify() {
+    const d = document.getElementById('game-wish-released').value;
+    const n = daysUntil(d);
+    const ok = n !== null && n >= 0;
+    document.getElementById('game-wish-notify-row').style.display = ok ? '' : 'none';
+    if (!ok) document.getElementById('game-wish-notify').checked = false;
+    document.getElementById('game-wish-release-hint').textContent = d ? (n === null ? '' : n > 0 ? `Lança em ${n} ${n === 1 ? 'dia' : 'dias'}` : n === 0 ? 'Lança hoje' : 'Já foi lançado') : 'Sem data: use a busca automática ou preencha.';
+}
+
+export async function applyRawgGame(base) {
     const box = document.getElementById('rawg-results');
     box.innerHTML = '<div class="rawg-msg">Carregando dados...</div>';
     let g = base;
     try { g = { ...base, ...(await getGameDetails(base.rawgId)) }; } catch (e) { /* segue só com os dados da busca */ }
+    pendingRawgId = g.rawgId || null;
 
     document.getElementById('game-title').value = g.title;
-    document.getElementById('game-description').value = g.description;
-    document.getElementById('game-genres').value = g.genres.join(', ');
-    document.getElementById('game-released').value = g.released;
+    document.getElementById('game-description').value = g.description || '';
+    document.getElementById('game-genres').value = (g.genres || []).join(', ');
+    document.getElementById('game-released').value = g.released || '';
+    document.getElementById('game-wish-released').value = g.released || '';
+    pendingTba = !!g.tba && !g.released;
+    paintWishNotify();
     document.getElementById('game-metacritic').value = g.metacritic ?? '';
+    // Franquia detectada automaticamente: primeiro casa com as franquias já cadastradas
+    // ("Halo Infinite" -> "Halo"), depois deduz do título ("The Witcher 3: Wild Hunt" -> "The Witcher")
+    const frEl = document.getElementById('game-franchise');
+    if (frEl && !frEl.value.trim()) {
+        const tnorm = normKey(g.title);
+        const known = franchiseNames().find(f => tnorm.startsWith(normKey(f)) && tnorm !== normKey(f));
+        frEl.value = known || guessFranchise(g.title) || '';
+    }
     if (g.playtime && !document.getElementById('game-time-val').value) {
         document.getElementById('game-time-val').value = g.playtime;
         document.getElementById('game-time-unit').value = 'h';
     }
     document.getElementById('game-extra').open = true;
-    if (g.image) { pendingCover = await coverToDataURL(g.image); updateCoverPreview(pendingCover); }
-    box.innerHTML = `<div class="rawg-msg rawg-ok">${icon('check')} Dados de <strong>${esc(g.title)}</strong> preenchidos. Revise e salve.</div>`;
+    // Sempre tenta a capa vertical (Steam, Wikipédia); se não achar, usa a arte horizontal da RAWG
+    box.innerHTML = '<div class="rawg-msg">Buscando a capa vertical...</div>';
+    let coverNote = '';
+    let auto = null;
+    try { auto = await autoVerticalCover(g.title, g.rawgId); } catch (e) { /* segue sem */ }
+    if (auto) { pendingCover = auto.data; updateCoverPreview(pendingCover); coverNote = ` Capa vertical: ${auto.source}.`; }
+    else if (g.image) {
+        pendingCover = await coverToDataURL(g.image);
+        updateCoverPreview(pendingCover);
+        coverNote = ' Só achei arte horizontal: toque em <strong>Recortar</strong> para ajustar à capa vertical.';
+    }
+    box.innerHTML = `<div class="rawg-msg rawg-ok">${icon('check')} Dados de <strong>${esc(g.title)}</strong> preenchidos.${coverNote} Revise e salve.</div>`;
+    autoFillExternal(g.title);
+}
+
+// Fallback automático (a RAWG anda falhando): tempo de conclusão direto do HowLongToBeat
+// e nota direto do Metacritic. Só preenche os campos que estiverem vazios, sem tocar no que já veio.
+function autoFillExternal(title) {
+    const timeEl = document.getElementById('game-time-val');
+    const scoreEl = document.getElementById('game-metacritic');
+    if (!timeEl.value) {
+        fetchHLTBTime(title).then(h => {
+            if (h && !timeEl.value) {
+                timeEl.value = h;
+                document.getElementById('game-time-unit').value = 'h';
+                triggerToast(`HowLongToBeat: ~${h}h para zerar a história.`);
+            }
+        }).catch(() => {});
+    }
+    if (!scoreEl.value) {
+        fetchMetacriticScore(title).then(s => {
+            if (s !== null && !scoreEl.value) {
+                scoreEl.value = s;
+                document.getElementById('game-extra').open = true;
+                triggerToast(`Metacritic: nota ${s} encontrada.`);
+            }
+        }).catch(() => {});
+    }
+}
+
+export async function pickRawgResult(i) {
+    const base = lastResults[i];
+    if (base) await applyRawgGame(base);
+}
+
+// Abre o cadastro (jogo ou desejo) já preenchido com uma sugestão de franquia
+export async function openAddFromSuggestion(kind, item, franchise) {
+    let catId = 'wishlist';
+    if (kind !== 'wish') {
+        const counts = {};
+        appData.games.filter(g => !g.continuous && g.franchise && normKey(g.franchise) === normKey(franchise)).forEach(g => { counts[g.catId] = (counts[g.catId] || 0) + 1; });
+        const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+        catId = best ? best[0] : (appData.categories[0] && appData.categories[0].id);
+        if (!catId) { triggerToast('Crie uma categoria na aba Fila antes de adicionar jogos.', false); return; }
+    }
+    openGameModal(catId);
+    document.getElementById('game-franchise').value = franchise;
+    await applyRawgGame(item);
+}
+
+// Buscador de capas verticais (Wikipédia, Steam, IGDB...)
+export function coverPickFromGameModal() {
+    openCoverPicker({
+        title: document.getElementById('game-title').value.trim(),
+        rawgId: pendingRawgId,
+        onPick: (src, horizontal) => { pendingCover = src; pendingWideCover = !!horizontal; updateCoverPreview(src); }
+    });
+}
+export function coverCropFromGameModal() {
+    if (!currentCoverSrc) return;
+    openCropper({ src: currentCoverSrc, onDone: data => { pendingCover = data; updateCoverPreview(data); } });
+}
+export function coverRemoveFromGameModal() { pendingCover = ''; updateCoverPreview(null); }
+
+// Procura um item tanto na biblioteca quanto na wishlist (capas funcionam nas duas telas)
+const findItemAny = id => appData.games.find(g => g.id === id) || (appData.wishlist || []).find(g => g.id === id);
+
+export function coverPickFromImageModal() {
+    const id = document.getElementById('edit-img-game-id').value;
+    const game = findItemAny(id);
+    if (!game) return;
+    openCoverPicker({
+        title: game.title,
+        rawgId: game.rawgId,
+        onPick: (src, horizontal) => {
+            saveStateForUndo();
+            game.image = src;
+            game.wideCover = !!horizontal;   // opção veio do seletor de capas
+            closeModal('modal-image');
+            saveData(() => render());
+            triggerToast('Capa atualizada.');
+        }
+    });
 }
 
 // ================= RENDERIZAÇÃO E LISTAS =================
@@ -137,6 +285,13 @@ export function getSortedGames(gamesArray, sortType, isFinishedTab = false) {
         let vB = parseFloat((b.meta || '0').replace(',', '.')) || 0; if(b.meta && b.meta.includes('m')) vB /= 60;
         return (vA - vB) * mult;
     });
+    if (sort === 'played') return arr.sort((a, b) => ((parseFloat(a.hoursPlayed) || 0) - (parseFloat(b.hoursPlayed) || 0)) * mult);
+    // Mais próximo de zerar: menos tempo faltando primeiro (tempo estimado − jogado)
+    if (sort === 'close') return arr.sort((a, b) => {
+        const hrs = g => { let v = parseFloat((g.meta || '0').replace(',', '.')) || 0; if (g.meta && String(g.meta).includes('m')) v /= 60; return v; };
+        return ((hrs(a) - (parseFloat(a.hoursPlayed) || 0)) - (hrs(b) - (parseFloat(b.hoursPlayed) || 0))) * mult;
+    });
+    if (sort === 'meta') return arr.sort((a, b) => ((parseFloat(a.metacritic) || 0) - (parseFloat(b.metacritic) || 0)) * mult);
     if (sort === 'portable') return arr.sort((a, b) => {
         let vA = a.isPortable ? 1 : 0; let vB = b.isPortable ? 1 : 0;
         return (vA - vB) * mult;
@@ -150,7 +305,12 @@ export function filterGames() {
         let hasVisibleGames = false;
         cat.querySelectorAll('.game-item, .tl-item, .shelf-item').forEach(item => {
             const titleMatch = item.querySelector('.game-title').innerText.toLowerCase().includes(term) || (item.dataset.franchise || '').includes(term) || (item.dataset.tags || '').includes(term);
-            const platformMatch = state.currentPlatformFilter === 'All' || item.dataset.platform === state.currentPlatformFilter;
+            // Lojas de PC (Steam, GOG, Epic, Itch.io...) contam como a plataforma PC
+            const platVal = (item.dataset.platform || '').toLowerCase();
+            const PC_ALIASES = ['steam', 'gog', 'epic', 'epic games', 'itch.io', 'itch', 'battle.net', 'ea app', 'origin', 'uplay', 'game pass'];
+            const platformMatch = state.currentPlatformFilter === 'All'
+                || item.dataset.platform === state.currentPlatformFilter
+                || (state.currentPlatformFilter === 'PC' && PC_ALIASES.includes(platVal));
             const portableMatch = !state.filterPortableOnly || item.dataset.portable === 'true';
             
             if (titleMatch && platformMatch && portableMatch) { item.style.display = ''; hasVisibleGames = true; } 
@@ -183,10 +343,28 @@ export function setHomeSort(type) {
         appData.settings.homeSortDir = appData.settings.homeSortDir === 'desc' ? 'asc' : 'desc';
     } else {
         appData.settings.sort = type;
-        appData.settings.homeSortDir = (type === 'az' || type === 'time') ? 'asc' : 'desc';
+        appData.settings.homeSortDir = (type === 'az' || type === 'time' || type === 'close') ? 'asc' : 'desc';
     }
     saveData(() => render());
 }
+
+// Chip "Tempo": abre o menu com as 3 formas de ordenação por tempo
+export function toggleTimeSortMenu(ev) {
+    ev && ev.stopPropagation();
+    const m = document.getElementById('sort-time-menu');
+    if (m) m.hidden = !m.hidden;
+}
+// Reforço: se o click inline falhar em qualquer navegador, a delegação cobre o chip
+document.addEventListener('click', e => {
+    if (e.target && e.target.id === 'sort-home-time') toggleTimeSortMenu(e);
+    if (e.target && e.target.dataset && e.target.dataset.tsort) setTimeSort(e.target.dataset.tsort);
+});
+export function setTimeSort(kind) {
+    const m = document.getElementById('sort-time-menu');
+    if (m) m.hidden = true;
+    setHomeSort(kind);
+}
+document.addEventListener('click', () => { const m = document.getElementById('sort-time-menu'); if (m && !m.hidden) m.hidden = true; });
 
 export function setFinishedSort(type) {
     if (appData.settings.finishedSort === type) {
@@ -209,14 +387,20 @@ export function toggleCollapse(id, event) {
 }
 
 export function render() {
-    Object.keys(homeSortLabels).forEach(k => {
+    // chips simples: Manual, A-Z e Nota
+    const s = appData.settings.sort;
+    ['manual', 'az', 'meta'].forEach(k => {
         const el = document.getElementById(`sort-home-${k}`);
-        if (el) { el.classList.remove('active'); el.innerText = homeSortLabels[k]; }
+        if (!el) return;
+        el.classList.toggle('active', s === k);
+        el.innerText = homeSortLabels[k] + (s === k && k !== 'manual' ? (appData.settings.homeSortDir === 'asc' ? ' ↑' : ' ↓') : '');
     });
-    const activeHomeChip = document.getElementById(`sort-home-${appData.settings.sort}`);
-    if(activeHomeChip) {
-        activeHomeChip.classList.add('active');
-        if (appData.settings.sort !== 'manual') activeHomeChip.innerText = homeSortLabels[appData.settings.sort] + (appData.settings.homeSortDir === 'asc' ? ' ↑' : ' ↓');
+    // seletor de tempo: mostra a forma atual (zerar/jogado/perto de zerar)
+    const timeChip = document.getElementById('sort-home-time');
+    const isTimeKind = ['time', 'played', 'close'].includes(s);
+    if (timeChip) {
+        timeChip.classList.toggle('active', !!isTimeKind);
+        timeChip.value = isTimeKind ? s : '';
     }
 
     const containerHome = document.getElementById('app-container'); 
@@ -231,7 +415,9 @@ export function render() {
         filterContainer.innerHTML += `<div class="filter-chip ${state.currentPlatformFilter === p.name ? 'active' : ''}" onclick="setPlatformFilter('${p.name}', this)" style="display:inline-flex; align-items:center; gap:6px;">${p.icon} <span>${p.name}</span></div>`;
     });
 
-    const playingGames = getSortedGames(appData.games.filter(g => g.state === 'playing' && !g.continuous), null, false);
+    const filtersOn = activeCount('home') > 0; let homeShown = 0;
+    const playingGames = getSortedGames(applyFilters('home', appData.games.filter(g => g.state === 'playing' && !g.continuous)), null, false);
+    homeShown += playingGames.length;
     const playingCatDiv = document.createElement('div');
     playingCatDiv.className = `category ${appData.collapsedCats.includes('playing-category') ? 'collapsed' : ''}`; playingCatDiv.id = 'playing-category';
     if(playingGames.length > 0) playingCatDiv.style.display = 'block';
@@ -240,7 +426,8 @@ export function render() {
     const listPlaying = playingCatDiv.querySelector('#list-playing'); fillList(listPlaying, playingGames);
 
     // Seção de Jogos Contínuos (live service / sandbox): só horas e diário, sem "Zerado"
-    const contGames = appData.games.filter(g => g.continuous).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
+    const contGames = applyFilters('home', appData.games.filter(g => g.continuous)).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
+    homeShown += contGames.length;
     if (contGames.length) {
         const total = contGames.reduce((a, g) => a + hoursNum(g.hoursPlayed), 0);
         const contDiv = document.createElement('div');
@@ -248,23 +435,7 @@ export function render() {
         contDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('continuous-category', event)"><div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>Jogos Contínuos</h2><span class="chip chip-live">${fmtHours(total)} jogadas</span></div><div class="cat-actions"><button onclick="openGameModal('continuous')">+ Jogo</button></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-continuous"></ul></div>`;
         containerHome.appendChild(contDiv);
         const listCont = contDiv.querySelector('#list-continuous'); fillList(listCont, contGames);
-    } else {
-        const addDiv = document.createElement('div');
-        addDiv.className = 'add-continuous-wrap';
-        addDiv.innerHTML = `<button type="button" class="add-continuous" onclick="openGameModal('continuous')">+ Jogo Contínuo <small>(live service / sandbox infinito)</small></button>`;
-        containerHome.appendChild(addDiv);
-    }
-
-    // Seção de Jogos Contínuos (live service / sandbox): só horas e diário, sem "Zerado"
-    const contGames = appData.games.filter(g => g.continuous).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
-    if (contGames.length) {
-        const total = contGames.reduce((a, g) => a + hoursNum(g.hoursPlayed), 0);
-        const contDiv = document.createElement('div');
-        contDiv.className = `category continuous ${appData.collapsedCats.includes('continuous-category') ? 'collapsed' : ''}`; contDiv.id = 'continuous-category';
-        contDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('continuous-category', event)"><div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>Jogos Contínuos</h2><span class="chip chip-live">${fmtHours(total)} jogadas</span></div><div class="cat-actions"><button onclick="openGameModal('continuous')">+ Jogo</button></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-continuous"></ul></div>`;
-        containerHome.appendChild(contDiv);
-        const listCont = contDiv.querySelector('#list-continuous'); contGames.forEach(game => listCont.appendChild(createGameElement(game)));
-    } else {
+    } else if (!filtersOn) {
         const addDiv = document.createElement('div');
         addDiv.className = 'add-continuous-wrap';
         addDiv.innerHTML = `<button type="button" class="add-continuous" onclick="openGameModal('continuous')">+ Jogo Contínuo <small>(live service / sandbox infinito)</small></button>`;
@@ -272,12 +443,16 @@ export function render() {
     }
 
     appData.categories.forEach(cat => {
-        const catGames = getSortedGames(appData.games.filter(g => g.catId === cat.id && g.state === null && !g.continuous), null, false);
+        const catGames = getSortedGames(applyFilters('home', appData.games.filter(g => g.catId === cat.id && g.state === null && !g.continuous)), null, false);
+        homeShown += catGames.length;
+        if (filtersOn && !catGames.length) return;   // categoria sem resultados some enquanto filtra
+        const steamOn = appData.settings.steam && appData.settings.steam.catId === cat.id && appData.settings.steam.steamId;
         const catDiv = document.createElement('div'); catDiv.className = `category ${appData.collapsedCats.includes(cat.id) ? 'collapsed' : ''}`; catDiv.id = cat.id;
         catDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${cat.id}', event)">
-                <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>${esc(cat.name)}</h2></div>
+                <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span>${cat.icon ? `<span class="cat-ico">${anyIconHtml(cat.icon)}</span>` : ''}<h2>${esc(cat.name)}</h2></div>
                 <div class="cat-actions">
+                    ${steamOn ? `<button class="btn-icon" onclick="steamSyncUI()" title="Sincronizar com a Steam (jogos e horas)" aria-label="Sincronizar com a Steam">${icon('refresh')}</button>` : ''}
                     <button class="btn-icon" onclick="moveCategory('${cat.id}', -1)" title="Mover para Cima">${ICONS.up}</button>
                     <button class="btn-icon" onclick="moveCategory('${cat.id}', 1)" title="Mover para Baixo">${ICONS.down}</button>
                     <button class="btn-icon" onclick="openEditCatModal('${cat.id}')" title="Editar Categoria">${ICONS.edit}</button>
@@ -291,7 +466,9 @@ export function render() {
         const listEl = catDiv.querySelector(`#list-${cat.id}`); fillList(listEl, catGames);
     });
 
+    if (filtersOn && !homeShown) containerHome.insertAdjacentHTML('beforeend', '<div class="empty-state">Nenhum jogo da fila combina com os filtros.</div>');
     renderWishlist();
+    renderFilterBars();
     renderQuickMatch();
     renderViewToggles();
     renderFinishedTab();
@@ -302,8 +479,9 @@ export function render() {
 
 export function renderFinishedTab() {
     const finishedContainer = document.getElementById('finished-list-container');
-    const finishedGames = getSortedGames(appData.games.filter(g => g.state === 'finished'), appData.settings.finishedSort, true);
-    document.getElementById('count-finished').innerText = finishedGames.length;
+    const finishedAll = getSortedGames(appData.games.filter(g => g.state === 'finished'), appData.settings.finishedSort, true);
+    const finishedGames = applyFilters('finished', finishedAll);
+    document.getElementById('count-finished').innerText = finishedAll.length;
 
     Object.keys(sortLabels).forEach(k => {
         const el = document.getElementById(`sort-fin-${k}`);
@@ -320,7 +498,7 @@ export function renderFinishedTab() {
     document.getElementById('fin-sort-bar').style.display = view === 'timeline' ? 'none' : '';
 
     if (finishedGames.length === 0) {
-        finishedContainer.innerHTML = `<div class="empty-state">Nenhum jogo finalizado ainda. Hora de focar no backlog!</div>`;
+        finishedContainer.innerHTML = finishedAll.length ? `<div class="empty-state">Nenhum jogo zerado combina com os filtros.</div>` : `<div class="empty-state">Nenhum jogo finalizado ainda. Hora de focar no backlog!</div>`;
         return;
     }
     if (view === 'timeline') { renderTimeline(finishedContainer, finishedGames); return; }
@@ -334,13 +512,14 @@ export function renderFinishedTab() {
     });
 
     const sortedGroups = isDateSort ? Object.keys(years).sort((a, b) => { let cmp = b.localeCompare(a); return appData.settings.finishedSortDir === 'asc' ? -cmp : cmp; }) : ["Todos"];
+    finishedContainer.innerHTML = '';   // limpa antes de redesenhar — ao trocar a ordenação nada duplica
     sortedGroups.forEach(year => {
         const yearId = `finished-year-${year.replace(/\s/g, '')}`;
         const yearDiv = document.createElement('div');
         yearDiv.className = `category ${appData.collapsedCats.includes(yearId) ? 'collapsed' : ''}`;
         yearDiv.id = yearId;
         
-        let titleText = isDateSort ? `Concluídos em ${year}` : (appData.settings.finishedSort === 'rating' ? 'Ordenados por Nota' : (appData.settings.finishedSort === 'time' ? 'Ordenados por Tempo' : 'Ordenados por Portátil'));
+        let titleText = isDateSort ? `Concluídos em ${year}` : (appData.settings.finishedSort === 'rating' ? 'Ordenados por Nota' : (appData.settings.finishedSort === 'time' ? 'Ordenados por Tempo' : (appData.settings.finishedSort === 'played' ? 'Ordenados por Horas Jogadas' : 'Ordenados por Portátil')));
         yearDiv.innerHTML = `
             <div class="category-header" onclick="toggleCollapse('${yearId}', event)">
                 <div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2 style="color: var(--accent-finished)">${titleText}</h2></div>
@@ -405,12 +584,13 @@ export function createGameElement(game) {
     const isFinished = finished ? 'checked' : '';
     const title = esc(game.title);
 
+    const coverCls = `gi-cover${game.wideCover ? ' wide' : ''}`;
     const cover = game.image
-        ? `<img src="${esc(game.image)}" alt="" class="gi-cover" onclick="openImageModal('${game.id}')" title="Trocar capa">`
-        : `<div class="gi-cover gi-cover-empty" onclick="openImageModal('${game.id}')" title="Adicionar capa">${esc((game.title.trim()[0] || '?').toUpperCase())}</div>`;
+        ? `<img src="${esc(game.image)}" alt="" class="${coverCls}" onclick="openImageModal('${game.id}')" title="Trocar capa">`
+        : `<div class="${coverCls} gi-cover-empty" onclick="openImageModal('${game.id}')" title="Adicionar capa">${esc((game.title.trim()[0] || '?').toUpperCase())}</div>`;
 
     // Linha secundária: plataforma · ano · gênero · tempo estimado
-    const sub = [esc(game.platform)];
+    const sub = [platformLabel(game.platform)];
     if (game.released) sub.push(esc(game.released.slice(0, 4)));
     if (game.genres && game.genres.length) sub.push(esc(game.genres.slice(0, 2).join(', ')));
     if (game.meta) sub.push(`${esc(fmtTime(game.meta))} p/ zerar`);
@@ -451,17 +631,19 @@ export function createGameElement(game) {
     const running = !!(sess && sess.gameId === game.id);
     const playBtn = (game.state === 'playing' && !game.continuous)
         ? (running
-            ? `<button type="button" class="icon-btn session-running" onclick="openEndSession()" title="Encerrar sessão" aria-label="Encerrar sessão">${icon('stop', { size: '18px' })}</button>`
+            ? `<button type="button" class="icon-btn session-running" onclick="openEndSession()" title="Finalizar sessão" aria-label="Finalizar sessão">${icon('stop', { size: '18px' })}</button>`
             : `<button type="button" class="icon-btn" onclick="startSession('${game.id}')" title="Iniciar sessão de jogo" aria-label="Iniciar sessão de jogo">${icon('play', { size: '18px' })}</button>`)
         : '';
     if (running) chips.unshift('<span class="chip chip-accent">Em sessão</span>');
     const infoBtn = `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Dados do jogo (editar / buscar automático)" aria-label="Dados do jogo">${icon('info', { size: '18px' })}</button>`;
-    const wikiBtn = playBtn + `<button type="button" class="icon-btn" onclick="openWiki('${game.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>`;
+    const wikiBtn = playBtn + `<button type="button" class="icon-btn" onclick="openWiki('${game.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>
+        <button type="button" class="icon-btn" onclick="buyOnAmazon('${game.id}')" title="Comprar na Amazon" aria-label="Comprar na Amazon">${icon('cart', { size: '18px' })}</button>`;
     const editBtn = wikiBtn + (finished
         ? `<button type="button" class="icon-btn" onclick="openCardGenerator('${game.id}')" title="Compartilhar" aria-label="Compartilhar">${ICONS.share}</button>
            ${infoBtn}
            <button type="button" class="icon-btn" onclick="openEditFinishedModal('${game.id}')" title="Editar conclusão (nota, data, review)" aria-label="Editar conclusão">${ICONS.edit}</button>`
-        : `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>`);
+        : `<button type="button" class="icon-btn" onclick="openEditGameModal('${game.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>
+           <button type="button" class="icon-btn" onclick="backlogToWish('${game.id}')" title="Devolver para a wishlist" aria-label="Devolver para a wishlist">${icon('bookmark', { size: '18px' })}</button>`);
 
     // Diário de bordo: recolhível quando for grande
     let journal = '';
@@ -480,7 +662,7 @@ export function createGameElement(game) {
     const statusRow = game.continuous
         ? `<div class="gi-status">
                 ${running
-                    ? '<button type="button" class="pill-btn session-live" onclick="openEndSession()">Encerrar sessão</button>'
+                    ? '<button type="button" class="pill-btn session-live" onclick="openEndSession()">Finalizar sessão</button>'
                     : `<button type="button" class="pill-btn primary" onclick="startSession('${game.id}')">Iniciar sessão</button>`}
                 <button type="button" class="pill-btn" onclick="openJournalEntry('${game.id}')">Anotar no diário</button>
             </div>`
@@ -529,7 +711,23 @@ export function checkNewAchievements() {
     fresh.forEach(a => notifyAchievement(a.name));
 }
 
+export function setStatsPane(p) {
+    appData.settings.statsPane = p;
+    saveData(null);
+    updateStatsAndCharts();
+}
+
+function applyStatsPane() {
+    const p = ['franchises', 'overview', 'genres', 'continuous', 'achievements'].includes(appData.settings.statsPane) ? appData.settings.statsPane : 'franchises';
+    document.querySelectorAll('#stats-subnav button').forEach(b => { const on = b.dataset.pane === p; b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on)); });
+    document.querySelectorAll('.stats-pane').forEach(s => s.classList.toggle('active', s.dataset.pane === p));
+    return p;
+}
+
+export function updateStorageMeter() { renderStorageSettings(); }
+
 export function updateStatsAndCharts() {
+    const pane = applyStatsPane();
     const regularGames = appData.games.filter(g => !g.continuous);
     const filteredGames = regularGames.filter(g => state.currentPlatformFilter === 'All' || g.platform === state.currentPlatformFilter);
     const backlogGames = filteredGames.filter(g => g.state === null);
@@ -563,32 +761,61 @@ export function updateStatsAndCharts() {
     document.getElementById('stat-hours-playing').innerText = sumHours(playingGames) + 'h';
     document.getElementById('stat-hours-finished').innerText = sumHours(finishedGames) + 'h';
 
-    if(typeof Chart !== 'undefined') {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    if (pane === 'overview' && typeof Chart !== 'undefined') {
         const ctx = document.getElementById('statusChart');
-        if(chartInstance) chartInstance.destroy();
-        
-        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim();
-        
+        const css = getComputedStyle(document.documentElement);
+        const textColor = css.getPropertyValue('--text-main').trim();
+        const col = n => css.getPropertyValue(n).trim();
+
         chartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels:['Backlog', 'Jogando', 'Finalizados'],
-                datasets:[{ data:[backlog, playing, finished], backgroundColor:['#ff9800', '#2196f3', '#4caf50'], borderWidth: 0 }]
+                datasets:[{ data:[backlog, playing, finished], backgroundColor:[col('--chart-backlog') || col('--accent-add'), col('--chart-playing') || col('--accent-playing'), col('--chart-finished') || col('--accent-finished')], borderWidth: 0 }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: textColor } } } }
         });
     }
 
     renderAchievements();
-    renderGenreStats();
+    if (pane === 'genres') renderGenreStats();
     renderContinuousStats();
     renderFranchiseStats();
+    const contCount = appData.games.filter(g => g.continuous).length;
+    document.getElementById('sn-continuous').textContent = contCount || '';
 }
 
 // ================= CRUD JOGOS E CATEGORIAS =================
-export function openCatModal() { document.getElementById('cat-modal-title').innerText = 'Nova Categoria'; document.getElementById('edit-cat-id').value = ''; document.getElementById('cat-name').value = ''; document.getElementById('modal-cat').showModal(); }
-export function openEditCatModal(catId) { const cat = appData.categories.find(c => c.id === catId); document.getElementById('cat-modal-title').innerText = 'Editar Categoria'; document.getElementById('edit-cat-id').value = cat.id; document.getElementById('cat-name').value = cat.name; document.getElementById('modal-cat').showModal(); }
-export function saveCategory() { const name = document.getElementById('cat-name').value; const editId = document.getElementById('edit-cat-id').value; if(!name) return; saveStateForUndo(); if (editId) { const cat = appData.categories.find(c => c.id === editId); if(cat) cat.name = name; } else { appData.categories.push({ id: 'c' + Date.now(), name: name }); } closeModal('modal-cat'); saveData(() => render()); triggerToast(editId ? 'Categoria editada.' : 'Categoria criada.'); }
+let catIconDraft = null;
+function paintCatIcon() {
+    const el = document.getElementById('cat-icon-preview');
+    el.innerHTML = catIconDraft ? phHtml(catIconDraft) : '<span class="icon-none">Sem ícone</span>';
+    document.getElementById('cat-icon-clear').style.display = catIconDraft ? '' : 'none';
+}
+export function pickCategoryIcon() {
+    openIconPicker({ current: catIconDraft, onPick: ic => { catIconDraft = ic; paintCatIcon(); } });
+}
+export function clearCategoryIcon() { catIconDraft = null; paintCatIcon(); }
+export function openCatModal() { document.getElementById('cat-modal-title').innerText = 'Nova Categoria'; document.getElementById('edit-cat-id').value = ''; document.getElementById('cat-name').value = ''; catIconDraft = null; paintCatIcon(); document.getElementById('modal-cat').showModal(); }
+export function openEditCatModal(catId) { const cat = appData.categories.find(c => c.id === catId); document.getElementById('cat-modal-title').innerText = 'Editar Categoria'; document.getElementById('edit-cat-id').value = cat.id; document.getElementById('cat-name').value = cat.name; catIconDraft = (cat.icon && typeof cat.icon === 'object') ? { ...cat.icon } : null; paintCatIcon(); document.getElementById('modal-cat').showModal(); }   // logo de loja (string) não vai pro picker: se salvar sem escolher, o boot recoloca
+export function saveCategory() {
+    const name = document.getElementById('cat-name').value.trim();
+    const editId = document.getElementById('edit-cat-id').value;
+    if (!name) return;
+    saveStateForUndo();
+    if (editId) {
+        const cat = appData.categories.find(c => c.id === editId);
+        if (cat) { cat.name = name; if (catIconDraft) cat.icon = catIconDraft; else delete cat.icon; }
+    } else {
+        const cat = { id: 'c' + Date.now(), name };
+        if (catIconDraft) cat.icon = catIconDraft;
+        appData.categories.unshift(cat);   // a categoria nova aparece primeiro na ordem
+    }
+    closeModal('modal-cat');
+    saveData(() => render());
+    triggerToast(editId ? 'Categoria atualizada.' : 'Categoria criada.');
+}
 export function askDeleteCategory(catId) { const cat = appData.categories.find(c => c.id === catId); const hasGames = appData.games.some(g => g.catId === catId); if(confirm(hasGames ? `Excluir APAGARÁ OS JOGOS nela. Continuar?` : `Excluir "${cat.name}"?`)) { saveStateForUndo(); appData.categories = appData.categories.filter(c => c.id !== catId); appData.games = appData.games.filter(g => g.catId !== catId); saveData(() => render()); triggerToast('Excluída.'); } }
 export function moveCategory(catId, direction) {
     const index = appData.categories.findIndex(c => c.id === catId);
@@ -624,9 +851,12 @@ function prepareGameModal(mode) {
     document.getElementById('game-wish-fields').style.display = wish ? '' : 'none';
     document.getElementById('franchise-list').innerHTML = franchiseNames().map(f => `<option value="${esc(f)}"></option>`).join('');
     document.getElementById('game-wish-cat').innerHTML = appData.categories.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    document.getElementById('game-cat-move').innerHTML = appData.categories.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    document.getElementById('game-cat-row').style.display = wish ? 'none' : '';
     document.getElementById('game-platform').innerHTML = appData.platforms.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
     document.getElementById('console-list').innerHTML = [...new Set([...CONSOLES, ...appData.platforms.map(p => p.name)])].map(c => `<option value="${esc(c)}"></option>`).join('');
     document.getElementById('game-continuous').disabled = false;
+    document.getElementById('game-released').style.display = wish ? 'none' : '';
 }
 
 export function toggleModalFlags() {
@@ -657,6 +887,8 @@ export function openGameModal(catId) {
     prepareGameModal(wish ? 'wish' : 'game');
     resetFlagFields();
     document.getElementById('game-continuous').checked = catId === 'continuous';
+    const firstCat = appData.categories.some(c => c.id === catId) ? catId : (appData.categories[0] && appData.categories[0].id) || '';
+    document.getElementById('game-cat-move').value = firstCat;
     toggleModalFlags();
     document.getElementById('modal-game').showModal();
 }
@@ -680,6 +912,9 @@ export function openEditGameModal(gameId, isWish = false) {
     document.getElementById('game-emulated').checked = !!game.emulated;
     document.getElementById('game-orig-console').value = game.originalConsole || '';
     document.getElementById('game-difficulty').value = game.difficulty || '';
+    document.getElementById('game-cat-move').value = isWish
+        ? (appData.categories[0] && appData.categories[0].id) || ''
+        : (game.catId === 'continuous' ? (game.homeCatId || '') : game.catId);
     toggleModalFlags();
     document.getElementById('game-hours-played').value = game.hoursPlayed || '';
     document.getElementById('game-journal-notes').value = game.journalNotes || '';
@@ -692,6 +927,10 @@ export function openEditGameModal(gameId, isWish = false) {
     if (isWish) {
         document.getElementById('game-wish-note').value = game.note || '';
         if (game.catId) document.getElementById('game-wish-cat').value = game.catId;
+        document.getElementById('game-wish-released').value = game.released || '';
+        document.getElementById('game-wish-notify').checked = !!game.notifyRelease;
+        pendingTba = !!game.tba;
+        paintWishNotify();
     }
     document.getElementById('game-platform').value = game.platform;
 
@@ -737,17 +976,27 @@ export function saveGame() {
         if (cur && cur.state === 'finished') { triggerToast('Jogos zerados não podem virar contínuos.', false); return; }
     }
     saveStateForUndo();
+    const idPatch = pendingRawgId ? { rawgId: pendingRawgId } : {};
 
     if (wish) {
-        const extra = { ...base, catId: val('game-wish-cat') || (appData.categories[0] && appData.categories[0].id) || '', note: val('game-wish-note').trim() };
+        const extra = { ...base, ...idPatch, catId: val('game-wish-cat') || (appData.categories[0] && appData.categories[0].id) || '', note: val('game-wish-note').trim() };
+        const wd = val('game-wish-released') || '';
+        // data alterada à mão fica marcada e o "Atualizar datas" não mexe mais nela
+        const wrel = document.getElementById('game-wish-released');
+        const prev = gameId ? appData.wishlist.find(g => g.id === gameId) : null;
+        extra.releaseManual = wrel.dataset.manual === '1' ? !!wd : !!(prev && prev.releaseManual && (prev.released || '') === wd);
+        extra.released = wd;
+        extra.tba = !wd && pendingTba;
+        extra.notifyRelease = document.getElementById('game-wish-notify').checked && daysUntil(wd) !== null && daysUntil(wd) >= 0;
+        { const old = gameId ? appData.wishlist.find(g => g.id === gameId) : null; if (!old || old.released !== wd || !old.notifyRelease) extra.releaseNotified = false; }
         if (gameId) {
             const item = appData.wishlist.find(g => g.id === gameId);
-            if (item) { Object.assign(item, extra, { title }); if (pendingCover) item.image = pendingCover; }
+            if (item) { Object.assign(item, extra, { title }); if (pendingCover !== null) { item.image = pendingCover || null; if (pendingCover) item.wideCover = pendingWideCover; } }
         } else {
-            appData.wishlist.push({ id: 'w' + Date.now(), title, ...extra, image: pendingCover || null, addedAt: Date.now() });
+            appData.wishlist.push({ id: 'w' + Date.now(), title, ...extra, image: pendingCover || null, wideCover: pendingCover ? pendingWideCover : false, addedAt: Date.now() });
         }
     } else {
-        const extra = { ...base, hoursPlayed: val('game-hours-played'), journalNotes: val('game-journal-notes') };
+        const extra = { ...base, ...idPatch, hoursPlayed: val('game-hours-played'), journalNotes: val('game-journal-notes') };
         const existing = gameId ? appData.games.find(g => g.id === gameId) : null;
         // Jogos contínuos vivem em "continuous"; ao desmarcar, voltam para a categoria de origem
         let cat = existing ? existing.catId : catId;
@@ -755,28 +1004,35 @@ export function saveGame() {
         if (continuous) {
             if (cat !== 'continuous') homeCatId = cat;
             else if (!homeCatId && appData.categories[0]) homeCatId = appData.categories[0].id;
+            const selCat = val('game-cat-move');
+            if (selCat && appData.categories.some(c => c.id === selCat)) homeCatId = selCat;   // categoria de origem escolhida no modal
             cat = 'continuous';
         } else if (cat === 'continuous') {
             const back = appData.categories.find(c => c.id === homeCatId) || appData.categories[0];
             if (!back) { triggerToast('Crie uma categoria na aba Fila antes de desmarcar "Jogo Contínuo".', false); return; }
             cat = back.id;
+        } else {
+            const selCat = val('game-cat-move');
+            if (selCat && appData.categories.some(c => c.id === selCat)) cat = selCat;   // troca de categoria pelo modal
         }
         if (gameId) {
             const game = existing;
             if (game) {
                 Object.assign(game, extra, { title, catId: cat, homeCatId });
                 if (continuous && game.state !== 'finished') game.state = null;
-                if (pendingCover) game.image = pendingCover;
+                if (pendingCover !== null) { game.image = pendingCover || null; if (pendingCover) game.wideCover = pendingWideCover; }
             }
         } else {
             appData.games.push({
-                id: 'g' + Date.now(), catId: cat, homeCatId, title, ...extra,
+                id: 'g' + Date.now(), catId: cat, homeCatId, title, ...extra, wideCover: pendingCover ? pendingWideCover : false,
                 state: null, image: pendingCover || null, userRating: null, dateFinished: null,
                 is100: false, review: ''
             });
         }
     }
     pendingCover = null;
+    pendingWideCover = false;
+    pendingRawgId = null;
     closeModal('modal-game'); saveData(() => render());
     triggerToast(gameId ? 'Informações atualizadas.' : (wish ? 'Adicionado à wishlist.' : 'Jogo adicionado com sucesso!'));
 }
@@ -793,11 +1049,11 @@ export function renderViewToggles() {
     document.getElementById('home-view-shelf').classList.toggle('active', v === 'shelf');
 }
 
-export function createShelfItem(g) {
+export function createShelfItem(g, kind = 'game') {
     const li = document.createElement('li');
     const sess = getSession();
     const live = !!(sess && sess.gameId === g.id);
-    li.className = `shelf-item${g.is100 ? ' is100' : ''}`;
+    li.className = `shelf-item${g.is100 ? ' is100' : ''}${g.wideCover ? ' wide' : ''}`;
     li.dataset.platform = g.platform;
     li.dataset.portable = g.isPortable ? 'true' : 'false';
     li.dataset.franchise = (g.franchise || '').toLowerCase();
@@ -806,26 +1062,286 @@ export function createShelfItem(g) {
     li.setAttribute('role', 'button');
     li.setAttribute('aria-label', g.title);
     li.title = g.title;
-    li.onclick = () => openShelfDetail(g.id);
-    li.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openShelfDetail(g.id); } };
+    const open = () => openShelfDetail(g.id, kind === 'wish');
+    li.onclick = open;
+    li.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
     const badges = [];
     if (g.is100) badges.push(`<span class="shelf-badge gold">${icon('star', { size: '10px' })}100%</span>`);
     if (g.state === 'finished' && g.userRating) badges.push(`<span class="shelf-badge">${esc(g.userRating)}</span>`);
+    if (kind === 'wish') {
+        const st = releaseState(g);
+        if (st === 'future' || st === 'today') badges.push(`<span class="shelf-badge gold">${esc(fmtDate(g.released).replace(/ de /g, ' '))}</span>`);
+        else if (st === 'tba') badges.push('<span class="shelf-badge">TBA</span>');
+    }
+    // Barra de progresso na base do cartucho (horas jogadas vs. tempo estimado), igual ao modo cards
+    let prog = '';
+    if (kind !== 'wish' && g.meta && g.hoursPlayed) {
+        let total = parseFloat(String(g.meta).replace(',', '.')) || 0;
+        if (String(g.meta).includes('m')) total /= 60;
+        const played = parseFloat(g.hoursPlayed) || 0;
+        if (total > 0) {
+            const pct = Math.min(100, Math.round(played / total * 100));
+            prog = `<span class="shelf-prog" title="${played}h de ${total % 1 ? total.toFixed(1) : total}h (${pct}%)"><i style="width:${pct}%"></i></span>`;
+        }
+    }
     li.innerHTML = `
         <div class="cart">
             <div class="cart-label">${g.image ? `<img src="${esc(g.image)}" alt="" loading="lazy">` : `<span class="cart-empty">${esc(g.title)}</span>`}</div>
             ${badges.length ? `<div class="shelf-badges">${badges.join('')}</div>` : ''}
-            ${live ? '<span class="shelf-live" title="Em sessão"></span>' : (g.state === 'playing' ? '<span class="shelf-playing" title="Jogando"></span>' : '')}
+            ${prog}
+            ${kind === 'wish' ? (g.notifyRelease ? `<span class="shelf-bell" title="Aviso de lançamento ligado">${icon('bell', { size: '11px' })}</span>` : '') : (live ? '<span class="shelf-live" title="Em sessão"></span>' : (g.state === 'playing' ? '<span class="shelf-playing" title="Jogando"></span>' : ''))}
         </div>
         <span class="game-title sr-only">${esc(g.title)}</span>`;
     return li;
 }
 
-export function openShelfDetail(id) {
-    const g = appData.games.find(x => x.id === id);
+// ================= TELA DO JOGO (tela cheia) =================
+// Aberta ao clicar em qualquer jogo: hero com capa, todos os dados e ações,
+// seções colapsáveis (Sobre, Diário), navegável com Esc/voltar.
+export function openGamePage(id, isWish = false) {
+    const g = isWish ? (appData.wishlist || []).find(x => x.id === id) : appData.games.find(x => x.id === id);
     if (!g) return;
-    const finished = g.state === 'finished';
-    const sub = [esc(g.platform)];
+    const finished = !isWish && g.state === 'finished';
+    const playing = !isWish && g.state === 'playing';
+    const sub = [platformLabel(g.platform)];
+    if (g.released) sub.push(esc(String(g.released).slice(0, 4)));
+    if (g.franchise) sub.push(esc(g.franchise));
+    if (g.store) sub.push(esc(g.store.toUpperCase()));
+    const chips = [];
+    if (g.continuous) chips.push('<span class="chip chip-live">Contínuo</span>');
+    if (finished) chips.push('<span class="chip" style="color:var(--accent-finished);border-color:var(--accent-finished)">Zerado</span>');
+    else if (playing) chips.push('<span class="chip chip-accent">Jogando</span>');
+    else if (!isWish) chips.push('<span class="chip">Na fila</span>');
+    chips.push(...(g.genres || []).slice(0, 4).map(x => `<span class="chip">${esc(x)}</span>`));
+    chips.push(...flagChips(g));
+    if (g.metacritic) chips.push(scoreChip(g.metacritic));
+    if (g.is100) chips.push('<span class="chip chip-gold">100%</span>');
+    const facts = [];
+    if (finished && g.dateFinished) facts.push(`<div class="gp-fact"><small>Zerado em</small><strong>${esc(g.dateFinished)}</strong></div>`);
+    if (g.meta) facts.push(`<div class="gp-fact"><small>Tempo estimado</small><strong>${esc(fmtTime(g.meta))}</strong></div>`);
+    if (g.hoursPlayed) facts.push(`<div class="gp-fact"><small>Horas jogadas</small><strong>${esc(fmtHours(hoursNum(g.hoursPlayed)))}</strong></div>`);
+    if (g.userRating && finished) facts.push(`<div class="gp-fact"><small>Sua nota</small><strong>${esc(g.userRating)}/10</strong></div>`);
+    let progress = '';
+    if (g.meta && g.hoursPlayed) {
+        let total = parseFloat(String(g.meta).replace(',', '.')) || 0;
+        if (String(g.meta).includes('m')) total /= 60;
+        const played = parseFloat(g.hoursPlayed) || 0;
+        if (total > 0) {
+            const pct = Math.min(100, Math.round(played / total * 100));
+            progress = `<div class="gi-progress gp-progress"><div class="gi-bar"><span style="width:${pct}%"></span></div><small>${pct}% do caminho para zerar</small></div>`;
+        }
+    }
+    const btn = (label, fn, primary, danger) => `<button type="button" class="pill-btn ${primary ? 'primary' : ''} ${danger ? 'danger-link' : ''}" onclick="gpDo('${fn}', '${g.id}')">${label}</button>`;
+    const ic = n => icon(n, { size: '1em' });
+    const actions = [];
+    if (isWish) {
+        actions.push(btn(`${ic('bookmark')} Para a fila`, 'wishToBacklog', true));
+        if (!g.continuous) actions.push(btn(`${ic('play')} Jogar agora`, 'wishToPlaying'));
+        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('image')} Trocar capa`, 'openImageModal'), btn(`${ic('edit')} Editar`, 'openEditWishModal'), btn(`${ic('trash')} Remover`, 'askDeleteWish', false, true));
+    } else {
+        if (g.continuous || playing) actions.push(btn(`${ic('play')} Iniciar sessão`, 'startSession', true));
+        if (!finished && !g.continuous && !playing) actions.push(btn(`${ic('play')} Jogar agora`, 'playNow', true));
+        if (finished) actions.push(btn(`${ic('share')} Compartilhar`, 'openCardGenerator', true));
+        if (!finished && !g.continuous) actions.push(btn(playing ? `${ic('stop')} Parar de jogar` : `${ic('play')} Marcar como jogando`, 'markPlaying'), btn(`${ic('check')} Marcar como zerado`, 'markFinished'));
+        actions.push(btn(`${ic('pen')} Anotar no diário`, 'openJournalEntry'), btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('info')} Dados do jogo`, 'openEditGameModal'), btn(`${ic('image')} Trocar capa`, 'openImageModal'));
+        if (finished) actions.push(btn(`${ic('edit')} Editar conclusão`, 'openEditFinishedModal'));
+        else actions.push(btn(`${ic('bookmark')} Voltar à wishlist`, 'backlogToWish'));
+        actions.push(btn(`${ic('trash')} Remover`, 'askDeleteGame', false, true));
+    }
+    const desc = (g.description || '').trim();
+    const notes = [g.journalNotes, finished && g.review ? `📝 Review: ${g.review}` : ''].filter(Boolean).join('\n\n');
+    let old = document.getElementById('gp-page');
+    if (old) old.remove();
+    const el = document.createElement('div');
+    el.id = 'gp-page';
+    el.className = 'gp-page';
+    if (g.userBanner) el.classList.add('with-banner');   // fundo enviado pelo usuário já abre no lugar
+    el.innerHTML = `
+        ${g.image ? `<div class="gp-bg"><img src="${esc(g.image)}" alt=""></div>` : ''}
+        <div class="gp-scroll">
+            <button type="button" class="gp-back" onclick="gpClose()">${icon('back', { size: '1em' })} Voltar</button>
+            <div class="gp-banner" id="gp-banner">${g.userBanner ? `<img src="${esc(g.userBanner)}" alt="">` : ''}</div>
+            <input type="file" id="gp-bg-file" accept="image/*" hidden>
+            <div class="gp-hero">
+                ${g.image ? `<img class="gp-cover${g.wideCover ? ' wide' : ''}" src="${esc(g.image)}" alt="Capa de ${esc(g.title)}" onclick="gpDo('openImageModal', '${g.id}')" title="Trocar capa">` : `<div class="gp-cover gp-cover-empty" onclick="gpDo('openImageModal', '${g.id}')" title="Trocar capa">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
+                <div class="gp-hero-info">
+                    <h2>${esc(g.title)}</h2>
+                    <div class="gp-sub">${sub.join(' <span class="dot">·</span> ')}</div>
+                    <div class="gp-chips">${chips.join('')}</div>
+                    ${progress}
+                </div>
+            </div>
+            ${facts.length ? `<div class="gp-facts">${facts.join('')}</div>` : ''}
+            <div class="gp-actions">${actions.join('')}</div>
+            <details class="gp-sec" open>
+                <summary>${ic('info')} Sobre o jogo</summary>
+                <div class="gp-sec-body">${desc ? esc(desc) : 'Sem descrição por aqui. Use "Dados do jogo" para buscar na RAWG ou completar à mão.'}</div>
+                <div class="gp-mine" id="gp-mine"></div>
+                <div class="gp-extra" id="gp-extra"></div>
+            </details>
+            <details class="gp-sec">
+                <summary>${ic('pen')} Anotações e diário</summary>
+                <div class="gp-sec-body">${notes ? esc(notes).replace(/\n/g, '<br>') : 'Sem anotações ainda. Toque em "Anotar no diário" para começar.'}</div>
+            </details>
+        </div>`;
+    document.body.appendChild(el);
+    document.body.classList.add('gp-open');
+    requestAnimationFrame(() => el.classList.add('open'));
+    // Atalho do fundo (capa de Facebook): clicar abre as opções — ver em tela cheia, enviar a própria ou voltar à arte do jogo
+    const bannerDiv = el.querySelector('#gp-banner');
+    if (bannerDiv) {
+        bannerDiv.addEventListener('click', () => gpBannerMenu(g, isWish));
+        const bgFile = el.querySelector('#gp-bg-file');
+        if (bgFile) bgFile.addEventListener('change', async () => {
+            const f = bgFile.files && bgFile.files[0];
+            bgFile.value = '';
+            if (!f) return;
+            try {
+                g.userBanner = await fileToSmallJpeg(f, 1280);
+                saveData(null);
+                triggerToast('Fundo personalizado salvo!');
+            } catch (e) { triggerToast('Não consegui usar essa imagem.', false); return; }
+            openGamePage(g.id, isWish);
+        });
+    }
+    if (g.rawgId) hydrateGameExtras(g, el);   // desenvolvedora/publicadora + screenshots (RAWG)
+    try { paintMineShots(g, isWish); } catch (e) { console.error('Falha ao pintar suas screenshots', e); }   // um não pode derrubar o outro
+}
+
+// Menu do fundo do jogo: ver em tela cheia, trocar por imagem própria ou voltar para a arte da RAWG
+function gpBannerMenu(g, isWish) {
+    const old = document.getElementById('gp-bmenu');
+    if (old) old.remove();
+    const banner = document.getElementById('gp-banner');
+    if (!banner) return;
+    const r = banner.getBoundingClientRect();
+    const m = document.createElement('div');
+    m.id = 'gp-bmenu';
+    m.className = 'gp-bmenu';
+    m.style.top = `${Math.round(r.bottom + 6)}px`;
+    m.style.left = `${Math.max(8, Math.min(Math.round(r.left), window.innerWidth - 230))}px`;
+    m.innerHTML = `
+        <button type="button" data-a="view">Ver em tela cheia</button>
+        <button type="button" data-a="upload">${g.userBanner ? 'Trocar imagem de fundo' : 'Enviar imagem de fundo'}</button>
+        ${g.userBanner ? `<button type="button" data-a="reset">Voltar para a arte do jogo</button>` : ''}`;
+    document.body.appendChild(m);
+    const close = () => { m.remove(); document.removeEventListener('click', away, true); window.removeEventListener('scroll', close, true); };
+    const away = ev => { if (!m.contains(ev.target)) close(); };
+    m.addEventListener('click', e => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        if (btn.dataset.a === 'view') { const img = banner.querySelector('img'); close(); if (img && img.src) viewImage(img.src); }
+        else if (btn.dataset.a === 'upload') { close(); const f = document.getElementById('gp-bg-file'); if (f) f.click(); }
+        else if (btn.dataset.a === 'reset') { close(); delete g.userBanner; saveData(null); openGamePage(g.id, isWish); }
+    });
+    setTimeout(() => { document.addEventListener('click', away, true); window.addEventListener('scroll', close, true); }, 0);
+}
+
+// ---------- Screenshots do próprio usuário (salvas no jogo, no banco local) ----------
+const MAX_USER_SHOTS = 12;
+function paintMineShots(g, isWish) {
+    const box = document.getElementById('gp-mine');
+    if (!box) return;
+    const mine = g.userShots || [];
+    const full = mine.length >= MAX_USER_SHOTS;
+    const icn = n => icon(n, { size: '1em' });
+    box.innerHTML = `
+        <div class="gp-mine-head">
+            <strong>Suas screenshots</strong>
+            <button type="button" class="pill-btn" id="gp-shot-add" ${full ? 'disabled title="Limite de ' + MAX_USER_SHOTS + ' por jogo"' : ''}>${icn('image')} Adicionar</button>
+        </div>
+        ${mine.length
+            ? `<div class="gp-shots">${mine.map((u, i) => `<div class="gp-shot-mine"><img src="${esc(u)}" alt="Screenshot sua" loading="lazy" data-i="${i}" title="Ver em tamanho cheio"><button type="button" class="gp-shot-del" data-i="${i}" title="Remover screenshot">${icn('trash')}</button></div>`).join('')}</div>`
+            : `<small class="gp-mine-none">Envie prints seus do jogo — ficam salvos aqui no aparelho.</small>`}
+        <input type="file" id="gp-shot-file" accept="image/*" multiple hidden>`;
+    const file = box.querySelector('#gp-shot-file');
+    box.querySelector('#gp-shot-add').addEventListener('click', () => { if (!full) file.click(); });
+    box.querySelectorAll('.gp-shot-mine img').forEach(img => img.addEventListener('click', () => viewImage((g.userShots || [])[+img.dataset.i])));
+    box.querySelectorAll('.gp-shot-del').forEach(btn => btn.addEventListener('click', () => {
+        g.userShots.splice(+btn.dataset.i, 1);
+        if (!g.userShots.length) delete g.userShots;
+        saveData(null);
+        paintMineShots(g, isWish);
+    }));
+    file.addEventListener('change', async () => {
+        const picked = [...(file.files || [])];
+        file.value = '';
+        if (!picked.length) return;
+        const room = MAX_USER_SHOTS - (g.userShots || []).length;
+        const use = picked.slice(0, Math.max(0, room));
+        if (picked.length > use.length) triggerToast(`Limite de ${MAX_USER_SHOTS} screenshots por jogo — as últimas ${picked.length - use.length} ficaram de fora.`, false);
+        let ok = 0;
+        for (const f of use) {
+            try {
+                const data = await fileToSmallJpeg(f, 1080);   // reduz para não estourar o banco
+                if (!g.userShots) g.userShots = [];
+                g.userShots.push(data);
+                ok++;
+            } catch (e) { /* arquivo inválido: pula */ }
+        }
+        if (ok) { saveData(null); triggerToast(`${ok} screenshot${ok > 1 ? 's' : ''} salva${ok > 1 ? 's' : ''}!`); }
+        paintMineShots(g, isWish);
+    });
+}
+
+// Enche a seção "Sobre o jogo" com os créditos e screenshots da RAWG, sem tocar no jogo salvo:
+// busca na hora (o jogo pode ter sido importado antes de existir esses campos).
+// O fundo (capa de Facebook) só puxa da RAWG quando o usuário não enviou um próprio.
+async function hydrateGameExtras(g, page) {
+    const rawgId = g.rawgId;
+    if (!(rawgId > 0)) return;
+    try {
+        const [d, shots] = await Promise.all([
+            getGameDetails(rawgId).catch(() => null),
+            getGameScreenshots(rawgId).catch(() => [])
+        ]);
+        const el = document.getElementById('gp-extra');
+        if (!el || !page.isConnected || !page.contains(el)) return;   // usuário fechou/trocou de jogo antes da resposta
+        // Capa horizontal (estilo "capa de Facebook") no topo: arte adicional da RAWG, caindo para a principal
+        if (!g.userBanner) {
+            const bEl = document.getElementById('gp-banner');
+            if (bEl && page.contains(bEl)) {
+                const src = d && (d.imageExtra || d.image);
+                if (src) {
+                    bEl.innerHTML = `<img src="${esc(resizeUrl(src, 1280))}" alt="">`;
+                    page.classList.add('with-banner');
+                }
+            }
+        }
+        const creds = [];
+        if (d && (d.developers || []).length) creds.push(`<strong>Desenvolvedora:</strong> ${esc(d.developers.join(', '))}`);
+        if (d && (d.publishers || []).length) creds.push(`<strong>Publicadora:</strong> ${esc(d.publishers.join(', '))}`);
+        let html = creds.length ? `<div class="gp-cred">${creds.join(' · ')}</div>` : '';
+        if ((shots || []).length) html += shotsGalleryHtml(shots);
+        if (html) el.innerHTML = html;
+    } catch (e) { /* sem internet ou jogo fora do catálogo: fica como está */ }
+}
+
+export function gpClose() {
+    const el = document.getElementById('gp-page');
+    document.body.classList.remove('gp-open');
+    if (el) { el.classList.remove('open'); setTimeout(() => el.remove(), 240); }
+}
+
+export function gpDo(fn, id) {
+    if (fn === 'playNow' || fn === 'markPlaying') { gpClose(); toggleState(id, 'playing'); return; }
+    if (fn === 'markFinished') { gpClose(); toggleState(id, 'finished'); return; }
+    gpClose();
+    if (typeof window[fn] === 'function') window[fn](id);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('gp-page') && !document.querySelector('dialog[open]') && !document.getElementById('gp-lightbox')) gpClose(); });
+
+// Detalhe do item da prateleira: agora abre a tela cheia do jogo
+export function openShelfDetail(id, isWish = false) {
+    return openGamePage(id, isWish);
+}
+
+export function _oldShelfDetail(id, isWish = false) {
+    const g = isWish ? (appData.wishlist || []).find(x => x.id === id) : appData.games.find(x => x.id === id);
+    if (!g) return;
+    const finished = !isWish && g.state === 'finished';
+    const sub = [platformLabel(g.platform)];
     if (g.released) sub.push(esc(g.released.slice(0, 4)));
     if (g.genres && g.genres.length) sub.push(esc(g.genres.slice(0, 3).join(', ')));
     const chips = [];
@@ -841,18 +1357,45 @@ export function openShelfDetail(id) {
     if (finished && g.dateFinished) facts.push(`Zerado em <strong>${esc(g.dateFinished)}</strong>`);
     if (g.meta) facts.push(`Tempo estimado <strong>${esc(fmtTime(g.meta))}</strong>`);
     if (g.hoursPlayed) facts.push(`Jogadas <strong>${esc(fmtHours(hoursNum(g.hoursPlayed)))}</strong>`);
-    const text = finished && g.review ? g.review : g.journalNotes;
-    const btn = (label, fn, primary) => `<button type="button" class="pill-btn ${primary ? 'primary' : ''}" onclick="shelfDo('${fn}', '${g.id}')">${label}</button>`;
+    const text = finished && g.review ? g.review : (g.journalNotes || g.note);
+    // Barra de progresso: horas jogadas até o tempo estimado (igual ao modo cards)
+    let progress = '';
+    if (g.meta && g.hoursPlayed) {
+        let total = parseFloat(String(g.meta).replace(',', '.')) || 0;
+        if (String(g.meta).includes('m')) total /= 60;
+        const played = parseFloat(g.hoursPlayed) || 0;
+        if (total > 0) {
+            const pct = Math.min(100, Math.round(played / total * 100));
+            const left = total - played;
+            progress = `<div class="gi-progress"><div class="gi-bar"><span style="width:${pct}%"></span></div><small>${played}h de ${total % 1 ? total.toFixed(1) : total}h · ${left > 0 ? `faltam ~${left.toFixed(1)}h` : 'meta atingida'}</small></div>`;
+        }
+    } else if (g.continuous) {
+        progress = `<div class="gi-hours"><strong>${fmtHours(hoursNum(g.hoursPlayed))}</strong> jogadas</div>`;
+    } else if (g.hoursPlayed) {
+        progress = `<div class="gi-progress"><small>${esc(g.hoursPlayed)}h jogadas</small></div>`;
+    }
+    const btn = (label, fn, primary, danger) => `<button type="button" class="pill-btn ${primary ? 'primary' : ''} ${danger ? 'danger-link' : ''}" onclick="shelfDo('${fn}', '${g.id}')">${label}</button>`;
+    const ic = n => icon(n, { size: '1em' });
     const actions = [];
-    if (g.continuous || g.state === 'playing') actions.push(btn('Iniciar sessão', 'startSession', true));
-    if (!finished && !g.continuous && g.state !== 'playing') actions.push(btn('Jogar agora', 'playNow', true));
-    if (finished) actions.push(btn('Compartilhar', 'openCardGenerator', true));
-    actions.push(btn('Wiki', 'openWiki'), btn('Dados do jogo', 'openEditGameModal'));
-    if (finished) actions.push(btn('Editar conclusão', 'openEditFinishedModal'));
+    if (isWish) {
+        actions.push(btn(`${ic('bookmark')} Para a fila`, 'wishToBacklog', true));
+        if (!g.continuous) actions.push(btn(`${ic('play')} Jogar agora`, 'wishToPlaying'));
+        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('image')} Trocar capa`, 'openImageModal'), btn(`${ic('edit')} Editar`, 'openEditWishModal'), btn(`${ic('trash')} Remover`, 'askDeleteWish', false, true));
+    } else {
+        if (g.continuous || g.state === 'playing') actions.push(btn(`${ic('play')} Iniciar sessão`, 'startSession', true));
+        if (!finished && !g.continuous && g.state !== 'playing') actions.push(btn(`${ic('play')} Jogar agora`, 'playNow', true));
+        if (finished) actions.push(btn(`${ic('share')} Compartilhar`, 'openCardGenerator', true));
+        if (!finished && !g.continuous) actions.push(btn(g.state === 'playing' ? `${ic('stop')} Parar de jogar` : `${ic('play')} Marcar como jogando`, 'markPlaying'), btn(`${ic('check')} Marcar como zerado`, 'markFinished'));
+        if (g.continuous) actions.push(btn(`${ic('pen')} Anotar no diário`, 'openJournalEntry'));
+        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('info')} Dados do jogo`, 'openEditGameModal'), btn(`${ic('image')} Trocar capa`, 'openImageModal'));
+        if (finished) actions.push(btn(`${ic('edit')} Editar conclusão`, 'openEditFinishedModal'));
+        else actions.push(btn(`${ic('bookmark')} Voltar à wishlist`, 'backlogToWish'));
+        actions.push(btn(`${ic('trash')} Remover`, 'askDeleteGame', false, true));
+    }
     document.getElementById('shelf-detail-body').innerHTML = `
         <div class="sd-top">
-            ${g.image ? `<img class="sd-cover" src="${esc(g.image)}" alt="">` : `<div class="sd-cover sd-empty">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
-            <div class="sd-info"><h3>${esc(g.title)}</h3><div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div><div class="gi-chips">${chips.join('')}</div></div>
+            ${g.image ? `<img class="sd-cover${g.wideCover ? ' wide' : ''}" src="${esc(g.image)}" alt="">` : `<div class="sd-cover sd-empty">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
+            <div class="sd-info"><h3>${esc(g.title)}</h3><div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div><div class="gi-chips">${chips.join('')}</div>${progress}</div></div>
         </div>
         ${facts.length ? `<div class="sd-facts">${facts.join('<span class="dot">·</span>')}</div>` : ''}
         ${text ? `<div class="sd-text">${esc(text)}</div>` : ''}
@@ -864,12 +1407,29 @@ export function openShelfDetail(id) {
 export function shelfDo(fn, id) {
     closeModal('modal-shelf');
     if (fn === 'playNow') { toggleState(id, 'playing'); return; }
+    if (fn === 'markPlaying') { toggleState(id, 'playing'); return; }
+    if (fn === 'markFinished') { toggleState(id, 'finished'); return; }
     if (typeof window[fn] === 'function') window[fn](id);
 }
 
 // ================= WISHLIST =================
 const scoreChip = m => `<span class="chip score ${m >= 75 ? 'good' : m >= 50 ? 'mid' : 'bad'}" title="Nota Metacritic">Metacritic ${esc(m)}</span>`;
 const franchiseChip = name => `<span class="chip chip-franchise" data-f="${esc(name)}" onclick="filterByFranchise(this.dataset.f)" title="Ver jogos da franquia">${esc(name)}</span>`;
+
+const WISH_SORTS = { release: 'Lançamento', added: 'Adicionado', az: 'A-Z', meta: 'Nota' };
+export function setWishSort(k) { appData.settings.wishSort = WISH_SORTS[k] ? k : 'release'; saveData(() => render()); }
+export function setWishView(v) { appData.settings.wishView = v === 'shelf' ? 'shelf' : 'list'; saveData(() => render()); }
+
+function wishReleaseHtml(w) {
+    const st = releaseState(w);
+    const cal = icon('calendar', { size: '1em' });
+    if (st === 'unknown' || st === 'tba') return `<div class="wish-release ${st}"><span class="wr-date">${cal} ${st === 'tba' ? 'Data a confirmar' : 'Sem data de lançamento'}</span></div>`;
+    const soon = st === 'future' || st === 'today';
+    let extra = '';
+    if (soon) extra = `<label class="wish-notify"><input type="checkbox" ${w.notifyRelease ? 'checked' : ''} onchange="toggleWishNotify('${w.id}', this.checked)"><span>${icon('bell', { size: '1em' })} Avisar quando lançar</span></label>`;
+    else if (w.notifyRelease && w.releaseNotified && daysUntil(w.released) >= -14) extra = `<span class="chip chip-accent wish-new">${icon('bell', { size: '1em' })} Acabou de lançar!</span>`;
+    return `<div class="wish-release ${st}"><span class="wr-date">${cal} ${esc(fmtDate(w.released))}</span><span class="chip wr-count ${soon ? 'soon' : ''}">${esc(countdownText(w))}</span></div>${extra}`;
+}
 
 export function createWishElement(w) {
     const li = document.createElement('li');
@@ -879,11 +1439,11 @@ export function createWishElement(w) {
     li.dataset.franchise = (w.franchise || '').toLowerCase();
     li.dataset.tags = tagsOf(w);
 
+    const wishCoverCls = `gi-cover${w.wideCover ? ' wide' : ''}`;
     const cover = w.image
-        ? `<img src="${esc(w.image)}" alt="" class="gi-cover" style="cursor:default">`
-        : `<div class="gi-cover gi-cover-empty" style="cursor:default">${esc((w.title.trim()[0] || '?').toUpperCase())}</div>`;
-    const sub = [esc(w.platform)];
-    if (w.released) sub.push(esc(w.released.slice(0, 4)));
+        ? `<img src="${esc(w.image)}" alt="" class="${wishCoverCls}" onclick="openImageModal('${w.id}')" title="Trocar capa">`
+        : `<div class="${wishCoverCls} gi-cover-empty" onclick="openImageModal('${w.id}')" title="Adicionar capa">${esc((w.title.trim()[0] || '?').toUpperCase())}</div>`;
+    const sub = [platformLabel(w.platform)];
     if (w.genres && w.genres.length) sub.push(esc(w.genres.slice(0, 2).join(', ')));
     if (w.meta) sub.push(`${esc(fmtTime(w.meta))} p/ zerar`);
     const chips = [];
@@ -898,6 +1458,7 @@ export function createWishElement(w) {
         <div class="gi-body">
             <div class="game-title">${esc(w.title)}</div>
             <div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div>
+            ${wishReleaseHtml(w)}
             ${chips.length ? `<div class="gi-chips">${chips.join('')}</div>` : ''}
             ${w.note ? `<div class="wish-note">${esc(w.note)}</div>` : ''}
             <div class="gi-status">
@@ -907,6 +1468,7 @@ export function createWishElement(w) {
         </div>
         <div class="gi-actions">
             <button type="button" class="icon-btn" onclick="openWiki('${w.id}')" title="Wiki do jogo" aria-label="Wiki do jogo">${icon('search', { size: '18px' })}</button>
+            <button type="button" class="icon-btn" onclick="buyOnAmazon('${w.id}')" title="Comprar na Amazon" aria-label="Comprar na Amazon">${icon('cart', { size: '18px' })}</button>
             <button type="button" class="icon-btn" onclick="openEditWishModal('${w.id}')" title="Editar" aria-label="Editar">${ICONS.edit}</button>
             <button type="button" class="icon-btn danger" onclick="askDeleteWish('${w.id}')" title="Remover" aria-label="Remover">${ICONS.trash}</button>
         </div>
@@ -915,18 +1477,88 @@ export function createWishElement(w) {
     return li;
 }
 
+// Seções da wishlist na ordem em que aparecem na tela (também usada ao compartilhar)
+export function wishSections(items) {
+    const sort = appData.settings.wishSort;
+    const byAdded = (a, b) => (b.addedAt || 0) - (a.addedAt || 0);
+    const cmp = { release: byAdded, added: byAdded, az: (a, b) => a.title.localeCompare(b.title), meta: (a, b) => (b.metacritic || 0) - (a.metacritic || 0) }[sort] || byAdded;
+    // Jogos sem data ficam na mesma seção do "Em breve" (por último dentro dela)
+    const st = w => releaseState(w);
+    const dated = w => st(w) === 'future' || st(w) === 'today';
+    const upcoming = items.filter(w => st(w) !== 'released').sort((a, b) => {
+        const da = dated(a) ? a.released : '9999', db = dated(b) ? b.released : '9999';
+        return da.localeCompare(db) || cmp(a, b);
+    });
+    const released = items.filter(w => st(w) === 'released').sort(sort === 'release' ? (a, b) => b.released.localeCompare(a.released) : cmp);
+    return [{ key: 'soon', title: 'Em breve', list: upcoming }, { key: 'out', title: 'Já lançados', list: released }].filter(s => s.list.length);
+}
+
+function renderWishSummary(all) {
+    const el = document.getElementById('wish-summary');
+    const up = all.filter(w => ['future', 'today'].includes(releaseState(w))).sort((a, b) => a.released.localeCompare(b.released));
+    const watching = all.filter(w => w.notifyRelease && !w.releaseNotified && w.released).length;
+    if (!all.length) { el.innerHTML = ''; return; }
+    const next = up[0];
+    el.innerHTML = `<div class="wish-sum">
+        <div><strong>${up.length}</strong> ${up.length === 1 ? 'lançamento futuro' : 'lançamentos futuros'}${watching ? ` · <strong>${watching}</strong> com aviso` : ''}</div>
+        ${next ? `<div class="wish-next">Próximo: <strong>${esc(next.title)}</strong> · ${esc(countdownText(next).replace('Lança ', ''))} (${esc(fmtDate(next.released))})</div>` : '<div class="wish-next">Nenhum lançamento futuro na lista.</div>'}
+    </div>`;
+}
+
 export function renderWishlist() {
     const box = document.getElementById('wish-list-container');
-    const items = [...(appData.wishlist || [])].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
-    document.getElementById('count-wish').innerText = items.length;
+    const all = appData.wishlist || [];
+    document.getElementById('count-wish').innerText = all.length;
+    Object.keys(WISH_SORTS).forEach(k => { const el = document.getElementById(`sort-wish-${k}`); if (el) el.classList.toggle('active', appData.settings.wishSort === k); });
+    const shelf = appData.settings.wishView === 'shelf';
+    document.getElementById('wish-view-list').classList.toggle('active', !shelf);
+    document.getElementById('wish-view-shelf').classList.toggle('active', shelf);
     box.innerHTML = '';
-    if (!items.length) { box.innerHTML = '<div class="empty-state">Sua wishlist está vazia. Adicione os jogos que pretende comprar ou baixar.</div>'; return; }
-    const cat = document.createElement('div');
-    cat.className = 'category';
-    cat.id = 'wishlist-category';
-    cat.innerHTML = '<div class="game-list-wrapper"><ul class="game-list"></ul></div>';
-    items.forEach(w => cat.querySelector('ul').appendChild(createWishElement(w)));
-    box.appendChild(cat);
+    renderWishSummary(all);
+    if (!all.length) { box.innerHTML = '<div class="empty-state">Sua wishlist está vazia. Adicione os jogos que pretende comprar ou baixar.</div>'; return; }
+    const items = applyFilters('wish', all);
+    if (!items.length) { box.innerHTML = '<div class="empty-state">Nenhum desejo combina com os filtros.</div>'; return; }
+    wishSections(items).forEach(sec => {
+        const cat = document.createElement('div');
+        cat.className = `category wish-sec wish-${sec.key}`;
+        cat.innerHTML = `<div class="category-header"><div class="cat-title-area"><h2>${sec.title}</h2><span class="chip">${sec.list.length}</span></div></div><div class="game-list-wrapper"><ul class="game-list"></ul></div>`;
+        const ul = cat.querySelector('ul');
+        ul.classList.toggle('shelf', shelf);
+        sec.list.forEach(w => ul.appendChild(shelf ? createShelfItem(w, 'wish') : createWishElement(w)));
+        box.appendChild(cat);
+    });
+    syncReleaseWatch();
+}
+
+export function toggleWishNotify(id, on) {
+    const w = (appData.wishlist || []).find(x => x.id === id);
+    if (!w) return;
+    w.notifyRelease = !!on;
+    if (on) { w.releaseNotified = false; askNotifyIfNeeded(); }
+    saveData(() => render());
+    triggerToast(on ? `Vou avisar quando "${w.title}" lançar.` : 'Aviso de lançamento desligado.', false);
+}
+
+export async function refreshDatesUI() {
+    const btn = document.getElementById('wish-refresh-btn'), st = document.getElementById('wish-refresh-status');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const res = await refreshReleaseDates({ force: true, onProgress: p => { st.textContent = p.finished ? '' : `Atualizando ${p.done}/${p.total}: ${p.title}`; } });
+    btn.disabled = false;
+    appData.settings.lastReleaseRefresh = Date.now();
+    saveData(() => render());
+    st.textContent = res.checked ? `${res.changed} ${res.changed === 1 ? 'data atualizada' : 'datas atualizadas'} de ${res.checked} jogos.` : 'Nenhum desejo para atualizar.';
+}
+
+// Jogos na ordem em que aparecem na tela (para compartilhar)
+export function getTabGames(tab) {
+    if (tab === 'wish') return wishSections(applyFilters('wish', appData.wishlist || [])).flatMap(s => s.list);
+    if (tab === 'finished') return getSortedGames(applyFilters('finished', appData.games.filter(g => g.state === 'finished')), appData.settings.finishedSort, true);
+    const home = g => applyFilters('home', [g]).length > 0;
+    const playing = getSortedGames(appData.games.filter(g => g.state === 'playing' && !g.continuous && home(g)), null, false);
+    const cont = appData.games.filter(g => g.continuous && home(g)).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
+    const cats = appData.categories.flatMap(c => getSortedGames(appData.games.filter(g => g.catId === c.id && g.state === null && !g.continuous && home(g)), null, false));
+    return [...playing, ...cont, ...cats];
 }
 
 // Move o desejo para a biblioteca sem redigitar nada (capa, dados e franquia vão junto)
@@ -949,6 +1581,20 @@ function moveWish(id, toPlaying) {
 }
 export const wishToBacklog = id => moveWish(id, false);
 export const wishToPlaying = id => moveWish(id, true);
+
+// Devolve um jogo da biblioteca (fila/jogando/contínuo) para a wishlist, mantendo capa e dados
+export function backlogToWish(id) {
+    const idx = appData.games.findIndex(g => g.id === id);
+    if (idx < 0) return;
+    const g = appData.games[idx];
+    if (g.state === 'finished') { triggerToast('Jogos zerados ficam no histórico. Só é possível devolver jogos da fila ou em andamento.', false); return; }
+    saveStateForUndo();
+    const { state, userRating, dateFinished, is100, review, hoursPlayed, journalNotes, ...rest } = g;
+    appData.wishlist.push({ ...rest, id: 'w' + Date.now(), note: '', addedAt: Date.now(), notifyRelease: false });
+    appData.games.splice(idx, 1);
+    saveData(() => render());
+    triggerToast(`"${g.title}" voltou para a wishlist.`);
+}
 
 export function askDeleteWish(id) {
     const w = appData.wishlist.find(x => x.id === id);
@@ -1016,7 +1662,7 @@ function renderTimeline(container, finishedGames) {
         if (g.userRating) chips.push(`<span class="chip chip-gold">Nota ${esc(g.userRating)}/10</span>`);
         if (g.is100) chips.push('<span class="chip chip-gold">100%</span>');
         if (g.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
-        const sub = [esc(g.platform)];
+        const sub = [platformLabel(g.platform)];
         if (g.meta) sub.push(esc(fmtTime(g.meta)));
         const when = d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : esc(g.dateFinished || 'Sem data');
         return `<li class="tl-item ${g.is100 ? 'is100' : ''}" data-platform="${esc(g.platform)}" data-portable="${g.isPortable ? 'true' : 'false'}" data-franchise="${esc((g.franchise || '').toLowerCase())}" data-tags="${esc(tagsOf(g))}">
@@ -1078,52 +1724,7 @@ export function renderContinuousStats() {
         </div>`).join('')}`;
 }
 
-// ================= FRANQUIAS =================
-export function getFranchiseStats() {
-    const map = new Map();
-    const touch = name => {
-        const k = normKey(name);
-        if (!map.has(k)) map.set(k, { name: name.trim(), total: 0, done: 0, playing: 0, wish: 0 });
-        return map.get(k);
-    };
-    appData.games.forEach(g => {
-        if (g.continuous || !g.franchise || !g.franchise.trim()) return;
-        const f = touch(g.franchise);
-        f.total++;
-        if (g.state === 'finished') f.done++;
-        if (g.state === 'playing') f.playing++;
-    });
-    (appData.wishlist || []).forEach(w => { if (w.franchise && w.franchise.trim()) touch(w.franchise).wish++; });
-    const pct = f => f.total ? f.done / f.total : 0;
-    return [...map.values()].sort((a, b) => pct(b) - pct(a) || b.total - a.total || a.name.localeCompare(b.name));
-}
-
-export function renderFranchiseStats() {
-    const stats = getFranchiseStats();
-    const sum = document.getElementById('franchise-summary');
-    const list = document.getElementById('franchise-stats');
-    if (!stats.length) {
-        sum.textContent = 'Defina a franquia dos jogos (ex.: Zelda, Metroid, Dark Souls) para acompanhar o progresso de cada coleção.';
-        list.innerHTML = '';
-        return;
-    }
-    const withGames = stats.filter(f => f.total > 0);
-    const totalAll = withGames.reduce((a, f) => a + f.total, 0);
-    const doneAll = withGames.reduce((a, f) => a + f.done, 0);
-    const complete = withGames.filter(f => f.done === f.total).length;
-    sum.innerHTML = `Progresso geral nas franquias: <strong>${totalAll ? Math.round(doneAll / totalAll * 100) : 0}%</strong> &nbsp;·&nbsp; Franquias completas: <strong>${complete} de ${withGames.length}</strong>`;
-    list.innerHTML = stats.map(f => {
-        const p = f.total ? Math.round(f.done / f.total * 100) : 0;
-        const full = f.total >= 2 && f.done === f.total;
-        const extra = [f.playing ? `${f.playing} jogando` : '', f.wish ? `+${f.wish} na wishlist` : ''].filter(Boolean).join(' · ');
-        return `<div class="fr-item ${full ? 'complete' : ''}" data-f="${esc(f.name)}" onclick="filterByFranchise(this.dataset.f)">
-            <div class="fr-head"><strong>${esc(f.name)}${full ? '<span class="fr-done">Completa</span>' : ''}</strong><span>${f.total ? `${f.done}/${f.total} · ${p}%` : 'só na wishlist'}</span></div>
-            <div class="gi-bar"><span style="width:${p}%"></span></div>
-            ${extra ? `<small>${esc(extra)}</small>` : ''}
-        </div>`;
-    }).join('');
-}
-
+// ================= FRANQUIAS (lista e busca em franchises.js) =================
 export function filterByFranchise(name) {
     document.getElementById('search-bar').value = name;
     if (document.getElementById('tab-stats').classList.contains('active')) switchTab('home'); else filterGames();
@@ -1258,10 +1859,91 @@ export function quickSearch(site) {
     if(site === 'meta') window.open(`https://www.metacritic.com/search/${encodeURIComponent(title)}/`, '_blank');
 }
 
-export function openImageModal(gameId) { const game = appData.games.find(g => g.id === gameId); document.getElementById('edit-img-game-id').value = gameId; document.getElementById('edit-game-name').innerText = game.title; const previewEl = document.getElementById('image-preview'); if(game.image) previewEl.innerHTML = `<img src="${game.image}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; else previewEl.innerHTML = icon('gamepad', { size: '3em' }); document.getElementById('modal-image').showModal(); }
-export function searchCoverOnGoogle() { const gameId = document.getElementById('edit-img-game-id').value; const game = appData.games.find(g => g.id === gameId); if (game) window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, '_blank'); }
-export function previewImageEdit(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { document.getElementById('image-preview').innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 200px; object-fit: contain;">`; }; reader.readAsDataURL(input.files[0]); } }
-export function saveEditedImage() { const gameId = document.getElementById('edit-img-game-id').value; const fileInput = document.getElementById('edit-game-icon'); const game = appData.games.find(g => g.id === gameId); if (fileInput.files && fileInput.files[0]) { const reader = new FileReader(); reader.onload = function(e) { saveStateForUndo(); game.image = e.target.result; fileInput.value = ''; closeModal('modal-image'); saveData(() => render()); triggerToast('Capa atualizada.'); }; reader.readAsDataURL(fileInput.files[0]); } else { closeModal('modal-image'); } }
+let editImageSrc = null, editImageDirty = false;
+function paintEditImage(src) {
+    const el = document.getElementById('image-preview');
+    el.innerHTML = src ? `<img src="${esc(src)}" style="max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 8px;">` : icon('gamepad', { size: '3em' });
+}
+export function openImageModal(gameId) {
+    const game = findItemAny(gameId);
+    if (!game) return;
+    document.getElementById('edit-img-game-id').value = gameId;
+    document.getElementById('edit-game-name').innerText = game.title;
+    editImageSrc = game.image || null; editImageDirty = false;
+    document.getElementById('edit-game-icon').value = '';
+    document.getElementById('edit-img-wide').checked = !!game.wideCover;
+    paintEditImage(editImageSrc);
+    document.getElementById('modal-image').showModal();
+}
+// Navegador embutido (o parâmetro igu=1 libera o Google dentro do iframe do app)
+export function openBrowser(url, title = 'Busca no Google') {
+    const frame = document.getElementById('browser-frame');
+    document.getElementById('browser-title').textContent = title;
+    const ext = document.getElementById('browser-ext');
+    ext.href = url;
+    frame.src = url;
+    document.getElementById('modal-browser').showModal();
+}
+export function closeBrowser() {
+    const frame = document.getElementById('browser-frame');
+    frame.src = 'about:blank';
+    document.getElementById('modal-browser').close();
+}
+
+export function searchCoverOnGoogle() { const gameId = document.getElementById('edit-img-game-id').value; const game = findItemAny(gameId); if (game) openBrowser(`https://www.google.com/search?tbm=isch&igu=1&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, `Capas: ${game.title}`); }
+export function previewImageEdit(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => { editImageSrc = e.target.result; editImageDirty = true; paintEditImage(editImageSrc); };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+export function cropEditImage() {
+    if (!editImageSrc) { triggerToast('Escolha uma foto ou busque uma capa primeiro.', false); return; }
+    openCropper({ src: editImageSrc, onDone: data => { editImageSrc = data; editImageDirty = true; paintEditImage(data); } });
+}
+export async function saveEditedImage() {
+    const gameId = document.getElementById('edit-img-game-id').value;
+    const game = findItemAny(gameId);
+    if (!game) { closeModal('modal-image'); return; }
+    const wide = document.getElementById('edit-img-wide').checked;
+    const wideChanged = wide !== !!game.wideCover;
+    if ((editImageDirty && editImageSrc) || wideChanged) {
+        saveStateForUndo();
+        game.wideCover = wide;
+        if (editImageDirty && editImageSrc) game.image = await blobToSmallJpeg(await (await fetch(editImageSrc)).blob()).catch(() => editImageSrc);
+        closeModal('modal-image');
+        saveData(() => render());
+        triggerToast('Capa atualizada.');
+    } else { closeModal('modal-image'); }
+}
+
+let coverBatchRunning = false;
+export async function upgradeCovers() {
+    const btn = document.getElementById('cover-upgrade-btn');
+    const status = document.getElementById('cover-upgrade-status');
+    if (coverBatchRunning) { stopCoverUpgrade(); btn.textContent = 'Parando...'; return; }
+    // Só processa quem NÃO tem capa — conferir capa existente demorava demais
+    const items = [...appData.games, ...(appData.wishlist || [])].filter(g => !g.image);
+    if (!items.length) { status.textContent = 'Tudo com capa já. Só buscaria de quem está sem.'; return; }
+    coverBatchRunning = true;
+    btn.textContent = 'Parar';
+    saveStateForUndo();
+    let changed = 0;
+    const res = await upgradeAllCovers({
+        games: items,
+        onProgress: p => { status.textContent = p.finished ? '' : `Procurando... ${p.done}/${p.total}${p.title ? ' · ' + p.title : ''} (${p.updated} atualizadas)`; },
+        onGame: (g, r) => { g.image = r.data; if (!g.rawgId && r.rawgId) g.rawgId = r.rawgId; changed++; if (changed % 5 === 0) saveData(null); }
+    });
+    coverBatchRunning = false;
+    btn.textContent = 'Buscar capas verticais da biblioteca';
+    saveData(() => render());
+    updateStorageMeter();
+    status.textContent = res.total === 0
+        ? 'Todas as capas já estão na vertical.'
+        : `${res.updated} de ${res.total} capas atualizadas${res.stopped ? ' (interrompido)' : ''}. As demais não têm capa vertical disponível: use Recortar. Dá para desfazer.`;
+    triggerToast(`${res.updated} capas verticais atualizadas.`);
+}
 
 // ================= SETTINGS E DADOS =================
 export function openBackupModal() { document.getElementById('modal-backup-info').showModal(); }
@@ -1292,14 +1974,67 @@ export function importBackup(event) {
 }
 
 export function saveRawgKey(value) { setRawgKey(value); triggerToast(value.trim() ? 'Chave da RAWG salva.' : 'Voltou para a chave padrão.'); }
+export function saveIGDBKey(value) { setAccessToken(value); triggerToast(value.trim() ? 'Chave da IGDB salva.' : 'Chave da IGDB removida — as capas continuam vindo do Steam/HLTB/Wikipédia.'); }
 
-export function openSettings() { 
+// ---------- Loja: link de afiliado da Amazon (fixo, não configurável pelo usuário) ----------
+const AMAZON_TAG = 'superyugioh-20';
+export function buyOnAmazon(id) {
+    const g = appData.games.find(x => x.id === id) || (appData.wishlist || []).find(x => x.id === id);
+    if (!g) return;
+    const url = `https://www.amazon.com.br/s?k=${encodeURIComponent(g.title)}&linkCode=ll2&tag=${AMAZON_TAG}`;
+    window.open(url, '_blank', 'noopener');
+}
+
+// Atualiza o app sem apagar dados nem cache: pede a versão nova ao servidor e recarrega
+export async function checkAppUpdate() {
+    const btn = document.getElementById('app-update-btn');
+    if (btn) btn.disabled = true;
+    triggerToast('Buscando atualização...', false);
+    try {
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.update().catch(() => {})));
+        }
+    } catch (e) {}
+    triggerToast('Recarregando o app...', false);
+    setTimeout(() => location.reload(), 500);
+}
+
+export function openSettingsSection(id) {
+    document.querySelectorAll('#modal-settings .settings-page').forEach(p => { p.hidden = true; });
+    document.getElementById('settings-hub').hidden = true;
+    const page = document.getElementById('settings-page-' + id);
+    if (page) page.hidden = false;
+    document.getElementById('modal-settings').scrollTop = 0;
+}
+export function backToSettingsHub() {
+    document.querySelectorAll('#modal-settings .settings-page').forEach(p => { p.hidden = true; });
+    const hub = document.getElementById('settings-hub');
+    if (hub) hub.hidden = false;
+    document.getElementById('modal-settings').scrollTop = 0;
+}
+
+export function welcomeSteam() {
+    closeWelcome();
+    openSettings();
+    openSettingsSection('steam');
+}
+
+export function openSettings() {
+    backToSettingsHub();
     document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
-    document.getElementById('theme-selector').value = localStorage.getItem('zeralog_theme') || 'dark'; 
-    document.getElementById('compact-toggle').checked = appData.settings.compact; 
-    cancelEditPlatform(); 
+    const sgdbInput = document.getElementById('sgdb-key-input');
+    if (sgdbInput) sgdbInput.value = getAccessToken()
+    renderThemePicker();
+    paintPlatformDisplay();
+    updateStorageMeter();
+    paintNotifySettings();
+    renderSteamSettings();   // painel da Steam (status, botões, chave)
+    document.getElementById('compact-toggle').checked = appData.settings.compact;
+    document.getElementById('shelf-plain-toggle').checked = !!appData.settings.shelfPlain;
+    cancelEditPlatform();
     renderPlatformAdmin();
-    document.getElementById('modal-settings').showModal(); 
+    document.getElementById('modal-settings').showModal();
 }
 export function openFactoryReset() { document.getElementById('reset-confirm-input').value = ''; document.getElementById('modal-factory-reset').showModal(); }
 export function confirmFactoryReset() { if (document.getElementById('reset-confirm-input').value === 'APAGAR') { saveStateForUndo(); setAppData({ settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc' }, collapsedCats:[], categories:[], platforms: defaultData.platforms, games:[], wikis:[], wishlist:[], counters: { sessions: 0, sessionMinutes: 0, wishMoved: 0 }, achSeeded: true, unlockedAchievements:[] }); saveData(() => render()); closeModal('modal-factory-reset'); closeModal('modal-settings'); localStorage.removeItem('zeralog_welcomed'); triggerToast('Apagado.'); setTimeout(checkWelcome, 500); } else { alert('Digite APAGAR'); } }
@@ -1322,7 +2057,23 @@ export function renderPlatformAdmin() {
     });
 }
 export function previewPlatformIcon(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { state.tempPlatformIcon = `<img src="${e.target.result}" style="width: 1.2em; height: 1.2em; vertical-align: middle; border-radius: 4px; object-fit: cover; flex-shrink: 0;">`; document.getElementById('new-platform-icon-preview').innerHTML = state.tempPlatformIcon; }; reader.readAsDataURL(input.files[0]); } }
-export function searchPlatformIconOnGoogle() { const name = document.getElementById('new-platform-name').value; const query = name ? `${name} logo icon transparent png` : 'video game console platform logo icon transparent png'; window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}&tbs=ic:trans`, '_blank'); }
+export function pickPlatformIcon() {
+    openIconPicker({ current: null, onPick: ic => {
+        state.tempPlatformIcon = phHtml(ic);
+        document.getElementById('new-platform-icon-preview').innerHTML = state.tempPlatformIcon;
+    } });
+}
+export function setPlatformDisplay(mode) {
+    appData.settings.platformDisplay = mode === 'name' ? 'name' : 'icon';
+    saveData(() => render());
+    paintPlatformDisplay();
+}
+export function paintPlatformDisplay() {
+    const m = appData.settings.platformDisplay === 'name' ? 'name' : 'icon';
+    document.getElementById('plat-disp-icon').classList.toggle('active', m === 'icon');
+    document.getElementById('plat-disp-name').classList.toggle('active', m === 'name');
+}
+export function searchPlatformIconOnGoogle() { const name = document.getElementById('new-platform-name').value; const query = name ? `${name} logo icon transparent png` : 'video game console platform logo icon transparent png'; openBrowser(`https://www.google.com/search?tbm=isch&igu=1&q=${encodeURIComponent(query)}&tbs=ic:trans`, `Ícones: ${name || 'plataformas'}`); }
 export function editPlatform(index) { state.editPlatformIndex = index; const p = appData.platforms[index]; document.getElementById('new-platform-name').value = p.name; state.tempPlatformIcon = p.icon; document.getElementById('new-platform-icon-preview').innerHTML = p.icon; document.getElementById('btn-save-platform').innerText = 'Salvar'; document.getElementById('btn-cancel-platform').style.display = 'inline-block'; }
 export function cancelEditPlatform() { state.editPlatformIndex = -1; document.getElementById('new-platform-name').value = ''; state.tempPlatformIcon = ''; document.getElementById('new-platform-icon-preview').innerHTML = platformIcons.default; document.getElementById('btn-save-platform').innerText = 'Add'; document.getElementById('btn-cancel-platform').style.display = 'none'; }
 export function savePlatform() {

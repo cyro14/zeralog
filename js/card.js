@@ -1,4 +1,4 @@
-import { appData } from './store.js';
+﻿import { appData } from './store.js';
 import { icon, platformIcons } from './icons.js';
 
 export function getAverageRGB(imgSrc, callback) {

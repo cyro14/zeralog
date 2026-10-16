@@ -1,4 +1,4 @@
-const cacheName = 'zeralog-v1';
+﻿const cacheName = 'zeralog-v1';
 const assets = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {

@@ -2,7 +2,7 @@
 import { appData } from './store.js';
 import { esc } from './gameApi.js';
 
-const F = { time: null, genre: null, portable: false, diff: null, emulated: false };
+const F = { time: null, genre: null, portable: false, diff: null, emulated: false, platform: null, franchise: null, minScore: null };
 const DIFF = { easy: 'Fácil', normal: 'Normal', hard: 'Difícil', extreme: 'Extremo' };
 const TIME = {
     fast: ['Rápido (< 5h)', h => h < 5],
@@ -29,7 +29,7 @@ function hasGenre(g, genre) {
     return false;
 }
 
-export const filtersActive = () => !!(F.time || F.genre || F.portable || F.diff || F.emulated);
+export const filtersActive = () => !!(F.time || F.genre || F.portable || F.diff || F.emulated || F.platform || F.franchise || F.minScore);
 
 export function getMatches() {
     return appData.games.filter(g => g.state === null && !g.continuous).filter(g => {
@@ -41,6 +41,9 @@ export function getMatches() {
         if (F.genre && !hasGenre(g, F.genre)) return false;
         if (F.diff && g.difficulty !== F.diff) return false;
         if (F.emulated && !g.emulated) return false;
+        if (F.platform && norm(g.platform) !== norm(F.platform)) return false;
+        if (F.franchise && norm(g.franchise) !== norm(F.franchise)) return false;
+        if (F.minScore && !(parseFloat(g.metacritic) >= F.minScore)) return false;
         return true;
     });
 }
@@ -52,12 +55,24 @@ export function describeFilters() {
     if (F.portable) parts.push('ideal para portátil');
     if (F.diff) parts.push(`dificuldade ${DIFF[F.diff].toLowerCase()}`);
     if (F.emulated) parts.push('emulado');
+    if (F.platform) parts.push(F.platform);
+    if (F.franchise) parts.push(`franquia ${F.franchise}`);
+    if (F.minScore) parts.push(`nota ${F.minScore}+ no Metacritic`);
     return parts.join(' + ');
 }
 
 function backlogGenres() {
     const map = new Map();
     appData.games.filter(g => g.state === null && !g.continuous).forEach(g => (g.genres || []).forEach(x => { if (x && !map.has(norm(x))) map.set(norm(x), x); }));
+    return [...map.values()].sort((a, b) => a.localeCompare(b));
+}
+
+function backlogEnum(field) {   // plataformas ou franquias presentes na fila
+    const map = new Map();
+    appData.games.filter(g => g.state === null && !g.continuous).forEach(g => {
+        const v = (g[field] || '').trim();
+        if (v && !map.has(norm(v))) map.set(norm(v), v);
+    });
     return [...map.values()].sort((a, b) => a.localeCompare(b));
 }
 
@@ -94,6 +109,20 @@ export function renderQuickMatch() {
             </select>
             ${active ? '<button type="button" class="pill-btn" onclick="qmReset()">Limpar</button>' : ''}
         </div></div>
+        <div class="qm-group"><span class="qm-label">Onde jogar</span><div class="qm-chips">
+            <select class="qm-select" onchange="qmSetPlatform(this.value)" aria-label="Plataforma">
+                <option value="">Qualquer plataforma</option>
+                ${backlogEnum('platform').map(x => `<option value="${esc(x)}" ${F.platform && norm(F.platform) === norm(x) ? 'selected' : ''}>${esc(x)}</option>`).join('')}
+            </select>
+            <select class="qm-select" onchange="qmSetFranchise(this.value)" aria-label="Franquia">
+                <option value="">Qualquer franquia</option>
+                ${backlogEnum('franchise').map(x => `<option value="${esc(x)}" ${F.franchise && norm(F.franchise) === norm(x) ? 'selected' : ''}>${esc(x)}</option>`).join('')}
+            </select>
+            <select class="qm-select" onchange="qmSetScore(this.value)" aria-label="Nota mínima">
+                <option value="">Qualquer nota</option>
+                ${[60, 75, 85].map(n => `<option value="${n}" ${F.minScore === n ? 'selected' : ''}>Metacritic ${n}+</option>`).join('')}
+            </select>
+        </div></div>
         ${matches.length ? `<ul class="qm-list">${rows}</ul>${matches.length > 6 ? `<small class="qm-note">+${matches.length - 6} outros</small>` : ''}
             <button type="button" class="pill-btn primary qm-roll" onclick="spinRoulette()">Sortear entre ${matches.length === 1 ? 'esse jogo' : `os ${matches.length}`}</button>`
             : `<div class="qm-empty">${backlog.length ? 'Nenhum jogo da fila combina com esses filtros.' : 'Sua fila está vazia.'}</div>`}
@@ -108,4 +137,7 @@ export function qmSetGenre(v, toggle = false) {
 export function qmTogglePortable() { F.portable = !F.portable; renderQuickMatch(); }
 export function qmSetDiff(k) { F.diff = F.diff === k ? null : k; renderQuickMatch(); }
 export function qmToggleEmulated() { F.emulated = !F.emulated; renderQuickMatch(); }
-export function qmReset() { F.time = null; F.genre = null; F.portable = false; F.diff = null; F.emulated = false; renderQuickMatch(); }
+export function qmSetPlatform(v) { F.platform = v || null; renderQuickMatch(); }
+export function qmSetFranchise(v) { F.franchise = v || null; renderQuickMatch(); }
+export function qmSetScore(v) { F.minScore = parseInt(v, 10) || null; renderQuickMatch(); }
+export function qmReset() { F.time = null; F.genre = null; F.portable = false; F.diff = null; F.emulated = false; F.platform = null; F.franchise = null; F.minScore = null; renderQuickMatch(); }

@@ -1,4 +1,4 @@
-// Estatísticas de gênero: gráfico de pizza (Chart.js) com legenda em HTML.
+﻿// Estatísticas de gênero: gráfico de pizza (Chart.js) com legenda em HTML.
 // Se o Chart.js não carregar (offline), desenha uma pizza em SVG como alternativa.
 import { appData } from './store.js';
 import { esc } from './gameApi.js';

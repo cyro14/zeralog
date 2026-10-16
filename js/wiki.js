@@ -354,6 +354,16 @@ export function wikiChangeSource(id) {
     wikiSearch();
 }
 
+// Botão flutuante de busca: abre a pesquisa DENTRO da wiki atual (ex.: Yugipedia,
+// Fandom do jogo) — volta ao topo, foca a caixa e dispara a busca com o termo digitado.
+export function wikiSearchFab() {
+    const q = $('wiki-query');
+    $('wiki-scroll').scrollTop = 0;
+    q.focus();
+    q.select();
+    if (q.value.trim()) wikiSearch();
+}
+
 export async function wikiSearch(keepStatus = false) {
     const q = $('wiki-query').value.trim();
     if (!q) return;

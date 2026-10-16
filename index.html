@@ -4,31 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ZeraLog</title>
-    
+
+    <!-- Favicon (mesmo logo do cabeçalho) -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/logo-192.png">
+    <link rel="apple-touch-icon" href="icons/logo-192.png">
+
     <!-- Link para o Manifest (PWA) -->
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icons/logo-192.png">
+    <link rel="apple-touch-icon" href="icons/logo-192.png">
     <meta name="theme-color" content="#121212">
     
     <!-- Bibliotecas Externas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
     <!-- Seu novo arquivo CSS isolado -->
     <link rel="stylesheet" href="style.css">
     
     <!-- Script inline mantido no head para evitar que a tela pisque branco no tema escuro -->
     <script>
-        const savedTheme = localStorage.getItem('zeralog_theme') || 'dark';
+        const savedTheme = localStorage.getItem('zeralog_theme') || 'gog';
         document.documentElement.setAttribute('data-theme', savedTheme);
     </script>
 </head>
 <body>
     <div id="session-bar" class="session-bar" hidden>
         <span class="session-dot"></span>
-        <span class="session-label">Em sessão</span>
+        <span class="session-label" id="session-label">Em sessão</span>
         <span class="session-game" id="session-game"></span>
         <span class="session-time" id="session-time">00:00:00</span>
-        <button type="button" class="session-stop" onclick="openEndSession()">Encerrar</button>
+        <button type="button" class="session-btn" id="session-pause" onclick="togglePauseSession()">Pausar</button>
+        <button type="button" class="session-stop" onclick="openEndSession()">Finalizar</button>
     </div>
 
 
@@ -65,9 +71,11 @@
 
     <div class="tabs">
         <button class="tab-btn active" id="btn-tab-home" onclick="switchTab('home')"><span class="ic-lead" data-icon="list"></span>Fila</button>
+        <button class="tab-btn" id="btn-tab-gamematch" onclick="switchTab('gamematch')"><span class="ic-lead" data-icon="gamepad"></span><span class="tab-label">GameMatch</span></button>
         <button class="tab-btn" id="btn-tab-wish" onclick="switchTab('wish')"><span class="ic-lead" data-icon="bookmark"></span><span class="tab-label">Desejos (<span id="count-wish">0</span>)</span></button>
         <button class="tab-btn" id="btn-tab-finished" onclick="switchTab('finished')"><span class="ic-lead" data-icon="trophy"></span><span class="tab-label">Zerados (<span id="count-finished">0</span>)</span></button>
         <button class="tab-btn" id="btn-tab-stats" onclick="switchTab('stats')"><span class="ic-lead" data-icon="chart"></span>Status</button>
+        <button class="tab-btn" id="btn-tab-profile" onclick="switchTab('profile')"><span class="ic-lead" data-icon="crown"></span>Perfil</button>
     </div>
 
     <!-- HOME TAB -->
@@ -84,22 +92,113 @@
             <button type="button" id="home-view-shelf" onclick="setHomeView('shelf')">Prateleira</button>
         </div>
 
+        <div class="tab-tools" data-tab="home">
+            <button type="button" class="tool-btn" onclick="openFilters('home')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-home" style="display:none"></span></button>
+            <button type="button" class="tool-btn" onclick="openShare('home')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
+        </div>
+        <div class="filter-chips" id="fc-home" style="display:none"></div>
+
         <div class="sort-bar" id="home-sort-bar">
             <div class="sort-chip active" id="sort-home-manual" onclick="setHomeSort('manual')">Manual</div>
             <div class="sort-chip" id="sort-home-az" onclick="setHomeSort('az')">A-Z</div>
-            <div class="sort-chip" id="sort-home-time" onclick="setHomeSort('time')">Tempo</div>
-            <div class="sort-chip" id="sort-home-portable" onclick="setHomeSort('portable')">Portátil</div>
+            <select class="sort-chip sort-time" id="sort-home-time" onchange="setTimeSort(this.value)" aria-label="Ordenar por tempo">
+                <option value="">Tempo ▾</option>
+                <option value="time">Tempo para zerar</option>
+                <option value="played">Tempo jogado</option>
+                <option value="close">Mais próximo de zerar</option>
+            </select>
+            <div class="sort-chip" id="sort-home-meta" onclick="setHomeSort('meta')">Nota</div>
         </div>
 
         <div id="app-container"></div>
         <button class="btn-add-cat" onclick="openCatModal()">+ Adicionar Categoria</button>
     </div>
 
+    <!-- GAMEMATCH TAB: o "Tinder de jogos" -->
+    <div id="tab-gamematch" class="tab-content">
+        <div class="subnav gm-subnav" id="gm-subnav" role="tablist" aria-label="Seções do GameMatch">
+            <button type="button" role="tab" data-sub="swipe" class="active" onclick="gmSubShow('swipe')"><span data-icon="flame" data-size="1em"></span>Descobrir</button>
+            <button type="button" role="tab" data-sub="explore" onclick="gmSubShow('explore')"><span data-icon="compass" data-size="1em"></span>Explorar</button>
+        </div>
+
+        <!-- Descobrir: deck de swipe -->
+        <section class="gm-sub active" data-sub="swipe">
+            <div class="gm-stage">
+                <div id="gm-deck" class="gm-deck"><div class="gm-loading">Preparando seu deck...</div></div>
+                <div class="gm-actions">
+                    <button type="button" class="gm-act gm-act-nope" onclick="gmSwipe('reject')" title="Passar (←)"><span data-icon="x" data-size="1.4em"></span></button>
+                    <button type="button" class="gm-act gm-act-up" onclick="gmSwipe('backlog')" title="Salvar no backlog (↑)"><span data-icon="archive" data-size="1.4em"></span></button>
+                    <button type="button" class="gm-act gm-act-fav" onclick="gmSwipe('favorite')" title="Favoritar (F)"><span data-icon="star" data-size="1.4em"></span></button>
+                    <button type="button" class="gm-act gm-act-like" onclick="gmSwipe('like')" title="Match! (→)"><span data-icon="heart" data-size="1.4em"></span></button>
+                </div>
+                <small class="gm-hint">Arraste o card ou use os botões. → Match (wishlist) · ← Passar · ↑ Backlog · F Favorito <span id="gm-deck-hint"></span></small>
+            </div>
+        </section>
+
+        <!-- Explorar: descoberta sem swipe -->
+        <section class="gm-sub" data-sub="explore">
+            <div class="gm-explore-cats" id="gm-explore-cats">
+                <button type="button" class="gm-chip active" data-cat="you" onclick="gmExplore('you')">Combina com você</button>
+                <button type="button" class="gm-chip" data-cat="hot" onclick="gmExplore('hot')">Em alta</button>
+                <button type="button" class="gm-chip" data-cat="releases" onclick="gmExplore('releases')">Lançamentos</button>
+                <button type="button" class="gm-chip" data-cat="gems" onclick="gmExplore('gems')">Joias escondidas</button>
+                <button type="button" class="gm-chip" data-cat="classics" onclick="gmExplore('classics')">Clássicos</button>
+                <button type="button" class="gm-chip" data-cat="free" onclick="gmExplore('free')">Grátis / Ofertas</button>
+                <button type="button" class="gm-chip" data-cat="top" onclick="gmExplore('top')">Mais bem avaliados</button>
+            </div>
+            <div class="gm-explore-cats gm-decades" id="gm-classic-decades" hidden>
+                <button type="button" class="gm-chip" data-dec="" onclick="gmClassicDecade('')">Todas as épocas</button>
+                <button type="button" class="gm-chip" data-dec="1980" onclick="gmClassicDecade('1980')">Anos 80</button>
+                <button type="button" class="gm-chip" data-dec="1990" onclick="gmClassicDecade('1990')">Anos 90</button>
+                <button type="button" class="gm-chip" data-dec="2000" onclick="gmClassicDecade('2000')">Anos 2000</button>
+                <button type="button" class="gm-chip" data-dec="2010" onclick="gmClassicDecade('2010')">Anos 2010</button>
+            </div>
+            <div class="gm-explore-cats gm-explore-filters" id="gm-explore-filters">
+                <select class="gm-select" id="gm-x-genre" onchange="gmXFilterGenre(this.value)" aria-label="Filtrar por gênero">
+                    <option value="">Todos os gêneros</option>
+                </select>
+                <select class="gm-select" id="gm-x-plat" onchange="gmXFilterPlat(this.value)" aria-label="Filtrar por plataforma">
+                    <option value="">Todas as plataformas</option>
+                </select>
+                <div class="gm-co-wrap" id="gm-dev-filter">
+                    <input type="text" class="gm-co-input" placeholder="Desenvolvedora..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Filtrar por desenvolvedora">
+                </div>
+                <div class="gm-co-wrap" id="gm-pub-filter">
+                    <input type="text" class="gm-co-input" placeholder="Publicadora..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Filtrar por publicadora">
+                </div>
+            </div>
+            <div class="gm-explore-grid" id="gm-explore-grid"><div class="gm-loading">Carregando...</div></div>
+        </section>
+    </div>
+
+    <!-- PERFIL TAB: do app todo (nome, foto e preferências do jogador) -->
+    <div id="tab-profile" class="tab-content">
+        <div id="gm-profile"></div>
+    </div>
+
     <!-- WISHLIST TAB -->
     <div id="tab-wish" class="tab-content">
         <div class="wish-bar">
-            <p class="wish-hint">Jogos que você ainda quer comprar ou baixar. Quando decidir começar, mova com um clique.</p>
+            <p class="wish-hint">Jogos que você ainda quer comprar ou baixar. Veja as datas de lançamento, ligue o aviso e, quando decidir começar, mova com um clique.</p>
             <button type="button" onclick="openGameModal('wishlist')">+ Desejo</button>
+        </div>
+        <div id="wish-summary"></div>
+        <div class="view-toggle" role="group" aria-label="Modo de exibição dos desejos">
+            <button type="button" id="wish-view-list" onclick="setWishView('list')">Cards</button>
+            <button type="button" id="wish-view-shelf" onclick="setWishView('shelf')">Prateleira</button>
+        </div>
+        <div class="tab-tools" data-tab="wish">
+            <button type="button" class="tool-btn" onclick="openFilters('wish')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-wish" style="display:none"></span></button>
+            <button type="button" class="tool-btn" onclick="openShare('wish')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
+            <button type="button" class="tool-btn" id="wish-refresh-btn" onclick="refreshDatesUI()"><span data-icon="refresh" data-size="1em"></span>Atualizar datas</button>
+        </div>
+        <div class="filter-chips" id="fc-wish" style="display:none"></div>
+        <small id="wish-refresh-status" class="wish-refresh-status"></small>
+        <div class="sort-bar" id="wish-sort-bar">
+            <div class="sort-chip" id="sort-wish-release" onclick="setWishSort('release')">Lançamento</div>
+            <div class="sort-chip" id="sort-wish-added" onclick="setWishSort('added')">Adicionado</div>
+            <div class="sort-chip" id="sort-wish-az" onclick="setWishSort('az')">A-Z</div>
+            <div class="sort-chip" id="sort-wish-meta" onclick="setWishSort('meta')">Nota</div>
         </div>
         <div id="wish-list-container"></div>
     </div>
@@ -111,10 +210,16 @@
             <button type="button" id="fin-view-timeline" onclick="setFinishedView('timeline')">Linha do tempo</button>
             <button type="button" id="fin-view-shelf" onclick="setFinishedView('shelf')">Prateleira</button>
         </div>
+        <div class="tab-tools" data-tab="finished">
+            <button type="button" class="tool-btn" onclick="openFilters('finished')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-finished" style="display:none"></span></button>
+            <button type="button" class="tool-btn" onclick="openShare('finished')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
+        </div>
+        <div class="filter-chips" id="fc-finished" style="display:none"></div>
         <div class="sort-bar" id="fin-sort-bar">
             <div class="sort-chip" id="sort-fin-date" onclick="setFinishedSort('date')">Data</div>
             <div class="sort-chip" id="sort-fin-rating" onclick="setFinishedSort('rating')">Nota</div>
             <div class="sort-chip" id="sort-fin-time" onclick="setFinishedSort('time')">Tempo</div>
+            <div class="sort-chip" id="sort-fin-played" onclick="setFinishedSort('played')">Horas Jogadas</div>
             <div class="sort-chip" id="sort-fin-portable" onclick="setFinishedSort('portable')">Portátil</div>
         </div>
         <div id="finished-list-container">
@@ -122,55 +227,84 @@
     </div>
 
     <div id="tab-stats" class="tab-content">
+        <div class="subnav" id="stats-subnav" role="tablist" aria-label="Seções das estatísticas">
+            <button type="button" role="tab" data-pane="franchises" onclick="setStatsPane('franchises')">Franquias <span class="subnav-count" id="sn-franchises"></span></button>
+            <button type="button" role="tab" data-pane="overview" onclick="setStatsPane('overview')">Visão geral</button>
+            <button type="button" role="tab" data-pane="genres" onclick="setStatsPane('genres')">Gêneros</button>
+            <button type="button" role="tab" data-pane="continuous" onclick="setStatsPane('continuous')">Contínuos <span class="subnav-count" id="sn-continuous"></span></button>
+            <button type="button" role="tab" data-pane="achievements" onclick="setStatsPane('achievements')">Conquistas <span class="subnav-count" id="sn-ach"></span></button>
+        </div>
+
+        <section class="stats-pane" data-pane="overview">
         <div class="stats-grid">
-            <div class="stat-box"><span class="stat-num" id="stat-backlog" style="color: var(--accent-add);">0</span><span class="stat-label">Na Fila</span></div>
-            <div class="stat-box"><span class="stat-num" id="stat-finished-dash" style="color: var(--accent-finished);">0</span><span class="stat-label">Zerados</span></div>
+            <div class="stat-box"><span class="stat-num" id="stat-backlog" style="color: var(--chart-backlog);">0</span><span class="stat-label">Na Fila</span></div>
+            <div class="stat-box"><span class="stat-num" id="stat-finished-dash" style="color: var(--chart-finished);">0</span><span class="stat-label">Zerados</span></div>
             <div class="stat-box"><span class="stat-num" id="stat-avg" style="color: var(--star-color);">0</span><span class="stat-label">Nota Média</span></div>
         </div>
 
         <div class="stats-grid" style="margin-bottom: 20px;">
-            <div class="stat-box" style="padding: 10px;"><span class="stat-num" id="stat-hours-backlog" style="font-size: 1.2em; color: var(--accent-add);">0h</span><span class="stat-label" style="font-size: 0.65em;">Fila</span></div>
-            <div class="stat-box" style="padding: 10px;"><span class="stat-num" id="stat-hours-playing" style="font-size: 1.2em; color: var(--accent-playing);">0h</span><span class="stat-label" style="font-size: 0.65em;">Jogando</span></div>
-            <div class="stat-box" style="padding: 10px;"><span class="stat-num" id="stat-hours-finished" style="font-size: 1.2em; color: var(--accent-finished);">0h</span><span class="stat-label" style="font-size: 0.65em;">Zerados</span></div>
+            <div class="stat-box" style="padding: 10px;"><span class="stat-num" id="stat-hours-backlog" style="font-size: 1.2em; color: var(--chart-backlog);">0h</span><span class="stat-label" style="font-size: 0.65em;">Fila</span></div>
+            <div class="stat-box" style="padding: 10px;"><span class="stat-num" id="stat-hours-playing" style="font-size: 1.2em; color: var(--chart-playing);">0h</span><span class="stat-label" style="font-size: 0.65em;">Jogando</span></div>
+            <div class="stat-box" style="padding: 10px;"><span class="stat-num" id="stat-hours-finished" style="font-size: 1.2em; color: var(--chart-finished);">0h</span><span class="stat-label" style="font-size: 0.65em;">Zerados</span></div>
         </div>
 
         <div class="chart-container">
             <canvas id="statusChart"></canvas>
         </div>
+        </section>
 
-        <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Gêneros</h3>
-        <div id="genre-stats"></div>
+        <section class="stats-pane" data-pane="genres">
+            <div id="genre-stats"></div>
+        </section>
 
-        <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Jogos Contínuos</h3>
-        <div id="continuous-stats"></div>
+        <section class="stats-pane" data-pane="franchises">
+            <div id="franchise-summary" class="franchise-summary"></div>
+            <div id="franchise-stats"></div>
+        </section>
 
-        <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Franquias</h3>
-        <div id="franchise-summary" class="franchise-summary"></div>
-        <div id="franchise-stats"></div>
+        <section class="stats-pane" data-pane="continuous">
+            <div id="continuous-stats"></div>
+        </section>
 
-        <h3 style="margin-top: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Suas Conquistas <small id="ach-progress" style="color: var(--text-muted); font-weight: 600; font-size: 0.6em; margin-left: 6px;"></small></h3>
-        <div class="achievements-grid" id="achievements-grid">
-        </div>
+        <section class="stats-pane" data-pane="achievements">
+            <div class="pane-head"><strong>Suas Conquistas</strong> <small id="ach-progress"></small></div>
+            <div class="achievements-grid" id="achievements-grid"></div>
+        </section>
     </div>
+
+    <!-- Onboarding do GameMatch (perfil gamer) -->
+    <dialog id="modal-gamematch-onboard" class="gm-onboard">
+        <div class="modal-form">
+            <div id="gm-ob-body"></div>
+        </div>
+    </dialog>
 
     <!-- Toast Undo -->
     <div id="undo-toast"><span id="undo-message">Ação realizada.</span><button class="btn-undo" onclick="undoAction()">Desfazer</button></div>
 
     <!-- Modais do Sistema -->
     <dialog id="modal-welcome">
-        <div class="modal-form" style="text-align: center;">
-            <h2 style="margin-top: 0; color: var(--accent-playing);">Bem-vindo ao ZeraLog!</h2>
-            <p style="font-size: 1.05em; margin-bottom: 10px;">Seu app para organizar e focar nos jogos.</p>
-            <div style="text-align: left; background: rgba(128,128,128,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <p style="margin: 5px 0;"><strong>Sorteio:</strong> Use a roleta se não souber o que jogar.</p>
-                <p style="margin: 5px 0;"><strong>Status:</strong> Acompanhe seus gráficos e conquistas.</p>
-                <p style="margin: 5px 0;"><strong>App:</strong> Você pode adicionar esta página à tela inicial do celular!</p>
+        <div class="modal-form wl">
+            <div class="wl-top">
+                <svg class="wl-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs><linearGradient id="wl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:var(--accent-playing)"/><stop offset="100%" style="stop-color:var(--accent-finished)"/></linearGradient></defs>
+                    <path d="M4 4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4H4ZM4 6H20V12H4V6ZM10.59 17.41L7 13.83L8.41 12.41L10.59 14.58L15.59 9.59L17 11L10.59 17.41Z" fill="url(#wl-grad)"/>
+                </svg>
+                <h2>Bem-vindo ao ZeraLog</h2>
+                <p>Seu backlog de jogos, do "quero jogar" ao "zerei" — direto no navegador, sem conta.</p>
             </div>
-            <div style="background-color: rgba(244, 67, 54, 0.1); border: 1px solid var(--danger); padding: 15px; border-radius: 8px; text-align: left;">
-                <p style="margin: 0; font-size: 0.95em;"><strong>IMPORTANTE - BACKUP:</strong></p>
-                <p style="margin: 5px 0 0 0; font-size: 0.85em;">Seus dados ficam no navegador. Limpar o cache apaga tudo. Use o <strong>ícone de salvar no topo</strong> frequentemente para baixar seu backup!</p>
+            <div class="wl-grid">
+                <span><strong>Roleta</strong> escolhe o que jogar agora</span>
+                <span><strong>Estatísticas</strong> com gráficos e conquistas</span>
+                <span><strong>Prateleira</strong> dos seus jogos em um clique</span>
             </div>
-            <div class="modal-actions" style="margin-top: 20px; justify-content: center;"><button style="width: 100%; padding: 15px; font-size: 1.1em;" onclick="closeWelcome()">Vamos começar!</button></div>
+            <div class="wl-steam">
+                <div class="wl-steam-title"><span data-icon="steam" data-size="1.4em"></span> Tem conta na Steam?</div>
+                <p>Conecte e o ZeraLog cria a categoria Steam, importa sua biblioteca e suas horas jogadas automaticamente.</p>
+                <button type="button" class="wl-btn-steam" onclick="welcomeSteam()">Entrar com a Steam</button>
+            </div>
+            <p class="wl-note">Seus dados ficam no navegador: baixe seu backup de vez em quando pelo ícone de salvar no topo.</p>
+            <button type="button" class="wl-btn-go" onclick="closeWelcome()">Começar sem conectar</button>
         </div>
     </dialog>
 
@@ -189,16 +323,329 @@
 
     <dialog id="modal-settings">
         <div class="modal-form">
-            <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Configurações</h3>
-            <div class="setting-row"><label style="font-weight: bold;">Tema Visual:</label><select id="theme-selector" onchange="changeTheme(this.value)" style="width: 150px;"><option value="dark">Escuro</option><option value="light">Claro</option><option value="pink">Rosa Pastel</option><option value="dracula">Drácula (Neon)</option></select></div>
+            <!-- HUB: grade de seções -->
+            <div id="settings-hub">
+                <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Configurações</h3>
+                <div class="settings-hub-grid">
+                    <button type="button" class="set-card" onclick="openSettingsSection('appearance')">
+                        <span class="set-card-ic" data-icon="shapes" data-size="1.5em"></span>
+                        <strong>Aparência</strong>
+                        <small>Temas e cores</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('display')">
+                        <span class="set-card-ic" data-icon="monitor" data-size="1.5em"></span>
+                        <strong>Exibição</strong>
+                        <small>Cards e compacto</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('data')">
+                        <span class="set-card-ic" data-icon="library" data-size="1.5em"></span>
+                        <strong>Dados</strong>
+                        <small>Armazenamento e backup</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('notify')">
+                        <span class="set-card-ic" data-icon="bell" data-size="1.5em"></span>
+                        <strong>Notificações</strong>
+                        <small>Sessão na barra</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('covers')">
+                        <span class="set-card-ic" data-icon="image" data-size="1.5em"></span>
+                        <strong>Capas e Busca</strong>
+                        <small>IGDB, RAWG e capas</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('shops')">
+                        <span class="set-card-ic" data-icon="link" data-size="1.5em"></span>
+                        <strong>Conexões</strong>
+                        <small>Steam, GOG, Epic e Itch.io</small>
+                    </button>
+                    <button type="button" class="set-card" onclick="openSettingsSection('platforms')">
+                        <span class="set-card-ic" data-icon="gamepad" data-size="1.5em"></span>
+                        <strong>Plataformas</strong>
+                        <small>Criar e editar</small>
+                    </button>
+                    <button type="button" class="set-card set-card-danger" onclick="openFactoryReset()">
+                        <span class="set-card-ic" data-icon="alert" data-size="1.5em"></span>
+                        <strong>Zona de Perigo</strong>
+                        <small>Redefinição geral</small>
+                    </button>
+                </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Aparência -->
+            <div id="settings-page-appearance" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="shapes"></span>Aparência</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                <label style="font-weight: bold;">Tema Visual:</label>
+                <div id="theme-grid" class="theme-grid" role="radiogroup" aria-label="Tema visual"></div>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Dados e Backup -->
+            <div id="settings-page-data" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="library"></span>Dados e Backup</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                <label style="font-weight: bold;">Banco de dados:</label>
+                <div class="storage-meter"><span id="storage-bar" style="width: 0%"></span></div>
+                <small id="storage-text" style="color: var(--text-muted);"></small>
+                <small id="storage-engine" style="color: var(--text-muted);"></small>
+                <details class="snap-box">
+                    <summary>Pontos de restauração (<span id="snap-count">0</span>)</summary>
+                    <ul id="snap-list" class="snap-list"></ul>
+                    <small style="color: var(--text-muted);">Um ponto por dia (os 7 mais recentes). Restaurar troca os dados, mas mantém as imagens que já estão no banco.</small>
+                </details>
+                <button type="button" class="pill-btn" id="legacy-clear" onclick="clearLegacyCopy()" style="display: none; align-self: flex-start;">Apagar cópia antiga (armazenamento do navegador)</button>
+            </div>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                <label style="font-weight: bold;">Atualização do app:</label>
+                <button type="button" class="pill-btn" id="app-update-btn" onclick="checkAppUpdate()" style="align-self: flex-start;"><span data-icon="refresh" data-size="0.95em"></span> Buscar atualização agora</button>
+                <small style="color: var(--text-muted);">Recarrega o app buscando a versão mais nova, sem apagar seus dados nem o cache de imagens.</small>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Exibição -->
+            <div id="settings-page-display" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="monitor"></span>Exibição</h4>
+            <div class="setting-row">
+                <label style="font-weight: bold;">Plataforma nos cards:</label>
+                <div class="view-toggle" role="group" aria-label="Plataforma nos cards" style="margin: 0;">
+                    <button type="button" id="plat-disp-icon" onclick="setPlatformDisplay('icon')">Ícone</button>
+                    <button type="button" id="plat-disp-name" onclick="setPlatformDisplay('name')">Nome</button>
+                </div>
+            </div>
             <div class="setting-row"><label style="font-weight: bold;">Modo Compacto:</label><input type="checkbox" id="compact-toggle" onchange="toggleCompact(this.checked)" style="width: 20px; height: 20px; accent-color: var(--accent-playing);"></div>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                    <label for="shelf-plain-toggle" style="font-weight: bold;">Prateleira limpa (sem caixinha):</label>
+                    <input type="checkbox" id="shelf-plain-toggle" onchange="toggleShelfPlain(this.checked)" style="width: 20px; height: 20px; accent-color: var(--accent-playing);">
+                </div>
+                <small style="color: var(--text-muted);">Remove o desenho do cartucho/casca no modo prateleira — fica só a capa do jogo com sombra.</small>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Notificações -->
+            <div id="settings-page-notify" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="bell"></span>Sessão e Notificações</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                    <label for="session-notify-toggle" style="font-weight: bold;">Sessão na barra de notificações:</label>
+                    <input type="checkbox" id="session-notify-toggle" onchange="setSessionNotify(this.checked)" style="width: 20px; height: 20px; accent-color: var(--accent-playing);">
+                </div>
+                <small id="session-notify-status" style="color: var(--text-muted);"></small>
+                <button type="button" class="pill-btn" id="session-notify-ask" onclick="askNotifyPermission()" style="align-self: flex-start;">Permitir notificações</button>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Capas e Busca -->
+            <div id="settings-page-covers" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="image"></span>Capas e Busca</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                <label style="font-weight: bold;">Capas verticais:</label>
+                <button type="button" class="pill-btn" id="cover-upgrade-btn" onclick="upgradeCovers()" style="align-self: flex-start;">Buscar capas verticais da biblioteca</button>
+                <small id="cover-upgrade-status" style="color: var(--text-muted);">Troca as capas horizontais ou ausentes por capas verticais (IGDB, Steam, HLTB e Wikipédia). Dá para desfazer.</small>
+            </div>
             <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
                 <label for="rawg-key-input" style="font-weight: bold;">Chave da API RAWG:</label>
-                <input type="text" id="rawg-key-input" placeholder="Cole sua chave (opcional)" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="saveRawgKey(this.value)">
-                <small style="color: var(--text-muted);">Usada na busca automática de jogos. Se ela falhar, crie uma chave grátis em rawg.io/apidocs e cole aqui. Deixe vazio para usar a padrão.</small>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="rawg-key-input" placeholder="Cole sua chave (opcional)" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="saveRawgKey(this.value)" style="flex: 1;">
+                    <a class="pill-btn" href="https://rawg.io/apidocs" target="_blank" rel="noopener" title="Abrir a página da RAWG para criar sua chave grátis" style="display: inline-flex; align-items: center; gap: 5px; text-decoration: none; white-space: nowrap;"><span data-icon="external" data-size="0.95em"></span>Gerar chave</a>
+                </div>
+                <small style="color: var(--text-muted);">Usada na busca automática de jogos. Se ela falhar, crie uma chave grátis clicando em "Gerar chave" e cole aqui. Deixe vazio para usar a padrão.</small>
             </div>
-            
-            <div style="margin-top: 15px;">
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
+                <label for="sgdb-key-input" style="font-weight: bold;">Chave da API IGDB:</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="sgdb-key-input" placeholder="Cole sua chave (opcional)" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="saveIGDBKey(this.value)" style="flex: 1;">
+                    <a class="pill-btn" href="https://www.IGDB.fr/index.php?page=account&action=apikey" target="_blank" rel="noopener" title="Abrir sua página da IGDB para criar uma chave grátis" style="display: inline-flex; align-items: center; gap: 5px; text-decoration: none; white-space: nowrap;"><span data-icon="external" data-size="0.95em"></span>Gerar chave</a>
+                </div>
+                <small style="color: var(--text-muted);">Opcional: melhora a busca e a troca automática por capas verticais feitas pela comunidade.</small>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Conexões (hub das lojas) -->
+            <div id="settings-page-shops" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="link"></span>Conexões</h4>
+                <p class="shop-hint">Conecte suas lojas para importar a biblioteca de cada uma automaticamente. O login acontece no site oficial da loja — sua senha nunca passa pelo ZeraLog.</p>
+                <div id="shops-hub" class="shops-hub">
+                    <button type="button" class="shop-card" onclick="openSettingsSection('steam')">
+                        <img class="shop-logo" src="icons/Steam.webp" alt="Steam">
+                        <span class="shop-name">Steam</span>
+                        <span class="shop-state" id="shop-status-steam">…</span>
+                        <span class="shop-go">›</span>
+                    </button>
+                    <button type="button" class="shop-card" onclick="openSettingsSection('gog')">
+                        <img class="shop-logo" src="icons/gog-galaxy.jpg" alt="GOG">
+                        <span class="shop-name">GOG</span>
+                        <span class="shop-state" id="shop-status-gog">…</span>
+                        <span class="shop-go">›</span>
+                    </button>
+                    <button type="button" class="shop-card" onclick="openSettingsSection('epic')">
+                        <img class="shop-logo" src="icons/Epic_Games_logo.svg.webp" alt="Epic Games">
+                        <span class="shop-name">Epic Games</span>
+                        <span class="shop-state" id="shop-status-epic">…</span>
+                        <span class="shop-go">›</span>
+                    </button>
+                    <button type="button" class="shop-card" onclick="openSettingsSection('itch')">
+                        <img class="shop-logo" src="icons/app-icon.svg" alt="Itch.io">
+                        <span class="shop-name">Itch.io</span>
+                        <span class="shop-state" id="shop-status-itch">…</span>
+                        <span class="shop-go">›</span>
+                    </button>
+                    <button type="button" class="shop-card" onclick="openSettingsSection('amazon')">
+                        <img class="shop-logo" src="icons/amazon_games_icon_by_reiloucobr_dern7rm-fullview.png" alt="Amazon Games">
+                        <span class="shop-name">Amazon Games</span>
+                        <span class="shop-state" id="shop-status-amazon">…</span>
+                        <span class="shop-go">›</span>
+                    </button>
+                </div>
+                <small class="shop-note">Horas jogadas estão disponíveis apenas na API da Steam. As outras lojas trazem a biblioteca; dados, notas e capas são buscados depois em segundo plano.</small>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Conexões › Steam -->
+            <div id="settings-page-steam" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="openSettingsSection('shops')"><span data-icon="back" data-size="1em"></span>Conexões</button>
+                <h4 class="set-title"><img class="shop-logo sm" src="icons/Steam.webp" alt=""> Steam</h4>
+            <div class="setting-row steam-box" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                <label style="font-weight: bold; display: flex; align-items: center; gap: 6px;"><span data-icon="steam"></span>Steam:</label>
+                <div id="steam-status" class="steam-status"></div>
+                <div class="steam-actions">
+                    <button type="button" class="pill-btn primary" id="steam-login-btn" onclick="steamLogin()">Entrar com a Steam</button>
+                    <button type="button" class="pill-btn" id="steam-sync-btn" onclick="steamSyncUI()" style="display:none">Sincronizar agora</button>
+                    <button type="button" class="pill-btn" id="steam-logout-btn" onclick="steamLogout()" style="display:none">Desconectar</button>
+                </div>
+                <div class="steam-manual">
+                    <input type="text" id="steam-id-input" placeholder="ou cole o link do seu perfil / SteamID64" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter'){event.preventDefault();steamSaveManualId();}">
+                    <button type="button" onclick="steamSaveManualId()">Vincular</button>
+                </div>
+                <label for="steam-key-input" style="font-size: 0.85em; color: var(--text-muted);">Chave da Steam Web API (necessária para importar os jogos):</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="steam-key-input" placeholder="32 caracteres" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="steamSaveKey(this.value)" style="flex: 1;">
+                    <a class="pill-btn" href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener" title="Abrir a página da Steam para gerar sua chave de API grátis" style="display: inline-flex; align-items: center; gap: 5px; text-decoration: none; white-space: nowrap;"><span data-icon="external" data-size="0.95em"></span>Gerar chave</a>
+                </div>
+                <small id="steam-sync-status" style="color: var(--text-muted);">Como usar: com a Steam logada no navegador, clique em "Gerar chave" para criar a chave grátis no site da Steam (o domínio pode ser qualquer um) e deixe os "Detalhes do jogo" do seu perfil públicos (Privacidade da Steam). Os jogos entram na categoria "Steam" com as horas jogadas — e "Sincronizar agora" atualiza as horas e pega jogos novos.</small>
+                <details class="steam-adv">
+                    <summary>Opções avançadas (proxy CORS)</summary>
+                    <small>A Steam não aceita chamadas diretas do navegador, então o app tenta vários proxies públicos automaticamente — em geral <strong>não precisa mexer aqui</strong>. Se os cinco falharem de novo, cole um proxy próprio no formato https://meu-proxy.com/?url=%s (%s vira a URL da Steam).</small>
+                    <input type="text" id="steam-proxy-input" placeholder="Proxy personalizado (opcional), com %s no lugar da URL" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="steamSaveProxy(this.value)">
+                </details>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Conexões › GOG -->
+            <div id="settings-page-gog" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="openSettingsSection('shops')"><span data-icon="back" data-size="1em"></span>Conexões</button>
+                <h4 class="set-title"><img class="shop-logo sm" src="icons/gog.svg" alt=""> GOG</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                <div class="store-box">
+                    <div class="store-head"><strong>GOG</strong><small id="store-status-gog"></small></div>
+                    <div class="store-actions">
+                        <button type="button" class="pill-btn primary" id="gog-login-btn" onclick="gogLogin()">Entrar com a GOG</button>
+                        <button type="button" class="pill-btn" id="gog-sync-btn" onclick="gogSync()" style="display:none">Sincronizar agora</button>
+                        <button type="button" class="pill-btn" id="gog-out-btn" onclick="gogDisconnect()" style="display:none">Desconectar</button>
+                    </div>
+                    <div class="steam-manual">
+                        <input type="text" id="gog-code-input" placeholder="depois de logar, cole aqui o endereço da página (tem ?code=...)" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter'){event.preventDefault();gogSaveCode();}">
+                        <button type="button" onclick="gogSaveCode()">Vincular</button>
+                    </div>
+                    <small id="gog-sync-status" style="color: var(--text-muted);">Como usar: clique em "Entrar com a GOG" e faça login na aba que abrir. Ela redireciona para uma página em branco ou de erro — isso é normal! Copie o endereço COMPLETO da barra do navegador (algo como embed.gog.com/on_login_success?...code=ABC...) e cole no campo acima. Se o navegador tentar abrir o aplicativo GOG, recuse e fique na aba. Seus jogos entram na categoria "GOG". A API da GOG não informa horas jogadas.</small>
+                    <details class="steam-adv">
+                        <summary>Importar sem login (colar lista de títulos)</summary>
+                        <textarea id="store-import-gog" rows="3" placeholder="Baldur's Gate 3&#10;The Witcher 3: Wild Hunt&#10;Cyberpunk 2077"></textarea>
+                        <button type="button" class="pill-btn" onclick="storeImport('gog')">Importar da lista</button>
+                    </details>
+                </div>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Conexões › Epic Games -->
+            <div id="settings-page-epic" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="openSettingsSection('shops')"><span data-icon="back" data-size="1em"></span>Conexões</button>
+                <h4 class="set-title"><img class="shop-logo sm" src="icons/epic.svg" alt=""> Epic Games</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                <div class="store-box">
+                    <div class="store-head"><strong>Epic Games</strong><small id="store-status-epic"></small></div>
+                    <div class="store-actions">
+                        <button type="button" class="pill-btn primary" id="epic-login-btn" onclick="epicLogin()">Entrar com a Epic</button>
+                        <button type="button" class="pill-btn" id="epic-sync-btn" onclick="epicSync()" style="display:none">Sincronizar agora</button>
+                        <button type="button" class="pill-btn" id="epic-out-btn" onclick="epicDisconnect()" style="display:none">Desconectar</button>
+                    </div>
+                    <div class="steam-manual">
+                        <input type="text" id="epic-code-input" placeholder="depois de logar, cole aqui o código (32 caracteres) ou o endereço da página" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter'){event.preventDefault();epicSaveCode();}">
+                        <button type="button" onclick="epicSaveCode()">Vincular</button>
+                    </div>
+                    <small id="epic-sync-status" style="color: var(--text-muted);">Como usar: clique em "Entrar com a Epic", faça login no site que abrir. Depois do login a Epic exibe um código de 32 caracteres (ou redireciona com ?code=... no endereço) — cole aqui o código ou o endereço completo. Atenção: cada código serve uma vez só e expira em poucos minutos. Seus jogos entram na categoria "Epic Games". A API da Epic não informa horas jogadas.</small>
+                    <details class="steam-adv">
+                        <summary>Importar sem login (colar lista de títulos)</summary>
+                        <textarea id="store-import-epic" rows="3" placeholder="Fortnite&#10;Alan Wake 2&#10;Control"></textarea>
+                        <button type="button" class="pill-btn" onclick="storeImport('epic')">Importar da lista</button>
+                    </details>
+                </div>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Conexões › Itch.io -->
+            <div id="settings-page-itch" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="openSettingsSection('shops')"><span data-icon="back" data-size="1em"></span>Conexões</button>
+                <h4 class="set-title"><img class="shop-logo sm" src="icons/itch.svg" alt=""> Itch.io</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                <div class="store-box">
+                    <div class="store-head"><strong>Itch.io</strong><small id="store-status-itch"></small></div>
+                    <div class="steam-manual">
+                        <input type="text" id="itch-key-input" placeholder="cole sua chave de API (itch.io/user/settings/api-keys)" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter'){event.preventDefault();itchSaveKey();}">
+                        <button type="button" onclick="itchSaveKey()">Vincular</button>
+                    </div>
+                    <div class="store-actions">
+                        <a class="pill-btn" href="https://itch.io/user/settings/api-keys" target="_blank" rel="noopener"><span class="ic-lead" data-icon="external" data-size="0.95em"></span>Gerar chave</a>
+                        <button type="button" class="pill-btn" id="itch-sync-btn" onclick="itchSync()" style="display:none">Sincronizar agora</button>
+                        <button type="button" class="pill-btn" id="itch-out-btn" onclick="itchDisconnect()" style="display:none">Desconectar</button>
+                    </div>
+                    <small id="itch-sync-status" style="color: var(--text-muted);">Como usar: em itch.io/user/settings/api-keys, toque em "Generate new API key" e cole a chave acima. Entram na categoria "Itch.io" os jogos com <strong>chave de download</strong> (comprados, resgatados ou de bundles). Jogo grátis baixado direto pela loja não gera chave — na página dele, toque em "Download or claim" e ele passa a aparecer na sincronização.</small>
+                    <details class="steam-adv">
+                        <summary>Importar sem chave (colar lista de títulos)</summary>
+                        <textarea id="store-import-itch" rows="3" placeholder="Celeste&#10;A Short Hike&#10;Butterfly Soup"></textarea>
+                        <button type="button" class="pill-btn" onclick="storeImport('itch')">Importar da lista</button>
+                    </details>
+                </div>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Conexões › Amazon Games -->
+            <div id="settings-page-amazon" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="openSettingsSection('shops')"><span data-icon="back" data-size="1em"></span>Conexões</button>
+                <h4 class="set-title"><img class="shop-logo sm" src="icons/amazon.svg" alt=""> Amazon Games</h4>
+            <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                <div class="store-box">
+                    <div class="store-head"><strong>Amazon Games</strong><small id="store-status-amazon"></small></div>
+                    <div class="steam-manual">
+                        <textarea id="store-import-amazon" rows="3" placeholder="Fortnite&#10;Candle&#10;Mass Effect: Andromeda &#10;Lost Ark&#10;PUBG&#10;Destiny 2"></textarea>
+                        <button type="button" class="pill-btn primary" onclick="storeImport('amazon')">Importar da lista</button>
+                    </div>
+                    <small style="color: var(--text-muted);">A Amazon (Prime Gaming / Amazon Games) não abre a biblioteca, então a integração é por importação: cole os títulos no campo e a categoria "Amazon Games" é criada com os jogos.</small>
+                </div>
+            </div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
+
+            <!-- PÁGINA: Plataformas -->
+            <div id="settings-page-platforms" class="settings-page" hidden>
+                <button type="button" class="set-back" onclick="backToSettingsHub()"><span data-icon="back" data-size="1em"></span>Configurações</button>
+                <h4 class="set-title"><span data-icon="gamepad"></span>Plataformas</h4>
+            <div style="margin-top: 5px;">
                 <label style="font-weight: bold;">Editar Plataformas:</label>
                 <div class="platform-manager">
                     <div id="platforms-list-admin"></div>
@@ -208,6 +655,7 @@
                         <div id="new-platform-icon-preview" style="width: 24px; display: flex; justify-content: center;"><span data-icon="gamepad"></span></div>
                         <input type="text" id="new-platform-name" placeholder="Nome (Ex: Switch)" style="flex:1; min-width: 120px;">
                         
+                        <button class="btn-icon" onclick="pickPlatformIcon()" title="Escolher ícone Phosphor" style="background: rgba(128,128,128,0.1);" aria-label="Escolher ícone Phosphor"><span data-icon="shapes"></span></button>
                         <button class="btn-icon" onclick="searchPlatformIconOnGoogle()" title="Buscar Ícone no Google" style="background: rgba(128,128,128,0.1);" aria-label="Buscar ícone"><span data-icon="search"></span></button>
                         
                         <button id="btn-save-platform" onclick="savePlatform()">Add</button>
@@ -215,9 +663,8 @@
                     </div>
                 </div>
             </div>
-
-            <div style="margin-top: 20px;"><button style="background-color: var(--danger); width: 100%;" onclick="openFactoryReset()"><span class="ic-lead" data-icon="alert"></span>Redefinição Geral (Apagar Tudo)</button></div>
-            <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+                <div class="modal-actions"><button onclick="closeModal('modal-settings')" style="width: 100%;">Concluído</button></div>
+            </div>
         </div>
     </dialog>
 
@@ -234,17 +681,29 @@
             </div>
             <div id="rawg-results"></div>
             <div id="game-cover-preview" class="game-cover-preview" style="display:none;"></div>
+            <div class="cv-row">
+                <button type="button" class="pill-btn cv-open" onclick="coverPickFromGameModal()"><span class="ic-lead" data-icon="image" data-size="1em"></span>Trocar capa</button>
+                <button type="button" class="pill-btn" id="cv-crop-btn" onclick="coverCropFromGameModal()">Recortar</button>
+                <button type="button" class="pill-btn" id="cv-remove-btn" onclick="coverRemoveFromGameModal()">Remover</button>
+            </div>
 
             <div style="display:flex; gap: 10px; margin-top: -5px; margin-bottom: 5px;">
                 <button type="button" class="btn-quick-link" style="background:#f44336;" onclick="quickSearch('hltb')">Buscar no HLTB</button>
                 <button type="button" class="btn-quick-link" style="background:#ffcc33; color:black;" onclick="quickSearch('meta')">Buscar no Metacritic</button>
             </div>
 
-            <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Plataforma:</label>
+            <label class="lbl">Plataforma:</label>
             <select id="game-platform"></select>
 
+            <div id="game-cat-row">
+                <label for="game-cat-move" class="lbl">Categoria:</label>
+                <select id="game-cat-move"></select>
+            </div>
+
+
+
             <div id="game-time-fields" class="modal-form">
-                <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Tempo Estimado:</label>
+                <label class="lbl">Tempo Estimado:</label>
             <div style="display:flex; gap:10px;">
                 <input type="number" id="game-time-val" placeholder="Ex: 10" min="0" step="0.5" style="flex: 2;">
                 <select id="game-time-unit" style="flex: 1;">
@@ -254,7 +713,7 @@
             </div>
             </div>
 
-            <label for="game-franchise" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Franquia / coleção (opcional):</label>
+            <label for="game-franchise" class="lbl">Franquia / coleção (opcional):</label>
             <input type="text" id="game-franchise" list="franchise-list" placeholder="Ex: Zelda, Dark Souls, Metroid" autocomplete="off">
             <datalist id="franchise-list"></datalist>
 
@@ -273,7 +732,7 @@
                 </div>
             </div>
 
-            <label for="game-difficulty" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Dificuldade:</label>
+            <label for="game-difficulty" class="lbl">Dificuldade:</label>
             <select id="game-difficulty">
                 <option value="">Não definida</option>
                 <option value="easy">Fácil</option>
@@ -295,7 +754,7 @@
             </details>
 
             <div id="game-play-fields" class="modal-form">
-                <label style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Horas jogadas:</label>
+                <label class="lbl">Horas jogadas:</label>
             <input type="number" id="game-hours-played" placeholder="Ex: 3.5" min="0" step="0.5">
             <textarea id="game-journal-notes" rows="2" placeholder="Diário de bordo (opcional)"></textarea>
             </div>
@@ -306,13 +765,119 @@
             </div>
 
             <div id="game-wish-fields" class="modal-form" style="display: none;">
-                <label for="game-wish-cat" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Categoria ao mover para a fila:</label>
+                <label for="game-wish-released" class="lbl">Data de lançamento:</label>
+                <input type="date" id="game-wish-released" oninput="paintWishNotify(); this.dataset.manual = '1';" onchange="paintWishNotify(); this.dataset.manual = '1';">
+                <small id="game-wish-release-hint" style="color: var(--text-muted); margin-top: -8px;"></small>
+                <label class="flag-row" id="game-wish-notify-row" style="display: none;">
+                    <input type="checkbox" id="game-wish-notify">
+                    <span><strong>Avisar quando lançar</strong><small>Você recebe uma notificação no dia do lançamento (o app confere ao abrir e, no Android instalado, também em segundo plano).</small></span>
+                </label>
+                <label for="game-wish-cat" class="lbl">Categoria ao mover para a fila:</label>
                 <select id="game-wish-cat"></select>
                 <input type="text" id="game-wish-note" placeholder="Observação (preço, loja, link...)">
             </div>
 
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-game')">Cancelar</button><button id="btn-save-game" onclick="saveGame()">Salvar</button></div>
         </div>
+    </dialog>
+
+    <dialog id="modal-filters" class="filters-dialog">
+        <div class="modal-form">
+            <div class="flt-top"><h3 id="filters-title" style="margin: 0;">Filtros</h3><button type="button" class="icon-btn" onclick="closeModal('modal-filters')" aria-label="Fechar"><span data-icon="x"></span></button></div>
+            <div id="filters-count" class="rawg-msg"></div>
+            <div id="filters-saved" class="flt-saved"></div>
+            <div id="filters-body" class="flt-body"></div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="filtersClear()">Limpar</button>
+                <button class="btn-cancel" onclick="filtersSaveCurrent()">Salvar filtro</button>
+                <button onclick="closeModal('modal-filters')">Ver jogos</button>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-share" class="share-dialog-img">
+        <div class="modal-form">
+            <div class="flt-top"><h3 style="margin: 0;" id="sh-heading">Compartilhar imagem</h3><button type="button" class="icon-btn" onclick="closeModal('modal-share')" aria-label="Fechar"><span data-icon="x"></span></button></div>
+            <div class="share-controls">
+                <div id="sh-style-row" class="view-toggle" role="group" aria-label="Estilo da imagem">
+                    <button type="button" id="sh-style-shelf" onclick="shareSetStyle('shelf')">Prateleira</button>
+                    <button type="button" id="sh-style-cards" onclick="shareSetStyle('cards')">Cards</button>
+                </div>
+                <input type="text" id="sh-title" placeholder="Título da imagem" oninput="shareTitleChanged()">
+                <label class="flag-row" id="sh-titles-row"><input type="checkbox" id="sh-titles" onchange="shareTitlesChanged()"><span>Mostrar os nomes dos jogos na prateleira</span></label>
+                <label class="flag-row" style="margin-top: -8px;"><input type="checkbox" id="sh-chips" checked onchange="shareTitlesChanged()"><span>Mostrar selos e tags nos cards</span></label>
+                <div id="sh-status" class="rawg-msg"></div>
+                <div id="sh-pages" class="share-pages" style="display: none;">
+                    <button type="button" class="pill-btn" onclick="sharePage(-1)">‹ Anterior</button>
+                    <span id="sh-page-label"></span>
+                    <button type="button" class="pill-btn" onclick="sharePage(1)">Próxima ›</button>
+                </div>
+            </div>
+            <div class="share-preview"><img id="sh-preview" alt="Prévia da imagem"></div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('modal-share')">Fechar</button>
+                <button class="btn-cancel" id="sh-share-btn" onclick="shareShare()">Compartilhar</button>
+                <button onclick="shareDownload()">Baixar imagem</button>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-crop" class="crop-dialog">
+        <div class="modal-form">
+            <h3 style="margin-top: 0;">Recortar capa</h3>
+            <div id="crop-status" class="rawg-msg"></div>
+            <div class="crop-stage"><canvas id="crop-canvas" width="300" height="450"></canvas></div>
+            <input type="range" id="crop-zoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom">
+            <div class="crop-tools">
+                <button type="button" class="pill-btn" onclick="cropReset()">Preencher</button>
+                <button type="button" class="pill-btn" onclick="cropFit()">Imagem inteira</button>
+            </div>
+            <div class="modal-actions"><button class="btn-cancel" onclick="cropCancel()">Cancelar</button><button onclick="cropApply()">Cortar e usar</button></div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-icons" class="icons-dialog">
+        <div class="modal-form">
+            <h3 style="margin-top: 0;">Escolher ícone <small style="color: var(--text-muted); font-weight: 600;">Phosphor</small></h3>
+            <div class="cv-search">
+                <input type="text" id="ic-query" placeholder="Buscar em inglês: sword, ghost, car..." autocomplete="off" enterkeyhint="search">
+                <select id="ic-weight" onchange="iconWeightChange(this.value)" aria-label="Estilo do ícone"></select>
+            </div>
+            <div id="ic-grid" class="ic-grid"></div>
+            <button type="button" class="pill-btn" id="ic-more" onclick="iconMore()" style="display: none; align-self: center;">Mostrar mais</button>
+            <small id="ic-status" style="color: var(--text-muted);"></small>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-icons')">Fechar</button></div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-covers" class="covers-dialog">
+        <div class="modal-form cv-form">
+            <div class="cv-head">
+                <h3 style="margin: 0;"><span data-icon="image" data-size="1em"></span> Buscar capa</h3>
+                <button type="button" class="icon-btn" onclick="closeModal('modal-covers')" aria-label="Fechar"><span data-icon="x"></span></button>
+            </div>
+            <div class="cv-search">
+                <input type="text" id="cv-title" placeholder="Nome do jogo (em inglês ajuda)" autocomplete="off" enterkeyhint="search">
+                <button type="button" class="cv-btn" onclick="coversSearch()" title="Buscar capas" aria-label="Buscar capas"><span data-icon="search" data-size="1em"></span>Buscar</button>
+            </div>
+            <label class="cv-hrow" for="cv-horizontal">
+                <input type="checkbox" id="cv-horizontal">
+                <span><strong>Usar a capa na horizontal</strong><small>Usa a imagem inteira, sem recorte — ideal para jogos antigos que só têm arte widescreen.</small></span>
+            </label>
+            <button type="button" class="cv-google" onclick="coversSearchGoogle()" title="Buscar capas no Google Imagens dentro do app"><span data-icon="search" data-size="1em"></span>Buscar no Google</button>
+            <div id="cv-status" class="rawg-msg"></div>
+            <div id="cv-grid" class="cv-grid"></div>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-covers')">Fechar</button></div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-browser" class="browser-dialog">
+        <div class="browser-head">
+            <span class="browser-title" id="browser-title">Busca no Google</span>
+            <a id="browser-ext" class="wiki-tool" href="#" target="_blank" rel="noopener noreferrer"><span data-icon="external" data-size="1em"></span>Abrir no navegador</a>
+            <button type="button" class="icon-btn" onclick="closeBrowser()" aria-label="Fechar"><span data-icon="x"></span></button>
+        </div>
+        <iframe id="browser-frame" class="browser-frame" title="Busca no Google" referrerpolicy="no-referrer"></iframe>
     </dialog>
 
     <dialog id="modal-shelf" class="shelf-dialog">
@@ -362,6 +927,7 @@
             <div id="wiki-results"></div>
             <article id="wiki-body" class="wiki-content"></article>
         </div>
+        <button type="button" class="wiki-fab" onclick="wikiSearchFab()" title="Buscar nesta wiki (Fandom, Wikipédia...)" aria-label="Buscar nesta wiki"><span data-icon="search" data-size="1.4em"></span></button>
     </dialog>
 
     <dialog id="modal-journal">
@@ -378,7 +944,7 @@
         <div class="modal-form">
             <h3 style="margin-top: 0;">Fim da sessão</h3>
             <p id="session-summary" style="margin: 0; font-weight: bold;"></p>
-            <label for="session-minutes" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: -10px;">Minutos a somar (ajuste se fez pausas):</label>
+            <label for="session-minutes" class="lbl">Minutos a somar (ajuste se fez pausas):</label>
             <input type="number" id="session-minutes" min="0" step="1" oninput="sessionPreview()">
             <small id="session-preview" style="color: var(--text-muted);"></small>
             <textarea id="session-note" rows="2" placeholder="Anotar no diário (opcional): feitos, mods, saves..."></textarea>
@@ -404,43 +970,15 @@
         </div>
     </dialog>
 
-    <dialog id="modal-card-generator">
-        <div class="modal-form">
-            <h3 style="margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">Compartilhar Conquista</h3>
-            
-            <div id="export-card-wrapper">
-                <div id="card-bg-layer"></div>
-                <div id="card-bg-overlay"></div>
-                
-                <div id="card-img-preview"></div>
-                <div id="card-title">Nome do Jogo</div>
-                <div id="card-details">
-                    <span id="card-platform">PC</span>
-                    <span id="card-cat">Categoria</span>
-                </div>
-                <div><span id="card-rating-badge">10/10</span></div>
-                
-                <div id="card-date" style="font-size: 0.85em; opacity: 0.8; margin-top: 15px;">Finalizado em: 00/00/0000</div>
-                
-                <div id="card-review"></div>
-                
-                <div class="card-brand-logo">
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4 4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4H4ZM4 6H20V12H4V6ZM10.59 17.41L7 13.83L8.41 12.41L10.59 14.58L15.59 9.59L17 11L10.59 17.41Z" fill="url(#logo-grad)"/>
-                    </svg>
-                    <span>ZeraLog <span style="color: var(--accent-playing); font-weight: 900;">x Anywhere Gamer</span></span>
-                </div>
-            </div>
-
-            <div class="modal-actions" style="justify-content: center;">
-                <button class="btn-cancel" onclick="closeModal('modal-card-generator')" style="flex:1;">Fechar</button>
-                <button onclick="downloadCard()" style="flex:1; background-color: var(--accent-playing);"><span class="ic-lead" data-icon="download"></span>Salvar Imagem</button>
-            </div>
-        </div>
-    </dialog>
+    
 
     <dialog id="modal-factory-reset"><div class="modal-form"><h3 style="margin-top: 0; color: var(--danger);">APAGAR TUDO?</h3><p style="font-size: 0.9em;">Esta ação <strong>NÃO PODE SER DESFEITA</strong>.</p><label style="font-size: 0.9em; color: var(--text-muted);">Digite <strong>APAGAR</strong> para confirmar:</label><input type="text" id="reset-confirm-input" placeholder="Digite APAGAR"><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-factory-reset')">Cancelar</button><button style="background-color: var(--danger);" onclick="confirmFactoryReset()">Confirmar Exclusão</button></div></div></dialog>
-    <dialog id="modal-cat"><div class="modal-form"><h3 id="cat-modal-title" style="margin-top: 0;">Nova Categoria</h3><input type="hidden" id="edit-cat-id"><input type="text" id="cat-name" placeholder="Nome (Ex: RPGs)"><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-cat')">Cancelar</button><button onclick="saveCategory()">Salvar</button></div></div></dialog>
+    <dialog id="modal-cat"><div class="modal-form"><h3 id="cat-modal-title" style="margin-top: 0;">Nova Categoria</h3><input type="hidden" id="edit-cat-id"><input type="text" id="cat-name" placeholder="Nome (Ex: RPGs)">
+            <div class="icon-field">
+                <span id="cat-icon-preview" class="icon-preview"></span>
+                <button type="button" class="pill-btn" onclick="pickCategoryIcon()">Escolher ícone (Phosphor)</button>
+                <button type="button" class="pill-btn" id="cat-icon-clear" onclick="clearCategoryIcon()">Remover</button>
+            </div><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-cat')">Cancelar</button><button onclick="saveCategory()">Salvar</button></div></div></dialog>
     
     <dialog id="modal-rating">
         <div class="modal-form">
@@ -498,7 +1036,23 @@
         </div>
     </dialog>
 
-    <dialog id="modal-image"><div class="modal-form"><h3 style="margin-top: 0; margin-bottom: 0;">Editar Capa</h3><p style="font-size: 0.85em; color: var(--text-muted); margin-top: 0;" id="edit-game-name"></p><input type="hidden" id="edit-img-game-id"><div id="image-preview" class="image-preview-box" style="text-align:center; font-size:3em; margin: 10px 0;"><span data-icon="gamepad" data-size="1em"></span></div><button type="button" class="btn-search-google" style="background-color: var(--google-blue); width:100%;" onclick="searchCoverOnGoogle()"><span class="ic-lead" data-icon="search"></span>Buscar Capa no Google</button><div style="position: relative; overflow: hidden; display: block; width: 100%;"><span class="btn-upload" style="background-color: var(--bg-color); color: var(--text-main); display: block; text-align: center; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: bold; width: 100%; margin-top: 10px;">Escolher Foto</span><input type="file" id="edit-game-icon" accept="image/*" style="font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%;" onchange="previewImageEdit(this)"></div><div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-image')">Cancelar</button><button onclick="saveEditedImage()">Salvar</button></div></div></dialog>
+    <dialog id="modal-image">
+        <div class="modal-form">
+            <h3 style="margin-top: 0; margin-bottom: 0;">Editar Capa</h3>
+            <p style="font-size: 0.85em; color: var(--text-muted); margin-top: 0;" id="edit-game-name"></p>
+            <input type="hidden" id="edit-img-game-id">
+            <div id="image-preview" class="image-preview-box" style="text-align:center; font-size:3em; margin: 10px 0;"><span data-icon="gamepad" data-size="1em"></span></div>
+            <label class="flag-row" style="background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px;">
+                <input type="checkbox" id="edit-img-wide">
+                <span><strong>Capa horizontal</strong><small>Exibe a capa em formato largo na lista — ideal para jogos antigos que só têm arte widescreen.</small></span>
+            </label>
+            <button type="button" class="btn-search-google" style="background-color: var(--accent-playing); width:100%; margin-bottom: 8px;" onclick="coverPickFromImageModal()"><span class="ic-lead" data-icon="image"></span>Buscar capas automaticamente</button>
+            <button type="button" class="btn-search-google" style="background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color); width:100%; margin-bottom: 8px;" onclick="cropEditImage()"><span class="ic-lead" data-icon="image"></span>Recortar a capa</button>
+            <button type="button" class="btn-search-google" style="background-color: var(--google-blue); width:100%;" onclick="searchCoverOnGoogle()"><span class="ic-lead" data-icon="search"></span>Buscar Capa no Google</button>
+            <div style="position: relative; overflow: hidden; display: block; width: 100%;"><span class="btn-upload" style="background-color: var(--bg-color); color: var(--text-main); display: block; text-align: center; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: bold; width: 100%; margin-top: 10px;">Escolher Foto</span><input type="file" id="edit-game-icon" accept="image/*" style="font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%;" onchange="previewImageEdit(this)"></div>
+            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-image')">Cancelar</button><button onclick="saveEditedImage()">Salvar</button></div>
+        </div>
+    </dialog>
 
     <!-- O Módulo Maestro -->
     <script type="module" src="js/main.js"></script>
