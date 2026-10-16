@@ -131,7 +131,170 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
    A capa do primeiro jogo em andamento vira um fundo borrado gigante,
    com as capas dos jogos jogando em destaque por cima. O backlog normal
    continua igual logo abaixo. O celular não é afetado em nada. */
+
+/* ===== DESKTOP: LAYOUT COMPLETO (só >= 900px) =====
+   Sidebar fixa à esquerda (só ícones, settings no fundo), perfil como círculo
+   no canto superior direito, notificações ao lado, e o app inteiro com fundo
+   de vidro fosco (backdrop-filter). O celular não é afetado em nada. */
 @media (min-width: 900px) {
+    /* --- fundo do app: gradientes suaves que aparecem através do vidro --- */
+    body {
+        background:
+            radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--accent-playing) 14%, var(--bg-color)) 0%, transparent 55%),
+            radial-gradient(ellipse at 85% 90%, color-mix(in srgb, var(--accent-finished) 12%, var(--bg-color)) 0%, transparent 55%),
+            radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--accent-live, #a77bff) 6%, var(--bg-color)) 0%, transparent 60%),
+            var(--bg-color);
+        padding-left: 84px;   /* espaço para a sidebar */
+        padding-top: 16px;
+        padding-right: 20px;
+        padding-bottom: 20px;
+    }
+    /* --- sidebar fixa à esquerda --- */
+    .tabs {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 68px;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 14px 6px 14px;
+        margin: 0;
+        background: color-mix(in srgb, var(--card-bg) 68%, transparent);
+        backdrop-filter: blur(24px) saturate(1.3);
+        -webkit-backdrop-filter: blur(24px) saturate(1.3);
+        border: none;
+        border-right: 1px solid color-mix(in srgb, var(--border-color) 45%, transparent);
+        border-radius: 0;
+        box-shadow: none;
+        z-index: 200;
+        overflow-y: auto;
+        scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab-btn {
+        font-size: 0;
+        padding: 12px 4px;
+        justify-content: center;
+        border: none;
+        border-radius: 14px;
+        background: transparent;
+        width: 100%;
+        text-align: center;
+    }
+    .tab-btn .ic-lead { font-size: 1.4em; margin: 0; }
+    .tab-btn .ic-lead svg { width: 22px !important; height: 22px !important; display: block; margin: 0 auto; }
+    .tab-btn.active {
+        background: color-mix(in srgb, var(--accent-playing) 18%, transparent);
+        border: none;
+    }
+    .tab-btn.active .ic-lead { color: var(--accent-playing); }
+    .tab-btn:hover { background: color-mix(in srgb, var(--text-main) 8%, transparent); }
+    /* botão de settings no fundo da sidebar */
+    .dtb-settings {
+        margin-top: auto;
+        font-size: 0;
+        padding: 12px 4px;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .dtb-settings .ic-lead { font-size: 1.4em; margin: 0; }
+    .dtb-settings .ic-lead svg { width: 22px !important; height: 22px !important; display: block; margin: 0 auto; }
+    .dtb-settings:hover { background: color-mix(in srgb, var(--text-main) 8%, transparent); color: var(--text-main); }
+    /* Perfil sai da sidebar (vira círculo no topo direito) */
+    #btn-tab-profile { display: none; }
+    /* --- topbar: perfil (círculo com foto) + notificações (sino) --- */
+    .desktop-topbar {
+        position: fixed;
+        top: 14px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        z-index: 210;
+    }
+    .dtb-bell {
+        width: 42px;
+        height: 42px;
+        border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--card-bg) 68%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        color: var(--text-main);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.15s, background 0.15s;
+    }
+    .dtb-bell:hover { transform: scale(1.08); background: color-mix(in srgb, var(--card-bg) 85%, transparent); }
+    .dtb-profile {
+        width: 46px;
+        height: 46px;
+        border: 2px solid color-mix(in srgb, var(--accent-playing) 50%, transparent);
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--card-bg) 68%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        cursor: pointer;
+        padding: 0;
+        overflow: hidden;
+        transition: transform 0.15s, border-color 0.15s;
+    }
+    .dtb-profile:hover { transform: scale(1.08); border-color: var(--accent-playing); }
+    .dtb-avatar-wrap {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 1.2em;
+        overflow: hidden;
+    }
+    .dtb-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    /* --- glass em todo o app --- */
+    .category {
+        background: color-mix(in srgb, var(--card-bg) 62%, transparent);
+        backdrop-filter: blur(20px) saturate(1.2);
+        -webkit-backdrop-filter: blur(20px) saturate(1.2);
+        border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .search-container {
+        background: color-mix(in srgb, var(--card-bg) 62%, transparent);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+    }
+    .sort-bar .sort-chip {
+        background: color-mix(in srgb, var(--card-bg) 62%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+    }
+    .tool-btn {
+        background: color-mix(in srgb, var(--card-bg) 62%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+    }
+    /* o zl-rail antigo não mexe mais nas tabs (agora são sidebar fixa) */
+    body.zl-rail .tabs { position: fixed; left: 0; top: 0; bottom: 0; width: 68px; flex-direction: column; z-index: 200; }
+    body.zl-rail { padding-left: 84px; }
+    /* filtros somem ao rolar no desktop (igual ao comportamento antigo) */
+    body.zl-rail .search-container, body.zl-rail .platform-filter { opacity: 0; pointer-events: none; transform: translateY(-8px); transition: opacity .2s, transform .2s; }
+    .search-container, .platform-filter { transition: opacity .2s, transform .2s; }
+
+    /* hero: Jogando Atualmente */
     #playing-category {
         position: relative;
         overflow: hidden;
@@ -139,7 +302,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
         border-radius: 18px;
         min-height: 400px;
         padding: 0;
-        background: var(--card-bg);
+        background: color-mix(in srgb, var(--card-bg) 55%, transparent);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
     }
     /* fundo borrado do jogo (a variável --hero-bg vem do JS) */
     #playing-category::before {
@@ -186,6 +351,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
     }
     #playing-category .shelf-item:hover, #playing-category .shelf-item:focus-visible { transform: translateY(-6px) scale(1.03); }
     #playing-category .shelf-badge { font-size: 0.75em; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); }
+}
+/* mobile: topbar e settings da sidebar escondidos */
+@media (max-width: 899px) {
+    /* mobile: topbar e settings da sidebar escondidos */
+    .desktop-topbar { display: none; }
+    .dtb-settings { display: none; }
+    /* desktop: settings do topo escondido (está na sidebar agora) */
+    @media (min-width: 900px) {
+        .top-controls .btn-top[onclick*="openSettings"] { display: none; }
+    }
 }
 #finished-category h2 { color: var(--accent-finished); }
 
@@ -1379,15 +1554,9 @@ select.sort-time.active { border-color: var(--accent-playing); color: var(--acce
 .gm-ov-sub { font-size: 0.95em; }
 @media (max-width: 480px) { .gm-ov-title { font-size: 1.7em; padding: 10px 22px; } }
 
-/* Menu lateral recolhível ao descer a página (desktop) */
+/* (o antigo zl-rail de desktop foi substituído pela sidebar fixa no rework) */
 @media (min-width: 900px) {
     body.zl-rail .search-container, body.zl-rail .platform-filter { opacity: 0; pointer-events: none; transform: translateY(-8px); transition: opacity .2s, transform .2s; }
-    body.zl-rail .tabs { position: fixed; left: 12px; top: 50%; transform: translateY(-50%); flex-direction: column; width: 60px; z-index: 120; padding: 8px 6px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
-    body.zl-rail .tab-btn { padding: 12px 4px; justify-content: center; }
-    body.zl-rail .tab-label, body.zl-rail .tab-btn .ic-lead + *:not(.ic-lead) { display: none; }
-    body.zl-rail .tab-btn { font-size: 0; }
-    body.zl-rail .tab-btn .ic-lead { margin: 0; font-size: 1.3em; }
-    body.zl-rail { padding-left: 84px; }
     .search-container, .platform-filter { transition: opacity .2s, transform .2s; }
 }
 
