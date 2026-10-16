@@ -614,7 +614,12 @@ function exploreParams(cat, page) {
             const from = new Date(); from.setMonth(from.getMonth() - 18);
             return { ordering: '-rating', dates: `${from.toISOString().slice(0, 10)},${today}`, page_size: 20, page, exclude_additions: 'true' };
         }
-        case 'releases': return { ordering: 'released', dates: `${today},2030-12-31`, page_size: 20, page };
+        case 'releases': {
+            // Lançamentos: até 3 anos a partir do ano atual (ex.: 2026 -> até 2029),
+            // 40 por página (mais variedade por plataforma) e só jogos com capa
+            const maxYear = y + 3;
+            return { ordering: 'released', dates: `${today},${maxYear}-12-31`, page_size: 40, page };
+        }
         case 'gems': {
             // Joias: indies pouco falados (poucas avaliações) — metade das vezes puxa clássicos indie antigos
             const base = { page_size: 40, page, exclude_additions: 'true' };
@@ -676,6 +681,11 @@ async function fetchExplorePage(cat, append) {
     if (xFilters.pubId) params.publishers = xFilters.pubId;   // publicadora escolhida no autocomplete
     const res = await listGames(params);
     let items = res.items.filter(g => gmIsClean(g) && g.image && (cat === 'releases' || !farFuture(g)));   // 2030 só na aba Lançamentos
+    if (cat === 'releases') {
+        // Lançamentos: precisa ter data de lançamento dentro da janela de 3 anos
+        const maxY = new Date().getFullYear() + 3;
+        items = items.filter(g => g.released && +String(g.released).slice(0, 4) <= maxY);
+    }
     if (cat === 'gems') items = items.filter(g => (g.ratingsCount || 0) >= 25 && (g.ratingsCount || 0) <= 1500);   // só indie pouco falado
     if (cat === 'you') items = items.map(g => ({ ...g, _match: matchScore(g) })).sort((a, b) => b._match - a._match);
     state.items = append ? state.items.concat(items) : items;

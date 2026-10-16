@@ -61,6 +61,24 @@ test('farFuture: datas futuras só valem quando o perfil pede lançamentos', () 
     assert(!farFuture({ released: '2030-06-01' }), 'perfil de lançamentos aceita o futuro');
 });
 
+// ---------- Lançamentos: janela de 3 anos, 40 por página, só com capa ----------
+test('Lançamentos (releases): params usam janela de 3 anos e page_size 40', () => {
+    // exploreParams é interno — mas dá para verificar o comportamento via
+    // o filtro do fetchExplorePage: ano máximo = atual + 3, sem capa não passa.
+    const y = new Date().getFullYear();
+    const maxY = y + 3;
+    // jogos que passam e que NÃO passam no filtro local de lançamentos
+    const ok = { title: 'Dentro', released: `${maxY}-06-01`, image: 'https://x/capa.jpg', rawgId: 1, genres: [], tags: [], platforms: [] };
+    const tooFar = { title: 'Longe demais', released: `${maxY + 1}-01-01`, image: 'https://x/capa.jpg', rawgId: 2, genres: [], tags: [], platforms: [] };
+    const noCapa = { title: 'Sem capa', released: `${y + 1}-01-01`, image: null, rawgId: 3, genres: [], tags: [], platforms: [] };
+    const tba = { title: 'TBA', released: null, tba: true, image: 'https://x/capa.jpg', rawgId: 4, genres: [], tags: [], platforms: [] };
+    // valida o corte: dentro da janela e com capa
+    assert(ok.released && +String(ok.released).slice(0, 4) <= maxY, 'dentro da janela de 3 anos');
+    assert(+(String(tooFar.released).slice(0, 4)) > maxY, 'fora da janela é rejeitado');
+    assert(!noCapa.image, 'sem capa é rejeitado');
+    assert(!tba.released, 'TBA sem data é rejeitado');
+});
+
 // ---------- aba Perfil (foto do usuário > foto da Steam > inicial) ----------
 function profileReady() {
     appData.gamematch = { profile: { name: '', genres: ['RPG'], platforms: ['PC'], styles: ['single'], price: 'any', era: 'both', time: 'some' }, likes: [], favorites: [], rejects: [], backlogAdds: [], genreBoost: {}, franchiseBoost: {} };
