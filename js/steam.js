@@ -231,8 +231,8 @@ export async function steamSync() {
     }
 }
 
-// Nome e avatar do jogador (mostrados nas Configurações)
-async function fetchPersona() {
+// Nome e avatar do jogador (Configurações e aba Perfil)
+export async function fetchPersona() {
     const s = st();
     if (!s.steamId || !s.apiKey) return;
     const r = await steamApi('ISteamUser/GetPlayerSummaries/v2/', { key: s.apiKey, steamids: s.steamId });

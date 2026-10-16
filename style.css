@@ -1154,6 +1154,19 @@ body.gp-open { overflow: hidden; }
 /* Hero: pôster + infos */
 .gp-hero { display: flex; gap: 20px; align-items: flex-end; margin-bottom: 18px; }
 .gp-cover { width: min(200px, 38vw); aspect-ratio: 2/3; object-fit: cover; border-radius: 16px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); border: 1px solid var(--border-color); flex-shrink: 0; }
+
+/* Capa horizontal no topo da página do jogo ("capa de Facebook"): a capa vertical
+   sobrepõe o rodapé do banner. Sem arte na RAWG, o banner simplesmente não existe. */
+.gp-banner { margin: 0 -16px 10px; overflow: hidden; border-radius: 0 0 14px 14px; background: var(--card-bg); }
+.gp-banner:empty { display: none; }
+.gp-banner:not(:empty) { height: clamp(130px, 28vw, 200px); }
+.gp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+.with-banner .gp-hero { margin-top: -64px; }
+@media (min-width: 521px) { .with-banner .gp-hero-info { padding-top: 64px; } }
+
+/* Foto do perfil (aba Perfil): enviada pelo usuário ou vinda da Steam */
+.gm-p-photo { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 3px solid var(--card-bg); box-shadow: 0 8px 24px rgba(0,0,0,0.45); flex-shrink: 0; background: var(--card-bg); }
+.gm-p-photo-actions { display: flex; gap: 8px; margin: 10px 0 4px; flex-wrap: wrap; }
 .gp-cover.wide { aspect-ratio: 3/4; }
 .gp-cover-empty { display: flex; align-items: center; justify-content: center; font-size: 3em; font-weight: 800; color: var(--text-muted); background: var(--card-bg); }
 .gp-hero-info { min-width: 0; flex: 1; }

@@ -1159,6 +1159,7 @@ export function openGamePage(id, isWish = false) {
         ${g.image ? `<div class="gp-bg"><img src="${esc(g.image)}" alt=""></div>` : ''}
         <div class="gp-scroll">
             <button type="button" class="gp-back" onclick="gpClose()">${icon('back', { size: '1em' })} Voltar</button>
+            <div class="gp-banner" id="gp-banner"></div>
             <div class="gp-hero">
                 ${g.image ? `<img class="gp-cover${g.wideCover ? ' wide' : ''}" src="${esc(g.image)}" alt="Capa de ${esc(g.title)}">` : `<div class="gp-cover gp-cover-empty">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
                 <div class="gp-hero-info">
@@ -1246,6 +1247,15 @@ async function hydrateGameExtras(rawgId, page) {
         ]);
         const el = document.getElementById('gp-extra');
         if (!el || !page.isConnected || !page.contains(el)) return;   // usuário fechou/trocou de jogo antes da resposta
+        // Capa horizontal (estilo "capa de Facebook") no topo: arte adicional da RAWG, caindo para a principal
+        const bEl = document.getElementById('gp-banner');
+        if (bEl && page.contains(bEl)) {
+            const src = d && (d.imageExtra || d.image);
+            if (src) {
+                bEl.innerHTML = `<img src="${esc(resizeUrl(src, 1280))}" alt="" onclick="window.viewImage && window.viewImage('${esc(src)}')">`;
+                page.classList.add('with-banner');
+            }
+        }
         const creds = [];
         if (d && (d.developers || []).length) creds.push(`<strong>Desenvolvedora:</strong> ${esc(d.developers.join(', '))}`);
         if (d && (d.publishers || []).length) creds.push(`<strong>Publicadora:</strong> ${esc(d.publishers.join(', '))}`);

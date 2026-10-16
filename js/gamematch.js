@@ -3,9 +3,10 @@
 // swipe, da página Explorar e da página de Perfil. Os dados vivem em
 // appData.gamematch (persistidos junto com o resto do banco local).
 import { appData, saveData } from './store.js';
-import { listGames, esc, normText, resizeUrl, guessFranchise, getGameDetails, searchCompanies, getGameScreenshots, shotsGalleryHtml } from './gameApi.js';
+import { listGames, esc, normText, resizeUrl, guessFranchise, getGameDetails, searchCompanies, getGameScreenshots, shotsGalleryHtml, fileToSmallJpeg } from './gameApi.js';
 import { autoVerticalCover } from './covers.js';
 import { icon } from './icons.js';
+import { fetchPersona } from './steam.js';
 
 const gm = () => appData.gamematch || (appData.gamematch = {});
 let DEPS = { toast: (m) => console.log(m), render: null };   // injetado por initGameMatch (main.js)
@@ -810,13 +811,17 @@ export async function gmXOpen(rawgId) {
     if (old) old.remove();
     const m = g._match ?? matchScore(g);
     const img = g.image ? resizeUrl(g.image, 1280) : null;
+    // Capa horizontal estilo "capa de Facebook": arte adicional da RAWG (cai para a principal)
+    const bannerSrc = g.imageExtra || g.image || null;
     const el = document.createElement('div');
     el.id = 'gm-xpage';
     el.className = 'gm-xpage';
+    if (bannerSrc) el.classList.add('with-banner');
     el.innerHTML = `
         ${img ? `<div class="gp-bg"><img src="${esc(img)}" alt=""></div>` : ''}
         <div class="gp-scroll">
             <button type="button" class="gp-back" onclick="gmXClose()">‹ Voltar</button>
+            ${bannerSrc ? `<div class="gp-banner"><img src="${esc(resizeUrl(bannerSrc, 1280))}" alt="" onclick="window.viewImage && window.viewImage('${esc(bannerSrc)}')"></div>` : ''}
             <div class="gp-hero">
                 ${img ? `<img class="gp-cover" src="${esc(img)}" alt="">` : `<div class="gp-cover gp-cover-empty">${esc(g.title.slice(0, 2))}</div>`}
                 <div class="gp-hero-info">
@@ -891,14 +896,23 @@ export function renderGmProfile() {
     const matches = d.likes.length + d.favorites.length;
     const affinity = genreAffinity();
     const max = affinity.length ? affinity[0][1] : 1;
+    // Foto do perfil: a enviada pelo usuário ganha; sem ela, a da Steam (quando conectado); senão a inicial
+    const steam = appData.settings.steam || {};
+    const photo = appData.settings.userPhoto || steam.avatar || '';
+    const name = p.name || steam.persona || 'Seu Gamer';
     el.innerHTML = `
     <div class="gm-p-head">
-        <div class="gm-p-avatar">${esc((p.name || 'G')[0].toUpperCase())}</div>
+        ${photo ? `<img class="gm-p-photo" src="${esc(photo)}" alt="Foto de ${esc(name)}">` : `<div class="gm-p-avatar">${esc((name || 'G')[0].toUpperCase())}</div>`}
         <div>
-            <h3 class="gm-p-name">${esc(p.name || 'Seu Gamer')}</h3>
-            <div class="gm-p-sub">Perfil Gamer${p.upcomingOnly ? ' · só lançamentos' : ''}</div>
+            <h3 class="gm-p-name">${esc(name)}</h3>
+            <div class="gm-p-sub">Perfil Gamer${p.upcomingOnly ? ' · só lançamentos' : ''}${steam.persona ? ` · Steam: ${esc(steam.persona)}` : ''}</div>
         </div>
         <button type="button" class="pill-btn" onclick="gmOnboardOpen(true)" title="Editar preferências"><span data-icon="edit" data-size="0.9em"></span> Editar</button>
+    </div>
+    <div class="gm-p-photo-actions">
+        <button type="button" class="pill-btn" id="gp-photo-add">${icon('image', { size: '1em' })} ${photo ? 'Trocar foto' : 'Enviar foto'}</button>
+        ${appData.settings.userPhoto ? `<button type="button" class="pill-btn" id="gp-photo-del" title="Volta para a foto da Steam (ou para a inicial)">${icon('trash', { size: '1em' })} Remover</button>` : ''}
+        <input type="file" id="gp-photo-file" accept="image/*" hidden>
     </div>
     <div class="gm-p-chips">
         ${(p.genres || []).map(x => `<span class="chip chip-accent">${esc(x)}</span>`).join('')}
@@ -923,6 +937,29 @@ export function renderGmProfile() {
         <summary>Ver jogos ignorados (${d.rejects.length}) — para desfazer um toque errado</summary>
         ${d.rejects.length ? `<ul>${d.rejects.map((r, i) => `<li><span>${esc(r.title)}</span><button type="button" class="pill-btn" onclick="gmUnreject(${i})">Recuperar</button></li>`).join('')}</ul>` : '<p class="gm-note">Nenhum jogo ignorado até agora.</p>'}
     </details>`;
+    // Foto do perfil: envio local (a da Steam entra sozinha quando a conta está conectada)
+    const file = el.querySelector('#gp-photo-file');
+    const addBtn = el.querySelector('#gp-photo-add');
+    if (addBtn && file) {
+        addBtn.addEventListener('click', () => file.click());
+        file.addEventListener('change', async () => {
+            const f = file.files && file.files[0];
+            file.value = '';
+            if (!f) return;
+            try {
+                appData.settings.userPhoto = await fileToSmallJpeg(f, 420);
+                saveData(null);
+                toast('Foto do perfil salva!');
+            } catch (e) { toast('Não consegui usar essa imagem.', false); }
+            renderGmProfile();
+        });
+    }
+    const delBtn = el.querySelector('#gp-photo-del');
+    if (delBtn) delBtn.addEventListener('click', () => { delete appData.settings.userPhoto; saveData(null); renderGmProfile(); });
+    // Steam conectada mas sem avatar ainda: busca em segundo plano e atualiza quando chegar
+    if (steam.steamId && steam.apiKey && !appData.settings.userPhoto && !steam.avatar) {
+        fetchPersona().then(() => { if ((appData.settings.steam || {}).avatar) renderGmProfile(); }).catch(() => {});
+    }
     if (DEPS.hydrateIcons) DEPS.hydrateIcons(el);
 }
 
@@ -1094,7 +1131,7 @@ export function gmObFinish() {
     renderDeck(); renderGmProfile(); gmExplore('you');
 }
 
-// ---------- Ativação da aba e suas 3 sub-telas ----------
+// ---------- Ativação da aba e suas 2 sub-telas (o Perfil virou aba do app) ----------
 let gmActiveSub = 'swipe';
 export function gmActivate() {
     if (!gmHasProfile()) { gmOnboardOpen(true); }
@@ -1107,13 +1144,16 @@ export function gmSubShow(name) {
     document.querySelectorAll('#gm-subnav button').forEach(b => b.classList.toggle('active', b.dataset.sub === name));
     if (name === 'swipe') renderDeck();
     if (name === 'explore') gmExplore(document.querySelector('#gm-explore-cats .gm-chip.active') ? document.querySelector('#gm-explore-cats .gm-chip.active').dataset.cat : 'you');
-    if (name === 'profile') renderGmProfile();
 }
 
 // ---------- Inicialização ----------
 export function initGameMatch(deps) {
     DEPS = { ...DEPS, ...deps };
-    document.addEventListener('zeralog:tab-changed', e => { if (e.detail && e.detail.tab === 'gamematch') gmActivate(); });
+    document.addEventListener('zeralog:tab-changed', e => {
+        if (!e.detail) return;
+        if (e.detail.tab === 'gamematch') gmActivate();
+        if (e.detail.tab === 'profile') renderGmProfile();   // aba Perfil do app
+    });
 }
 
 

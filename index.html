@@ -75,6 +75,7 @@
         <button class="tab-btn" id="btn-tab-wish" onclick="switchTab('wish')"><span class="ic-lead" data-icon="bookmark"></span><span class="tab-label">Desejos (<span id="count-wish">0</span>)</span></button>
         <button class="tab-btn" id="btn-tab-finished" onclick="switchTab('finished')"><span class="ic-lead" data-icon="trophy"></span><span class="tab-label">Zerados (<span id="count-finished">0</span>)</span></button>
         <button class="tab-btn" id="btn-tab-stats" onclick="switchTab('stats')"><span class="ic-lead" data-icon="chart"></span>Status</button>
+        <button class="tab-btn" id="btn-tab-profile" onclick="switchTab('profile')"><span class="ic-lead" data-icon="crown"></span>Perfil</button>
     </div>
 
     <!-- HOME TAB -->
@@ -118,7 +119,6 @@
         <div class="subnav gm-subnav" id="gm-subnav" role="tablist" aria-label="Seções do GameMatch">
             <button type="button" role="tab" data-sub="swipe" class="active" onclick="gmSubShow('swipe')"><span data-icon="flame" data-size="1em"></span>Descobrir</button>
             <button type="button" role="tab" data-sub="explore" onclick="gmSubShow('explore')"><span data-icon="compass" data-size="1em"></span>Explorar</button>
-            <button type="button" role="tab" data-sub="profile" onclick="gmSubShow('profile')"><span data-icon="crown" data-size="1em"></span>Perfil</button>
         </div>
 
         <!-- Descobrir: deck de swipe -->
@@ -169,11 +169,11 @@
             </div>
             <div class="gm-explore-grid" id="gm-explore-grid"><div class="gm-loading">Carregando...</div></div>
         </section>
+    </div>
 
-        <!-- Perfil gamer -->
-        <section class="gm-sub" data-sub="profile">
-            <div id="gm-profile"></div>
-        </section>
+    <!-- PERFIL TAB: do app todo (nome, foto e preferências do jogador) -->
+    <div id="tab-profile" class="tab-content">
+        <div id="gm-profile"></div>
     </div>
 
     <!-- WISHLIST TAB -->
