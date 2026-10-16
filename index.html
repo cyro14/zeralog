@@ -46,8 +46,9 @@
         </div>
     </div>
 
-    <!-- DESKTOP: topbar com notificações e perfil (canto superior direito) -->
+    <!-- DESKTOP: topbar com salvar, notificações e perfil (canto superior direito) -->
     <div class="desktop-topbar" id="desktop-topbar">
+        <button type="button" class="dtb-bell" onclick="openBackupModal()" title="Salvar backup" aria-label="Salvar backup"><span data-icon="save" data-size="1.1em"></span></button>
         <button type="button" class="dtb-bell" onclick="openSettingsSection('notify')" title="Notificações" aria-label="Notificações"><span data-icon="bell" data-size="1.1em"></span></button>
         <button type="button" class="dtb-profile" onclick="switchTab('profile')" title="Seu perfil" aria-label="Abrir perfil"><span class="dtb-avatar-wrap" id="dtb-avatar-wrap"><span data-icon="crown" data-size="1.2em"></span></span></button>
     </div>

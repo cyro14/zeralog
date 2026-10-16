@@ -82,7 +82,20 @@ html[data-theme="contrast"] {
     --google-blue: #4285f4; --input-bg: #000000; --input-text: #ffffff; --on-accent: #000000;
 }
 
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; line-height: 1.6; transition: background-color 0.3s, color 0.3s; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text-main);
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+    transition: background-color 0.3s, color 0.3s;
+    /* Glass: gradientes suaves que aparecem através do vidro fosco (todas as telas) */
+    background:
+        radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--accent-playing) 14%, var(--bg-color)) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 90%, color-mix(in srgb, var(--accent-finished) 12%, var(--bg-color)) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--accent-live, #a77bff) 6%, var(--bg-color)) 0%, transparent 60%),
+        var(--bg-color);
+}
 
 /* Topo e Botões Superiores */
 .header-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; margin-top: 10px; }
@@ -94,7 +107,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .btn-top:hover { transform: scale(1.1); }
 
 /* Barra de Pesquisa & Abas */
-.search-container { display: flex; align-items: center; background-color: var(--card-bg); border-radius: 8px; padding: 12px 15px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid var(--border-color); }
+.search-container { display: flex; align-items: center; background: color-mix(in srgb, var(--card-bg) 62%, transparent); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 8px; padding: 12px 15px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent); }
 .search-container input { background: transparent; border: none; color: var(--text-main); font-size: 1.05em; width: 100%; margin-left: 10px; outline: none; }
 .search-container input::placeholder { color: var(--text-muted); }
 
@@ -113,7 +126,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Categorias e Listas */
-.category { background-color: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s;}
+.category {
+    background: color-mix(in srgb, var(--card-bg) 62%, transparent);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    transition: all 0.3s;
+}
 .category-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; cursor: pointer; user-select: none; }
 .cat-title-area { display: flex; align-items: center; gap: 8px; flex-grow: 1; }
 .chevron { font-size: 0.8em; color: var(--text-muted); transition: transform 0.3s; }
@@ -127,39 +150,83 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 #playing-category { border: 2px solid var(--accent-playing); display: none; }
 #playing-category h2 { color: var(--accent-playing); }
 
-/* ===== DESKTOP: hero "Jogando Atualmente" no topo (só >= 900px) =====
-   A capa do primeiro jogo em andamento vira um fundo borrado gigante,
-   com as capas dos jogos jogando em destaque por cima. O backlog normal
-   continua igual logo abaixo. O celular não é afetado em nada. */
+/* ===== HERO: "Jogando Atualmente" com fundo borrado (TODAS as telas) =====
+   A capa do primeiro jogo em andamento vira um fundo borrado;
+   as capas dos jogos jogando ficam em destaque por cima. No desktop são
+   maiores (165px); no celular, médias (130px). */
+#playing-category {
+    position: relative;
+    overflow: hidden;
+    border: none !important;
+    border-radius: 18px;
+    min-height: 320px;
+    padding: 0;
+    background: color-mix(in srgb, var(--card-bg) 55%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+#playing-category::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--hero-bg, none);
+    background-size: cover;
+    background-position: center;
+    filter: blur(42px) brightness(0.45) saturate(1.3);
+    transform: scale(1.15);
+    z-index: 0;
+}
+#playing-category::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.45));
+    z-index: 0;
+}
+#playing-category > * { position: relative; z-index: 1; }
+#playing-category .category-header { padding: 20px 24px 12px; background: none; }
+#playing-category h2 { color: #fff; font-size: 1.3em; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+#playing-category .chevron { color: rgba(255,255,255,0.7); }
+#playing-category .game-list.shelf {
+    --cart-w: 130px;   /* mobile: médio; desktop sobe para 165px */
+    --row-h: 215px;
+    justify-content: flex-start;
+    padding: 8px 24px 20px;
+    background: none;
+    border-radius: 0;
+    min-height: 215px;
+    align-items: end;
+}
+#playing-category .cart {
+    border-radius: 12px 12px 4px 4px;
+    background: linear-gradient(rgba(255,255,255,0.08), rgba(0,0,0,0.25)), linear-gradient(#3a3a42, #1e1e24);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+#playing-category .shelf-item:hover, #playing-category .shelf-item:focus-visible { transform: translateY(-6px) scale(1.03); }
+#playing-category .shelf-badge { font-size: 0.75em; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); }
 
-/* ===== DESKTOP: LAYOUT COMPLETO (só >= 900px) =====
-   Sidebar fixa à esquerda (só ícones, settings no fundo), perfil como círculo
-   no canto superior direito, notificações ao lado, e o app inteiro com fundo
-   de vidro fosco (backdrop-filter). O celular não é afetado em nada. */
+/* ===== DESKTOP (só >= 900px): sidebar LARGA com nomes + topbar =====
+   Sidebar fixa à esquerda com nome em cada opção, settings no fundo,
+   perfil como círculo no canto superior direito, salvar e notificações ao lado. */
 @media (min-width: 900px) {
-    /* --- fundo do app: gradientes suaves que aparecem através do vidro --- */
     body {
-        background:
-            radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--accent-playing) 14%, var(--bg-color)) 0%, transparent 55%),
-            radial-gradient(ellipse at 85% 90%, color-mix(in srgb, var(--accent-finished) 12%, var(--bg-color)) 0%, transparent 55%),
-            radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--accent-live, #a77bff) 6%, var(--bg-color)) 0%, transparent 60%),
-            var(--bg-color);
-        padding-left: 84px;   /* espaço para a sidebar */
+        padding-left: 200px;
         padding-top: 16px;
         padding-right: 20px;
         padding-bottom: 20px;
     }
-    /* --- sidebar fixa à esquerda --- */
+    /* sidebar com nomes */
     .tabs {
         position: fixed;
         left: 0;
         top: 0;
         bottom: 0;
-        width: 68px;
+        width: 186px;
         flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        padding: 14px 6px 14px;
+        align-items: stretch;
+        gap: 4px;
+        padding: 16px 10px;
         margin: 0;
         background: color-mix(in srgb, var(--card-bg) 68%, transparent);
         backdrop-filter: blur(24px) saturate(1.3);
@@ -174,17 +241,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
     }
     .tabs::-webkit-scrollbar { display: none; }
     .tab-btn {
-        font-size: 0;
-        padding: 12px 4px;
-        justify-content: center;
+        font-size: 0.88em;
+        padding: 11px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
         border: none;
-        border-radius: 14px;
+        border-radius: 12px;
         background: transparent;
+        text-align: left;
         width: 100%;
-        text-align: center;
+        justify-content: flex-start;
     }
-    .tab-btn .ic-lead { font-size: 1.4em; margin: 0; }
-    .tab-btn .ic-lead svg { width: 22px !important; height: 22px !important; display: block; margin: 0 auto; }
+    .tab-btn .ic-lead { margin: 0; font-size: 1.1em; flex-shrink: 0; }
+    .tab-btn .ic-lead svg { width: 20px !important; height: 20px !important; }
     .tab-btn.active {
         background: color-mix(in srgb, var(--accent-playing) 18%, transparent);
         border: none;
@@ -194,8 +264,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
     /* botão de settings no fundo da sidebar */
     .dtb-settings {
         margin-top: auto;
-        font-size: 0;
-        padding: 12px 4px;
+        font-size: 0.88em;
+        padding: 11px 14px;
         border: none;
         background: transparent;
         color: var(--text-muted);
@@ -203,14 +273,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
         width: 100%;
         display: flex;
         align-items: center;
-        justify-content: center;
+        gap: 10px;
+        border-radius: 12px;
     }
-    .dtb-settings .ic-lead { font-size: 1.4em; margin: 0; }
-    .dtb-settings .ic-lead svg { width: 22px !important; height: 22px !important; display: block; margin: 0 auto; }
+    .dtb-settings .ic-lead { margin: 0; font-size: 1.1em; }
+    .dtb-settings .ic-lead svg { width: 20px !important; height: 20px !important; }
     .dtb-settings:hover { background: color-mix(in srgb, var(--text-main) 8%, transparent); color: var(--text-main); }
     /* Perfil sai da sidebar (vira círculo no topo direito) */
     #btn-tab-profile { display: none; }
-    /* --- topbar: perfil (círculo com foto) + notificações (sino) --- */
+    /* topbar: salvar + notificações + perfil (círculo com foto) */
     .desktop-topbar {
         position: fixed;
         top: 14px;
@@ -261,106 +332,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
         overflow: hidden;
     }
     .dtb-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    /* --- glass em todo o app --- */
-    .category {
-        background: color-mix(in srgb, var(--card-bg) 62%, transparent);
-        backdrop-filter: blur(20px) saturate(1.2);
-        -webkit-backdrop-filter: blur(20px) saturate(1.2);
-        border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    }
-    .search-container {
-        background: color-mix(in srgb, var(--card-bg) 62%, transparent);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
-    }
-    .sort-bar .sort-chip {
-        background: color-mix(in srgb, var(--card-bg) 62%, transparent);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
-    }
-    .tool-btn {
-        background: color-mix(in srgb, var(--card-bg) 62%, transparent);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
-    }
-    /* o zl-rail antigo não mexe mais nas tabs (agora são sidebar fixa) */
-    body.zl-rail .tabs { position: fixed; left: 0; top: 0; bottom: 0; width: 68px; flex-direction: column; z-index: 200; }
-    body.zl-rail { padding-left: 84px; }
-    /* filtros somem ao rolar no desktop (igual ao comportamento antigo) */
+    /* esconder botões duplicados no topo (agora estão na sidebar/topbar) */
+    .top-controls .btn-top[onclick*="openSettings"] { display: none; }
+    .top-controls .btn-top[onclick*="openBackupModal"] { display: none; }
+    /* hero maior no desktop */
+    #playing-category { min-height: 400px; }
+    #playing-category h2 { font-size: 1.4em; }
+    #playing-category .game-list.shelf { --cart-w: 165px; --row-h: 270px; min-height: 270px; }
+    /* filtros somem ao rolar (igual ao comportamento antigo) */
     body.zl-rail .search-container, body.zl-rail .platform-filter { opacity: 0; pointer-events: none; transform: translateY(-8px); transition: opacity .2s, transform .2s; }
     .search-container, .platform-filter { transition: opacity .2s, transform .2s; }
-
-    /* hero: Jogando Atualmente */
-    #playing-category {
-        position: relative;
-        overflow: hidden;
-        border: none;
-        border-radius: 18px;
-        min-height: 400px;
-        padding: 0;
-        background: color-mix(in srgb, var(--card-bg) 55%, transparent);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-    }
-    /* fundo borrado do jogo (a variável --hero-bg vem do JS) */
-    #playing-category::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background-image: var(--hero-bg, none);
-        background-size: cover;
-        background-position: center;
-        filter: blur(42px) brightness(0.45) saturate(1.3);
-        transform: scale(1.15);
-        z-index: 0;
-    }
-    #playing-category::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.45));
-        z-index: 0;
-    }
-    #playing-category > * { position: relative; z-index: 1; }
-    #playing-category .category-header {
-        padding: 20px 24px 12px;
-        background: none;
-    }
-    #playing-category h2 { color: #fff; font-size: 1.4em; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
-    #playing-category .chevron { color: rgba(255,255,255,0.7); }
-    /* capas grandes, sem a prateleira de madeira */
-    #playing-category .game-list.shelf {
-        --cart-w: 165px;
-        --row-h: 270px;
-        justify-content: flex-start;
-        padding: 8px 24px 20px;
-        background: none;
-        border-radius: 0;
-        min-height: 270px;
-        align-items: end;
-    }
-    #playing-category .cart {
-        border-radius: 12px 12px 4px 4px;
-        background: linear-gradient(rgba(255,255,255,0.08), rgba(0,0,0,0.25)), linear-gradient(#3a3a42, #1e1e24);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.08);
-    }
-    #playing-category .shelf-item:hover, #playing-category .shelf-item:focus-visible { transform: translateY(-6px) scale(1.03); }
-    #playing-category .shelf-badge { font-size: 0.75em; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); }
 }
 /* mobile: topbar e settings da sidebar escondidos */
 @media (max-width: 899px) {
-    /* mobile: topbar e settings da sidebar escondidos */
     .desktop-topbar { display: none; }
     .dtb-settings { display: none; }
-    /* desktop: settings do topo escondido (está na sidebar agora) */
-    @media (min-width: 900px) {
-        .top-controls .btn-top[onclick*="openSettings"] { display: none; }
-    }
 }
 #finished-category h2 { color: var(--accent-finished); }
 
@@ -1554,7 +1540,7 @@ select.sort-time.active { border-color: var(--accent-playing); color: var(--acce
 .gm-ov-sub { font-size: 0.95em; }
 @media (max-width: 480px) { .gm-ov-title { font-size: 1.7em; padding: 10px 22px; } }
 
-/* (o antigo zl-rail de desktop foi substituído pela sidebar fixa no rework) */
+/* (o zl-rail de desktop foi substituído pela sidebar fixa) */
 @media (min-width: 900px) {
     body.zl-rail .search-container, body.zl-rail .platform-filter { opacity: 0; pointer-events: none; transform: translateY(-8px); transition: opacity .2s, transform .2s; }
     .search-container, .platform-filter { transition: opacity .2s, transform .2s; }
