@@ -947,7 +947,7 @@ export function renderGmProfile() {
             file.value = '';
             if (!f) return;
             try {
-                appData.settings.userPhoto = await fileToSmallJpeg(f, 420);
+                appData.settings.userPhoto = await fileToSmallJpeg(f, 640);   // 640px: nítida no círculo grande
                 saveData(null);
                 toast('Foto do perfil salva!');
             } catch (e) { toast('Não consegui usar essa imagem.', false); }
@@ -956,8 +956,10 @@ export function renderGmProfile() {
     }
     const delBtn = el.querySelector('#gp-photo-del');
     if (delBtn) delBtn.addEventListener('click', () => { delete appData.settings.userPhoto; saveData(null); renderGmProfile(); });
-    // Steam conectada mas sem avatar ainda: busca em segundo plano e atualiza quando chegar
-    if (steam.steamId && steam.apiKey && !appData.settings.userPhoto && !steam.avatar) {
+    // Steam conectada: se ainda não buscou o avatar (ou salvou o de 64px de versões
+    // antigas), busca o avatarfull em segundo plano e atualiza quando chegar
+    const oldAvatar = steam.avatar && steam.avatar.includes('_medium');
+    if (steam.steamId && steam.apiKey && !appData.settings.userPhoto && (!steam.avatar || oldAvatar)) {
         fetchPersona().then(() => { if ((appData.settings.steam || {}).avatar) renderGmProfile(); }).catch(() => {});
     }
     if (DEPS.hydrateIcons) DEPS.hydrateIcons(el);

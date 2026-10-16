@@ -238,7 +238,7 @@ export async function fetchPersona() {
     const r = await steamApi('ISteamUser/GetPlayerSummaries/v2/', { key: s.apiKey, steamids: s.steamId });
     const pl = r && r.response && r.response.players && r.response.players[0];
     if (pl) {
-        appData.settings.steam = { ...st(), persona: pl.personaname || '', avatar: pl.avatarmedium || pl.avatar || '' };
+        appData.settings.steam = { ...st(), persona: pl.personaname || '', avatar: pl.avatarfull || pl.avatarmedium || pl.avatar || '' };   // avatarfull: 184px (o medium é 64px, fica borrado no perfil)
         saveData(null);
         renderSteamSettings();
     }

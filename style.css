@@ -1156,13 +1156,20 @@ body.gp-open { overflow: hidden; }
 .gp-cover { width: min(200px, 38vw); aspect-ratio: 2/3; object-fit: cover; border-radius: 16px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); border: 1px solid var(--border-color); flex-shrink: 0; }
 
 /* Capa horizontal no topo da página do jogo ("capa de Facebook"): a capa vertical
-   sobrepõe o rodapé do banner. Sem arte na RAWG, o banner simplesmente não existe. */
-.gp-banner { margin: 0 -16px 10px; overflow: hidden; border-radius: 0 0 14px 14px; background: var(--card-bg); }
+   sobrepõe o rodapé do banner. Sem arte na RAWG, o banner simplesmente não existe.
+   Tocar no fundo abre o menu (ver em tela cheia / trocar / voltar à arte do jogo). */
+.gp-banner { margin: 0 -16px 10px; overflow: hidden; border-radius: 0 0 14px 14px; background: var(--card-bg); cursor: pointer; }
 .gp-banner:empty { display: none; }
-.gp-banner:not(:empty) { height: clamp(130px, 28vw, 200px); }
-.gp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
-.with-banner .gp-hero { margin-top: -64px; }
-@media (min-width: 521px) { .with-banner .gp-hero-info { padding-top: 64px; } }
+.gp-banner:not(:empty) { height: clamp(180px, 36vw, 300px); }
+.gp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.with-banner .gp-hero { margin-top: -72px; }
+@media (min-width: 521px) { .with-banner .gp-hero-info { padding-top: 72px; } }
+.gp-cover { cursor: pointer; }
+
+/* Menu de opções do fundo do jogo */
+.gp-bmenu { position: fixed; z-index: 1000; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); padding: 6px; display: flex; flex-direction: column; gap: 2px; min-width: 210px; }
+.gp-bmenu button { background: none; border: none; color: var(--text-main); text-align: left; padding: 10px 12px; border-radius: 8px; font-size: 0.88em; cursor: pointer; }
+.gp-bmenu button:hover, .gp-bmenu button:focus-visible { background: rgba(128,128,128,0.12); }
 
 /* Foto do perfil (aba Perfil): enviada pelo usuário ou vinda da Steam */
 .gm-p-photo { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 3px solid var(--card-bg); box-shadow: 0 8px 24px rgba(0,0,0,0.45); flex-shrink: 0; background: var(--card-bg); }

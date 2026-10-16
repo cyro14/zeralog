@@ -1155,13 +1155,15 @@ export function openGamePage(id, isWish = false) {
     const el = document.createElement('div');
     el.id = 'gp-page';
     el.className = 'gp-page';
+    if (g.userBanner) el.classList.add('with-banner');   // fundo enviado pelo usuário já abre no lugar
     el.innerHTML = `
         ${g.image ? `<div class="gp-bg"><img src="${esc(g.image)}" alt=""></div>` : ''}
         <div class="gp-scroll">
             <button type="button" class="gp-back" onclick="gpClose()">${icon('back', { size: '1em' })} Voltar</button>
-            <div class="gp-banner" id="gp-banner"></div>
+            <div class="gp-banner" id="gp-banner">${g.userBanner ? `<img src="${esc(g.userBanner)}" alt="">` : ''}</div>
+            <input type="file" id="gp-bg-file" accept="image/*" hidden>
             <div class="gp-hero">
-                ${g.image ? `<img class="gp-cover${g.wideCover ? ' wide' : ''}" src="${esc(g.image)}" alt="Capa de ${esc(g.title)}">` : `<div class="gp-cover gp-cover-empty">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
+                ${g.image ? `<img class="gp-cover${g.wideCover ? ' wide' : ''}" src="${esc(g.image)}" alt="Capa de ${esc(g.title)}" onclick="gpDo('openImageModal', '${g.id}')" title="Trocar capa">` : `<div class="gp-cover gp-cover-empty" onclick="gpDo('openImageModal', '${g.id}')" title="Trocar capa">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
                 <div class="gp-hero-info">
                     <h2>${esc(g.title)}</h2>
                     <div class="gp-sub">${sub.join(' <span class="dot">·</span> ')}</div>
@@ -1185,8 +1187,54 @@ export function openGamePage(id, isWish = false) {
     document.body.appendChild(el);
     document.body.classList.add('gp-open');
     requestAnimationFrame(() => el.classList.add('open'));
-    if (g.rawgId) hydrateGameExtras(g.rawgId, el);   // desenvolvedora/publicadora + screenshots (RAWG)
+    // Atalho do fundo (capa de Facebook): clicar abre as opções — ver em tela cheia, enviar a própria ou voltar à arte do jogo
+    const bannerDiv = el.querySelector('#gp-banner');
+    if (bannerDiv) {
+        bannerDiv.addEventListener('click', () => gpBannerMenu(g, isWish));
+        const bgFile = el.querySelector('#gp-bg-file');
+        if (bgFile) bgFile.addEventListener('change', async () => {
+            const f = bgFile.files && bgFile.files[0];
+            bgFile.value = '';
+            if (!f) return;
+            try {
+                g.userBanner = await fileToSmallJpeg(f, 1280);
+                saveData(null);
+                triggerToast('Fundo personalizado salvo!');
+            } catch (e) { triggerToast('Não consegui usar essa imagem.', false); return; }
+            openGamePage(g.id, isWish);
+        });
+    }
+    if (g.rawgId) hydrateGameExtras(g, el);   // desenvolvedora/publicadora + screenshots (RAWG)
     try { paintMineShots(g, isWish); } catch (e) { console.error('Falha ao pintar suas screenshots', e); }   // um não pode derrubar o outro
+}
+
+// Menu do fundo do jogo: ver em tela cheia, trocar por imagem própria ou voltar para a arte da RAWG
+function gpBannerMenu(g, isWish) {
+    const old = document.getElementById('gp-bmenu');
+    if (old) old.remove();
+    const banner = document.getElementById('gp-banner');
+    if (!banner) return;
+    const r = banner.getBoundingClientRect();
+    const m = document.createElement('div');
+    m.id = 'gp-bmenu';
+    m.className = 'gp-bmenu';
+    m.style.top = `${Math.round(r.bottom + 6)}px`;
+    m.style.left = `${Math.max(8, Math.min(Math.round(r.left), window.innerWidth - 230))}px`;
+    m.innerHTML = `
+        <button type="button" data-a="view">Ver em tela cheia</button>
+        <button type="button" data-a="upload">${g.userBanner ? 'Trocar imagem de fundo' : 'Enviar imagem de fundo'}</button>
+        ${g.userBanner ? `<button type="button" data-a="reset">Voltar para a arte do jogo</button>` : ''}`;
+    document.body.appendChild(m);
+    const close = () => { m.remove(); document.removeEventListener('click', away, true); window.removeEventListener('scroll', close, true); };
+    const away = ev => { if (!m.contains(ev.target)) close(); };
+    m.addEventListener('click', e => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        if (btn.dataset.a === 'view') { const img = banner.querySelector('img'); close(); if (img && img.src) viewImage(img.src); }
+        else if (btn.dataset.a === 'upload') { close(); const f = document.getElementById('gp-bg-file'); if (f) f.click(); }
+        else if (btn.dataset.a === 'reset') { close(); delete g.userBanner; saveData(null); openGamePage(g.id, isWish); }
+    });
+    setTimeout(() => { document.addEventListener('click', away, true); window.addEventListener('scroll', close, true); }, 0);
 }
 
 // ---------- Screenshots do próprio usuário (salvas no jogo, no banco local) ----------
@@ -1238,7 +1286,9 @@ function paintMineShots(g, isWish) {
 
 // Enche a seção "Sobre o jogo" com os créditos e screenshots da RAWG, sem tocar no jogo salvo:
 // busca na hora (o jogo pode ter sido importado antes de existir esses campos).
-async function hydrateGameExtras(rawgId, page) {
+// O fundo (capa de Facebook) só puxa da RAWG quando o usuário não enviou um próprio.
+async function hydrateGameExtras(g, page) {
+    const rawgId = g.rawgId;
     if (!(rawgId > 0)) return;
     try {
         const [d, shots] = await Promise.all([
@@ -1248,12 +1298,14 @@ async function hydrateGameExtras(rawgId, page) {
         const el = document.getElementById('gp-extra');
         if (!el || !page.isConnected || !page.contains(el)) return;   // usuário fechou/trocou de jogo antes da resposta
         // Capa horizontal (estilo "capa de Facebook") no topo: arte adicional da RAWG, caindo para a principal
-        const bEl = document.getElementById('gp-banner');
-        if (bEl && page.contains(bEl)) {
-            const src = d && (d.imageExtra || d.image);
-            if (src) {
-                bEl.innerHTML = `<img src="${esc(resizeUrl(src, 1280))}" alt="" onclick="window.viewImage && window.viewImage('${esc(src)}')">`;
-                page.classList.add('with-banner');
+        if (!g.userBanner) {
+            const bEl = document.getElementById('gp-banner');
+            if (bEl && page.contains(bEl)) {
+                const src = d && (d.imageExtra || d.image);
+                if (src) {
+                    bEl.innerHTML = `<img src="${esc(resizeUrl(src, 1280))}" alt="">`;
+                    page.classList.add('with-banner');
+                }
             }
         }
         const creds = [];
