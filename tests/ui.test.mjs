@@ -39,6 +39,18 @@ test('página do jogo abre sem erro e com a seção Sobre já expandida', async 
     assert(page.innerHTML.includes('gp-bg-file'), 'input de fundo existe');
 });
 
+test('hero do desktop: a capa do jogo em andamento vira o fundo --hero-bg', async () => {
+    appData.games.push({ id: 'hp1', title: 'Jogo Hero', platform: 'PC', state: 'playing', image: 'data:image/jpeg;base64,CAPAHERO', catId: 'c1' });
+    const { render } = await import('../js/ui.js');
+    // o render monta o DOM todo; o playing-category recebe a variável CSS
+    try { render(); } catch (e) { /* DOM falso pode falhar em partes; o essencial é o hero */ }
+    // o elemento é criado via createElement, não getElementById: procurar no created
+    const playing = created.find(c => c.id === 'playing-category');
+    assert(playing, 'seção Jogando Atualmente existe');
+    const bg = playing.style.getPropertyValue('--hero-bg');
+    assert(bg && String(bg).includes('CAPAHERO'), `fundo do hero com a capa do jogo (${bg ? String(bg).slice(0, 40) : 'vazio'})`);
+});
+
 test('capa é um atalho para Trocar capa (gpDo openImageModal)', async () => {
     addGame('g2', { image: 'data:image/jpeg;base64,CAPA' });
     await openGamePage('g2', false);

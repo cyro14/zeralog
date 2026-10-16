@@ -49,7 +49,8 @@ function ctx2dStub(el) {
 
 function makeEl() {
     const el = {
-        innerHTML: '', className: '', id: '', value: '', hidden: false, files: [], dataset: {}, style: {}, isConnected: true, _cls: [], _shown: 0, _texts: [],
+        innerHTML: '', className: '', id: '', value: '', hidden: false, files: [], dataset: {}, isConnected: true, _cls: [], _shown: 0, _texts: [],
+        style: (() => { const s = {}; s.setProperty = (k, v) => { s[k] = v; }; s.getPropertyValue = k => s[k] || ''; s.removeProperty = k => { delete s[k]; }; return s; })(),
         classList: { add(...c) { el._cls.push(...c); }, remove() {}, toggle() {}, contains: () => false },
         appendChild(c) { return c; }, addEventListener() {}, removeEventListener() {}, remove() {},
         querySelector: () => makeEl(), querySelectorAll: () => [], closest: () => makeEl(),
