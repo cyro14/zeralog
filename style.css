@@ -216,6 +216,26 @@ body {
         padding-right: 20px;
         padding-bottom: 20px;
     }
+    /* o header antigo inteiro some no desktop: o logo está na sidebar,
+       salvar e settings estão na topbar */
+    .header-container { display: none; }
+    /* logo no topo da sidebar */
+    .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 14px 12px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid color-mix(in srgb, var(--border-color) 30%, transparent);
+    }
+    .sidebar-brand strong {
+        font-size: 1.1em;
+        font-weight: 800;
+        background: linear-gradient(45deg, var(--accent-playing), var(--accent-finished));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.5px;
+    }
     /* sidebar com nomes */
     .tabs {
         position: fixed;
@@ -332,9 +352,7 @@ body {
         overflow: hidden;
     }
     .dtb-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    /* esconder botões duplicados no topo (agora estão na sidebar/topbar) */
-    .top-controls .btn-top[onclick*="openSettings"] { display: none; }
-    .top-controls .btn-top[onclick*="openBackupModal"] { display: none; }
+    /* (o header inteiro já está display:none acima — os botões sumiram junto) */
     /* hero maior no desktop */
     #playing-category { min-height: 400px; }
     #playing-category h2 { font-size: 1.4em; }
@@ -343,10 +361,11 @@ body {
     body.zl-rail .search-container, body.zl-rail .platform-filter { opacity: 0; pointer-events: none; transform: translateY(-8px); transition: opacity .2s, transform .2s; }
     .search-container, .platform-filter { transition: opacity .2s, transform .2s; }
 }
-/* mobile: topbar e settings da sidebar escondidos */
+/* mobile: topbar, logo da sidebar e settings escondidos */
 @media (max-width: 899px) {
     .desktop-topbar { display: none; }
     .dtb-settings { display: none; }
+    .sidebar-brand { display: none; }
 }
 #finished-category h2 { color: var(--accent-finished); }
 
@@ -1555,11 +1574,7 @@ select.sort-time.active { border-color: var(--accent-playing); color: var(--acce
 .gm-xpage.open { opacity: 1; }
 .gm-xpage .gp-actions { margin: 6px 0 14px; }
 
-/* Rail lateral: ícone com tamanho fixo (font-size 0 zerava o svg em em) */
-@media (min-width: 900px) {
-    body.zl-rail .tab-btn .ic-lead svg { width: 22px !important; height: 22px !important; display: block; margin: 0 auto; }
-    body.zl-rail .tab-btn { display: flex; align-items: center; justify-content: center; }
-}
+/* (o zl-rail de desktop foi absorvido pela sidebar fixa; só os filtros ainda somem ao rolar) */
 
 /* Mobile: barra de abas SEMPRE fixa embaixo (só ícones), em qualquer ponto da página.
    O zl-rail (que era ligado/desligado pela direção do scroll) continua valendo só

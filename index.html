@@ -77,6 +77,14 @@
     </div>
 
     <div class="tabs">
+        <!-- Logo no topo da sidebar (desktop) / escondido no mobile -->
+        <div class="sidebar-brand" aria-hidden="true">
+            <svg class="app-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 28px; height: 28px;">
+                <defs><linearGradient id="logo-grad-sb" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:var(--accent-playing); stop-opacity:1" /><stop offset="100%" style="stop-color:var(--accent-finished); stop-opacity:1" /></linearGradient></defs>
+                <path d="M4 4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4H4ZM4 6H20V12H4V6ZM10.59 17.41L7 13.83L8.41 12.41L10.59 14.58L15.59 9.59L17 11L10.59 17.41Z" fill="url(#logo-grad-sb)"/>
+            </svg>
+            <strong>ZeraLog</strong>
+        </div>
         <button class="tab-btn active" id="btn-tab-home" onclick="switchTab('home')"><span class="ic-lead" data-icon="list"></span>Fila</button>
         <button class="tab-btn" id="btn-tab-gamematch" onclick="switchTab('gamematch')"><span class="ic-lead" data-icon="gamepad"></span><span class="tab-label">GameMatch</span></button>
         <button class="tab-btn" id="btn-tab-wish" onclick="switchTab('wish')"><span class="ic-lead" data-icon="bookmark"></span><span class="tab-label">Desejos (<span id="count-wish">0</span>)</span></button>
