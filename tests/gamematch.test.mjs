@@ -115,3 +115,22 @@ test('perfil: sem Steam e sem upload mostra a inicial do nome', () => {
     assert(h.includes('Zeca'), 'nome do perfil');
     assert(!h.includes('gp-photo-del'), 'sem upload não tem Remover');
 });
+
+test('perfil: os círculos do topo (desktop e mobile) recebem a mesma foto', () => {
+    profileReady();
+    appData.settings.userPhoto = 'data:image/jpeg;base64,FOTOTOPO';
+    // dois círculos: o do topbar (desktop) e o do header (mobile) — a renderGmProfile
+    // precisa pintar TODOS os .dtb-avatar-wrap, não só o de um id
+    const circles = [{ innerHTML: '' }, { innerHTML: '' }];
+    const orig = document.querySelectorAll;
+    document.querySelectorAll = sel => (sel === '.dtb-avatar-wrap' ? circles : []);
+    try { renderGmProfile(); } finally { document.querySelectorAll = orig; }
+    assert(circles[0].innerHTML.includes('FOTOTOPO'), 'círculo do desktop com a foto');
+    assert(circles[1].innerHTML.includes('FOTOTOPO'), 'círculo do mobile com a foto');
+    // sem foto nenhuma: os círculos voltam para o ícone de coroa
+    delete appData.settings.userPhoto;
+    circles[0].innerHTML = ''; circles[1].innerHTML = '';
+    document.querySelectorAll = sel => (sel === '.dtb-avatar-wrap' ? circles : []);
+    try { renderGmProfile(); } finally { document.querySelectorAll = orig; }
+    assert(circles[0].innerHTML.includes('<svg'), 'sem foto o círculo mostra a coroa');
+});

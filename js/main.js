@@ -223,11 +223,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }).observe(document.body, { childList: true });
 });
 
-// ================= Menu lateral recolhível (desktop) =================
-// Ao descer a página, os controles do topo viram uma trilha de ícones à esquerda;
-// ao subir de volta, voltam ao normal.
+// ================= Filtros que somem ao rolar (SÓ desktop) =================
+// Ao descer a página, a busca e os filtros de plataforma do topo somem; ao subir
+// de volta, reaparecem. No mobile isso NÃO existe: a barra de abas já é fixa e
+// ligar/desligar classes a cada evento de scroll era o "delay" que sobrou da
+// época em que as abas não eram fixas.
+const zlDesktopMq = window.matchMedia('(min-width: 900px)');
 let zlLastY = 0;
 window.addEventListener('scroll', () => {
+    if (!zlDesktopMq.matches) {
+        // celular/tablet: nenhuma classe muda com o scroll
+        zlLastY = window.scrollY;
+        if (document.body.classList.contains('zl-rail')) document.body.classList.remove('zl-rail');
+        return;
+    }
     const y = window.scrollY;
     const goingDown = y > zlLastY + 4;
     const goingUp = y < zlLastY - 4;

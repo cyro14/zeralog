@@ -66,6 +66,7 @@
         <div class="header-actions">
             <button class="btn-top" onclick="openBackupModal()" title="Salvar Backup" aria-label="Salvar Backup"><span data-icon="save" data-size="1em"></span></button>
             <button class="btn-top" onclick="openSettings()" title="Configurações" aria-label="Configurações"><span data-icon="settings" data-size="1em"></span></button>
+            <button type="button" class="btn-top btn-top-profile" onclick="switchTab('profile')" title="Seu perfil" aria-label="Abrir perfil"><span class="dtb-avatar-wrap" id="mob-avatar-wrap"><span data-icon="crown" data-size="1em"></span></span></button>
         </div>
     </div>
 
@@ -85,12 +86,12 @@
             </svg>
             <strong>ZeraLog</strong>
         </div>
-        <button class="tab-btn active" id="btn-tab-home" onclick="switchTab('home')"><span class="ic-lead" data-icon="list"></span>Fila</button>
+        <button class="tab-btn active" id="btn-tab-home" onclick="switchTab('home')"><span class="ic-lead" data-icon="list"></span><span class="tab-label">Fila</span></button>
         <button class="tab-btn" id="btn-tab-gamematch" onclick="switchTab('gamematch')"><span class="ic-lead" data-icon="gamepad"></span><span class="tab-label">GameMatch</span></button>
         <button class="tab-btn" id="btn-tab-wish" onclick="switchTab('wish')"><span class="ic-lead" data-icon="bookmark"></span><span class="tab-label">Desejos (<span id="count-wish">0</span>)</span></button>
         <button class="tab-btn" id="btn-tab-finished" onclick="switchTab('finished')"><span class="ic-lead" data-icon="trophy"></span><span class="tab-label">Zerados (<span id="count-finished">0</span>)</span></button>
-        <button class="tab-btn" id="btn-tab-stats" onclick="switchTab('stats')"><span class="ic-lead" data-icon="chart"></span>Status</button>
-        <button class="tab-btn" id="btn-tab-profile" onclick="switchTab('profile')"><span class="ic-lead" data-icon="crown"></span>Perfil</button>
+        <button class="tab-btn" id="btn-tab-stats" onclick="switchTab('stats')"><span class="ic-lead" data-icon="chart"></span><span class="tab-label">Status</span></button>
+        <button class="tab-btn" id="btn-tab-profile" onclick="switchTab('profile')"><span class="ic-lead" data-icon="crown"></span><span class="tab-label">Perfil</span></button>
         <!-- DESKTOP: settings no fundo da sidebar -->
         <button type="button" class="tab-btn dtb-settings" onclick="openSettings()" title="Configurações" aria-label="Configurações"><span class="ic-lead" data-icon="settings"></span></button>
     </div>

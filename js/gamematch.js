@@ -964,9 +964,9 @@ export function renderGmProfile() {
     const steam = appData.settings.steam || {};
     const photo = appData.settings.userPhoto || steam.avatar || '';
     const name = p.name || steam.persona || 'Seu Gamer';
-    // Também atualiza o círculo do perfil no topbar (desktop)
-    const dtbAvatar = document.getElementById('dtb-avatar-wrap');
-    if (dtbAvatar) dtbAvatar.innerHTML = photo ? `<img src="${esc(photo)}" alt="Perfil">` : icon('crown', { size: '1.2em' });
+    // Atualiza TODOS os círculos do perfil no topo: o do topbar (desktop) e o do
+    // header (mobile) — ambos usam a classe .dtb-avatar-wrap
+    document.querySelectorAll('.dtb-avatar-wrap').forEach(el => { el.innerHTML = photo ? `<img src="${esc(photo)}" alt="Perfil">` : icon('crown', { size: '1.2em' }); });
     // Nível/XP: somados das conquistas desbloqueadas
     const xp = gamerXp(), lvl = levelFromXp(xp), rank = rankOf(lvl.level);
     const unlocked = new Set(appData.unlockedAchievements || []);

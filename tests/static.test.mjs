@@ -119,7 +119,37 @@ test('HTML: ids essenciais referenciados pelo JS existem no index.html', () => {
         assert(!html.includes(`id="${gone}"`), `index.html NÃO deveria ter #${gone} (foi removido)`);
 });
 
-// ---------- 5) GUARDA DE ÍCONES: todo arquivo icons/... citado no código existe ----------
+// ---------- 5) GUARDA DO HUB MOBILE: abas com nome, perfil e settings no topo ----------
+test('Hub mobile: cada aba tem o mini texto com o nome; perfil mora no header', () => {
+    const html = read(join(ROOT, 'index.html'));
+    // mini texto (o nome da tab) dentro de cada botão de aba
+    for (const id of ['btn-tab-home', 'btn-tab-gamematch', 'btn-tab-wish', 'btn-tab-finished', 'btn-tab-stats', 'btn-tab-profile']) {
+        const at = html.indexOf(`id="${id}"`);
+        assert(at > -1, `#${id} existe`);
+        const btn = html.slice(at, html.indexOf('</button>', at));
+        assert(btn.includes('class="tab-label"'), `#${id} deveria ter o nome no <span class="tab-label">`);
+    }
+    // perfil acessível lá em cima, ao lado das configurações (header que só existe no mobile)
+    const head = html.slice(html.indexOf('class="header-container"'), html.indexOf('id="btn-tab-home"'));
+    assert(head.includes('btn-top-profile'), 'botão do perfil no header');
+    assert(head.includes("switchTab('profile')"), 'botão do perfil abre a aba Perfil');
+    assert(head.includes('class="dtb-avatar-wrap"'), 'círculo de avatar do perfil no header');
+    // e o CSS tira perfil e settings da barra fixa de baixo
+    const css = read(join(ROOT, 'style.css'));
+    assert(css.includes('#btn-tab-profile { display: none; }'), 'aba Perfil escondida na barra de baixo');
+    assert(css.includes('.tabs .dtb-settings { display: none; }'), 'settings escondido na barra de baixo (a regra precisa vencer o .tab-btn flex)');
+});
+
+// ---------- 6) GUARDA DO SCROLL: nada de zl-rail no mobile (o "delay" ao rolar) ----------
+test('Scroll: esconder filtros ao rolar (zl-rail) só existe no desktop', () => {
+    const main = read(join(JS, 'main.js'));
+    assert(main.includes("matchMedia('(min-width: 900px)')"), 'main.js confere o breakpoint desktop antes de mexer no zl-rail');
+    const css = read(join(ROOT, 'style.css'));
+    // nenhuma regra zl-rail pode viver num bloco de tela pequena (mobile/tablet)
+    assert(!/max-width[^{}]*\{[^}]*zl-rail/.test(css), 'style.css não deve ter zl-rail em bloco mobile');
+});
+
+// ---------- 7) GUARDA DE ÍCONES: todo arquivo icons/... citado no código existe ----------
 // Um logo renomeado ou excluído quebraria o hub, plataformas e categorias.
 test('Ícones: todo icons/... referenciado no código existe na pasta', () => {
     const missing = [];

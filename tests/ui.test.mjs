@@ -2,6 +2,9 @@
 // capa/fundo, screenshots do usuário e extras da RAWG. Hermético: o fetch é
 // mockado, nenhuma rede é necessária.
 import { test, assert, mockFetch, elById, created, sleep } from './shim.mjs';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { appData } from '../js/store.js';
 import { openGamePage } from '../js/ui.js';
 
@@ -39,16 +42,20 @@ test('página do jogo abre sem erro e com a seção Sobre já expandida', async 
     assert(page.innerHTML.includes('gp-bg-file'), 'input de fundo existe');
 });
 
-test('hero do desktop: a capa do jogo em andamento vira o fundo --hero-bg', async () => {
+test('hero "Jogando Atualmente": o fundo é a cor do tema, não a capa do jogo', async () => {
     appData.games.push({ id: 'hp1', title: 'Jogo Hero', platform: 'PC', state: 'playing', image: 'data:image/jpeg;base64,CAPAHERO', catId: 'c1' });
     const { render } = await import('../js/ui.js');
-    // o render monta o DOM todo; o playing-category recebe a variável CSS
+    // o render monta o DOM todo; o hero não deve carregar mais a capa do jogo
     try { render(); } catch (e) { /* DOM falso pode falhar em partes; o essencial é o hero */ }
     // o elemento é criado via createElement, não getElementById: procurar no created
     const playing = created.find(c => c.id === 'playing-category');
     assert(playing, 'seção Jogando Atualmente existe');
     const bg = playing.style.getPropertyValue('--hero-bg');
-    assert(bg && String(bg).includes('CAPAHERO'), `fundo do hero com a capa do jogo (${bg ? String(bg).slice(0, 40) : 'vazio'})`);
+    assert(!bg, `o hero não deve usar a capa do jogo (variável --hero-bg veio: "${bg}")`);
+    // o blur da cor do tema mora no CSS (#playing-category::before), não no JS
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'style.css'), 'utf8');
+    assert(!css.includes('var(--hero-bg'), 'CSS não deveria mais ler --hero-bg');
+    assert(css.includes('#playing-category::before'), 'o fundo do hero continua definido no CSS');
 });
 
 test('capa é um atalho para Trocar capa (gpDo openImageModal)', async () => {

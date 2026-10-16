@@ -418,9 +418,8 @@ export function render() {
     playingCatDiv.className = `category ${appData.collapsedCats.includes('playing-category') ? 'collapsed' : ''}`; playingCatDiv.id = 'playing-category';
     if(playingGames.length > 0) playingCatDiv.style.display = 'block';
     playingCatDiv.innerHTML = `<div class="category-header" onclick="toggleCollapse('playing-category', event)"><div class="cat-title-area"><span class="chevron">${icon('chevron', { size: '1em' })}</span><h2>Jogando Atualmente</h2></div></div><div class="game-list-wrapper"><ul class="game-list" id="list-playing"></ul></div>`;
-    // Fundo do hero (desktop): capa do primeiro jogo "jogando", borrada, atrás do título
-    const heroArt = playingGames.find(g => g.image);
-    if (heroArt) playingCatDiv.style.setProperty('--hero-bg', `url("${heroArt.image}")`);
+    // Fundo do hero: blur da COR PRINCIPAL DO TEMA (via CSS, em #playing-category::before) —
+    // não usa mais a capa do jogo
     containerHome.appendChild(playingCatDiv);
     const listPlaying = playingCatDiv.querySelector('#list-playing'); fillList(listPlaying, playingGames);
 
