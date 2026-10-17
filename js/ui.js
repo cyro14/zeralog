@@ -15,7 +15,7 @@ import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
 import { renderSteamSettings } from './steam.js';
 import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
-import { hasValidToken, getAccessToken, setAccessToken } from './igdb.js';
+import { getIgdbClient, setIgdbClient, igdbConfigured, igdbSelfTest } from './igdb.js';
 
 let toastTimeout = null;
 export let chartInstance = null;
@@ -2078,7 +2078,25 @@ export function saveCoverPref(value) {
     saveData(null);
     triggerToast(appData.settings.autoCoverPref === 'horizontal' ? 'Capas automáticas: horizontais.' : 'Capas automáticas: verticais.');
 }
-export function saveIGDBKey(value) { setAccessToken(value); triggerToast(value.trim() ? 'Chave da IGDB salva.' : 'Chave da IGDB removida — as capas continuam vindo do Steam/HLTB/Wikipédia.'); }
+// IGDB: a "chave" é da Twitch — Client ID + Client Secret do app em dev.twitch.tv/console/apps
+export function saveIGDBClient() {
+    const idEl = document.getElementById('igdb-client-input');
+    const secretEl = document.getElementById('igdb-secret-input');
+    const id = idEl ? idEl.value : '';
+    const secret = secretEl ? secretEl.value : '';
+    setIgdbClient(id, secret);
+    if (igdbConfigured()) triggerToast('IGDB configurada. Use "Testar IGDB" para conferir.');
+    else triggerToast('IGDB desligada — as capas continuam vindo do Steam/HLTB/Wikipédia.', false);
+}
+export async function testIGDB() {
+    if (!igdbConfigured()) { triggerToast('Preencha o Client ID e o Client Secret da IGDB primeiro.', false); return; }
+    const btn = document.getElementById('igdb-test-btn');
+    if (btn) btn.disabled = true;
+    triggerToast('Testando a IGDB...', false);
+    const r = await igdbSelfTest();
+    if (btn) btn.disabled = false;
+    triggerToast(r.ok ? `IGDB ok! Teste com "${r.name}"${r.cover ? ' (capa encontrada)' : ''}.` : `IGDB: ${r.error}`, !!r.ok);
+}
 
 // ---------- Loja: link de afiliado da Amazon (fixo, não configurável pelo usuário) ----------
 const AMAZON_TAG = 'superyugioh-20';
@@ -2127,8 +2145,11 @@ export function welcomeSteam() {
 export function openSettings() {
     backToSettingsHub();
     document.getElementById('rawg-key-input').value = hasCustomRawgKey() ? getRawgKey() : '';
-    const sgdbInput = document.getElementById('sgdb-key-input');
-    if (sgdbInput) sgdbInput.value = getAccessToken()
+    const igdbClient = getIgdbClient();
+    const igdbId = document.getElementById('igdb-client-input');
+    const igdbSecret = document.getElementById('igdb-secret-input');
+    if (igdbId) igdbId.value = igdbClient.id;
+    if (igdbSecret) igdbSecret.value = igdbClient.secret;
     const coverPref = document.getElementById('cover-pref-select');
     if (coverPref) coverPref.value = appData.settings.autoCoverPref === 'horizontal' ? 'horizontal' : 'vertical';
     renderThemePicker();

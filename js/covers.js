@@ -11,9 +11,9 @@
 //     modo "cover" (capa vertical, horizontais abrem o recorte) ou "banner"
 //     (arte horizontal para o fundo da página do jogo).
 // Fundo do jogo = userBanner (escolha do usuário) || banner (busca automática).
-// Fontes: IGDB (chave opcional), Wikipédia, Steam, HowLongToBeat, RAWG.
+// Fontes: IGDB (Client ID/Secret da Twitch, opcional), Wikipédia, Steam, HowLongToBeat, RAWG.
 import { searchGames, getGameStores, getGameScreenshots, getGameDetails, fetchImageBlob, blobToSmallJpeg, imageSize, isVerticalSize, esc, scrapeUrl, fetchHLTBData } from './gameApi.js';
-import { fetchIGDBCovers, hasValidToken } from './igdb.js';
+import { fetchIGDBCovers, igdbConfigured } from './igdb.js';
 import { openCropper } from './crop.js';
 
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
@@ -151,7 +151,7 @@ export function autoVerticalCover(title, rawgId, { onCandidate } = {}) {
         // BUGFIX histórico: este bloco referenciava "sg" (variável que não existia —
         // o nome certo é "sc") e o erro era engolido pelos .catch() das chamadas.
         // Resultado: a capa vertical "nunca era achada" e tudo caía na arte horizontal.
-        const sc = hasValidToken() ? fetchIGDBCovers(title, 8) : Promise.resolve([]);
+        const sc = igdbConfigured() ? fetchIGDBCovers(title, 8) : Promise.resolve([]);
         src(sc, l => l.filter(c => c.vertical));
         src(steam(title, rawgId).then(r => { if (r && r.id) id = r.id || id; return r.list; }));
         src(hltb(title));
@@ -329,7 +329,7 @@ function coverSources(title, rawgId) {
         hltb(title),
         wikipedia(title),
         rawgArt(title, rawgId),
-        hasValidToken() ? fetchIGDBCovers(title) : Promise.resolve([]),
+        igdbConfigured() ? fetchIGDBCovers(title) : Promise.resolve([]),
     ];
 }
 

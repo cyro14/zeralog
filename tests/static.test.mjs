@@ -300,11 +300,32 @@ test('Desejos: submenu alterna as duas telas; resumo é painel e não texto solt
     assert(!tab.includes('wish-bar'), 'a barra antiga (texto + botão) saiu do HTML');
 });
 
+// ---------- 15) IGDB: a tela pede Client ID + Client Secret da Twitch ----------
+// A IGDB é da Twitch desde 2019: não existe "gerar chave" no site deles (a tela
+// apontava para uma página que responde 404) e a API recusa um token avulso. O
+// certo é o Client ID + Client Secret de um app da Twitch.
+test('IGDB: configuração pede Client ID e Client Secret da Twitch (link sem 404)', () => {
+    const html = read(join(ROOT, 'index.html'));
+    assert(html.includes('id="igdb-client-input"') && html.includes('id="igdb-secret-input"'), 'os dois campos existem');
+    assert(html.includes('onclick="testIGDB()"'), 'botão para testar a configuração');
+    assert(html.includes('https://dev.twitch.tv/console/apps'), 'link para criar o app na Twitch');
+    assert(!html.includes('igdb.com/api-box'), 'sem a página morta da IGDB (api-box)');
+    assert(!/IGDB\.fr/i.test(html), 'sem o link 404 do IGDB.fr');
+    assert(!html.includes('id="sgdb-key-input"'), 'o campo antigo (que salvava "chave" da IGDB) saiu');
+    const igdb = read(join(JS, 'igdb.js'));
+    assert(igdb.includes('id.twitch.tv/oauth2/token'), 'token gerado pela Twitch');
+    assert(igdb.includes('grant_type') && igdb.includes('client_credentials'), 'fluxo client_credentials');
+    assert(igdb.includes("'Client-ID'"), 'a consulta manda o Client-ID');
+    assert(!/(\/media|api\/media)/.test(igdb), 'sem endpoints inventados (a IGDB não tem /media)');
+    assert(igdb.includes('search "${q}"'), 'consulta no formato Apicalypse da IGDB');
+});
+
 // ---------- 14) ORDENAÇÃO PADRONIZADA: botão + painel (Fila e Lançamentos) ----------
 // A Fila usava uma barra de chips (Manual / A-Z / Tempo / Nota) que ocupava a largura
 // toda. Ela passou a usar o MESMO botão de ordenação das outras telas (botão que abre
 // um painel). Os Lançamentos da wishlist também importaram os filtros/ordenações do
 // Explorar em vez de inventar uma segunda barra de filtros.
+
 test('Ordenação: a Fila usa o botão com painel e os Lançamentos importam os do Explorar', () => {
     const html = read(join(ROOT, 'index.html'));
     const css = read(join(ROOT, 'style.css'));

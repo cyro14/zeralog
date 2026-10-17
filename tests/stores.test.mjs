@@ -74,6 +74,23 @@ test('proporção: platformIcons usa a MESMA marcação (classe brand-ico) das l
     assert(String(pc).includes('class="brand-ico"') && !String(pc).includes('style='), 'sem estilo inline');
 });
 
+// O GOG trocou o logo .jpg por .webp: quem já tinha o ícone SALVO com o arquivo
+// antigo ficava com um <img> apontando para o arquivo que não existe mais — um 404
+// no console do navegador a cada abertura do app. A passada do boot tem que limpar.
+test('applyStoreCatIcons: gog-galaxy.jpg antigo (categoria e plataforma) vira o .webp', () => {
+    appData.categories.push({ id: 'loj-gog-velha', name: 'GOG', icon: brandImg('icons/gog-galaxy.jpg') });
+    appData.platforms.push({ name: 'GOG', icon: brandImg('icons/gog-galaxy.jpg') });
+    applyStoreCatIcons();
+    const cat = String(appData.categories.find(c => c.id === 'loj-gog-velha').icon);
+    const plat = String(appData.platforms.find(p => p.name === 'GOG').icon);
+    assert(cat.includes('icons/gog-galaxy.webp') && !cat.includes('.jpg'), 'categoria com o logo novo');
+    assert(plat.includes('icons/gog-galaxy.webp') && !plat.includes('.jpg'), 'plataforma com o logo novo');
+    // ícone de imagem escolhido pelo usuário (outro arquivo seu) continua intocado
+    appData.platforms.push({ name: 'Itch.io', icon: '<img src="data:image/png;base64,MEU">' });
+    applyStoreCatIcons();
+    assert(String(appData.platforms.find(p => p.name === 'Itch.io').icon).includes('base64,MEU'), 'escolha do usuário preservada');
+});
+
 test('anyIconHtml: Phosphor vira <i>, logo HTML passa direto, lixo vira vazio', () => {
     assert(anyIconHtml({ name: 'sword', weight: 'fill' }).includes('ph-ico'), 'phosphor renderiza');
     assertEq(anyIconHtml(brandImg('icons/Steam.webp')), brandImg('icons/Steam.webp'), 'logo HTML passa inteiro');

@@ -173,6 +173,11 @@ globalThis.fetch = async (url, opts) => {
     return realFetch(url, opts);
 };
 
+// Um teste pode trocar globalThis.fetch direto (para gravar as chamadas e conferir
+// cabeçalhos/corpo). Guardamos a versão do shim para o resetShim devolvê-la — sem
+// isso o stub de um teste vazava para TODOS os seguintes.
+const shimFetch = globalThis.fetch;
+
 // ---------- estado limpo entre um teste e outro ----------
 // Importado DEPOIS de installGlobals — store.js não precisa de DOM no carregamento.
 import { defaultData, migrateData, setAppData, initStore } from '../js/store.js';
@@ -194,6 +199,7 @@ export function resetShim() {
     byId.clear();
     created.length = 0;
     unmockFetch();
+    globalThis.fetch = shimFetch;   // devolve o fetch do shim (um teste pode ter trocado)
     // banco de dados fresco: mesmo caminho de um usuário novo (migrações inclusas)
     setAppData(migrateData(JSON.parse(JSON.stringify(defaultData))));
 }

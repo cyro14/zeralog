@@ -1,9 +1,10 @@
 // Testes da camada da RAWG (js/gameApi.js): helpers puros + chamadas ao vivo.
-import { test, assert, assertEq, live, mockFetch } from './shim.mjs';
+import { test, assert, assertEq, live, mockFetch, sleep } from './shim.mjs';
 import {
     resizeUrl, esc, shotsGalleryHtml, normText, guessFranchise, describeError,
     searchCompanies, listGames, getGameDetails, getGameScreenshots,
-    fetchImageBlob, imageAttempts, IMAGE_PROXIES
+    fetchImageBlob, imageAttempts, IMAGE_PROXIES,
+    fetchHLTBData, fetchHLTBTime, scrapeUrl
 } from '../js/gameApi.js';
 
 // ---------- puros (rodam sempre) ----------
@@ -78,6 +79,80 @@ test('fetchImageBlob: 404 encerra na hora (imagem não existe mais — proxy nen
     const blob = await fetchImageBlob('https://media.rawg.io/media/screenshots/404/sumiu.jpg');
     assert(blob === null, 'sem imagem');
     assert(Date.now() - t0 < 500, 'não perde tempo tentando 8 proxies para um 404');
+});
+
+// ---------- busca via proxy (HLTB / Metacritic / busca da Steam) ----------
+// O HLTB mudou a busca: agora é /api/search/site e exige o token do
+// /api/search/site/init no cabeçalho x-auth-token (e um pedido com cara de
+// navegador — quem faz isso é o Worker). Antes o app batia em /api/search, que
+// respondia 403 e enchia o console de erro a cada busca de jogo.
+function resp({ ok = true, status = 200, json = {}, text = '' } = {}) {
+    return { ok, status, json: async () => json, text: async () => text || JSON.stringify(json) };
+}
+
+test('HLTB: busca nova (/api/search/site) com o token do /init no x-auth-token', async () => {
+    const calls = [];
+    globalThis.fetch = async (url, opts = {}) => {
+        const u = String(url);
+        calls.push({ url: u, opts });
+        if (u.includes('init')) return resp({ json: { token: 'tok-hltb' } });          // /api/search/site/init (codificado no ?url=)
+        if (u.includes('search%2Fsite')) return resp({ json: { data: [{ game_name: 'Portal 2', comp_main: 36000, game_image: 'portal2.jpg' }] } });
+        throw new Error('proxy sem resposta');
+    };
+    const d = await fetchHLTBData('Portal 2');
+    assert(d, 'achou o jogo no HLTB');
+    assertEq(d.hours, 10, 'comp_main em segundos vira horas');
+    assert(String(d.imageUrl).includes('howlongtobeat.com/games/portal2.jpg'), 'box art do HLTB');
+    const search = calls.find(c => c.url.includes('search%2Fsite') && !c.url.includes('init'));
+    assertEq(search.opts.method, 'POST', 'a busca é POST');
+    assertEq(search.opts.headers['x-auth-token'], 'tok-hltb', 'token do HLTB no cabeçalho');
+    assert(String(search.opts.body).includes('"searchTerms":["Portal 2"]'), 'título no corpo da busca');
+    assert(calls.every(c => c.url.includes('worker-')), 'tudo pela Worker: é ele que repassa o token e o Referer');
+});
+
+test('HLTB: token recusado (403) pega outro token e repete uma vez', async () => {
+    let buscas = 0, inits = 0;
+    globalThis.fetch = async (url) => {
+        const u = String(url);
+        if (!u.includes('worker-')) throw new Error('proxy público não serve para o HLTB');
+        if (u.includes('init')) { inits++; return resp({ json: { token: 'tok-' + inits } }); }
+        buscas++;
+        return buscas === 1 ? resp({ ok: false, status: 403, text: '{"error":"expired"}' }) : resp({ json: { data: [{ game_name: 'Portal 2', comp_main: 18000 }] } });
+    };
+    const horas = await fetchHLTBTime('Portal 2');
+    assertEq(horas, 5, 'tempo lido depois de renovar o token');
+    // o token da busca anterior pode estar em cache: o que importa é que o 403 obrigou um novo
+    assert(inits >= 1, `pediu um token novo depois do 403 (obtido: ${inits})`);
+    assertEq(buscas, 2, 'duas tentativas de busca');
+});
+
+test('HLTB: sem token (site mudou de novo) devolve null sem barulho no console', async () => {
+    globalThis.fetch = async () => resp({ ok: false, status: 403, text: 'nope' });
+    const d = await fetchHLTBData('Portal 2');
+    assertEq(d, null, 'nenhum dado, nenhum erro lançado');
+});
+
+test('Busca via proxy: a fila não perde tempo com proxies mortos (corsproxy/cors.lol)', async () => {
+    const urls = [];
+    globalThis.fetch = async url => { urls.push(String(url)); throw new Error('bloqueado'); };
+    await scrapeUrl('https://www.metacritic.com/game/portal-2/');
+    assertEq(urls.length, 3, `três tentativas: Worker + allorigins + codetabs (obtido: ${urls.length})`);
+    assert(!urls.some(u => u.includes('corsproxy.io')), 'corsproxy.io (401 sem chave) saiu da fila');
+    assert(!urls.some(u => u.includes('cors.lol')), 'api.cors.lol (429) saiu da fila');
+    assert(urls[0].includes('worker-'), 'o Worker do projeto continua sendo a primeira tentativa');
+});
+
+test('Busca via proxy: cabeçalho próprio (token) só vai pelo Worker', async () => {
+    const seen = [];
+    globalThis.fetch = async (url, opts = {}) => {
+        seen.push({ url: String(url), headers: (opts && opts.headers) || {} });
+        if (String(url).includes('allorigins')) return resp({ text: 'chegou' });
+        return resp({ ok: false, status: 500, text: 'x' });
+    };
+    const txt = await scrapeUrl('https://howlongtobeat.com/x', '{"a":1}', { 'x-auth-token': 'segredo' });
+    assertEq(txt, 'chegou', 'o conteúdo veio de outro proxy');
+    assertEq(seen[0].headers['x-auth-token'], 'segredo', 'o Worker recebe o token');
+    assertEq(seen[1].headers['x-auth-token'], undefined, 'proxy público nenhum recebe o token');
 });
 
 // ---------- ao vivo (pulam se a RAWG estiver fora do ar ou no limite) ----------

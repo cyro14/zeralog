@@ -172,16 +172,19 @@ export function guessFranchise(title) {
 // ---------- fontes diretas (fallback quando a RAWG falha ou não tem o dado) ----------
 // HLTB e Metacritic não têm CORS aberto; as chamadas passam por proxies públicos.
 // O Worker do projeto (mesmo das lojas) encabeça a fila — é o único que passa POST
-// (necessário para a busca do HowLongToBeat) para hosts permitidos
+// (necessário para a busca do HowLongToBeat) e o único que repassa cabeçalhos
+// (o token curto do HLTB) para hosts permitidos.
+// O corsproxy.io (401 sem chave) e o api.cors.lol (429 direto) saíram daqui: só
+// apareciam no console como erro e nunca respondiam.
 const ZERALOG_PROXY = 'https://worker-rapid-dawn-e634.cyromtg.workers.dev/';
+const workerProxy = u => `${ZERALOG_PROXY}?url=${encodeURIComponent(u)}`;
+workerProxy.worker = true;   // marca: só ele repassa os cabeçalhos do app
 const SCRAPE_PROXIES = [
-    u => `${ZERALOG_PROXY}?url=${encodeURIComponent(u)}`,
+    workerProxy,
     u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-    u => `https://api.cors.lol/?url=${encodeURIComponent(u)}`
+    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
 ];
-async function scrape(url, postBody) {
+async function scrape(url, postBody, headers) {
     for (const mk of SCRAPE_PROXIES) {
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), 12000);
@@ -189,6 +192,8 @@ async function scrape(url, postBody) {
             const opt = postBody
                 ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: postBody, signal: ctrl.signal }
                 : { signal: ctrl.signal };
+            // cabeçalho próprio (token do HLTB) só vai pelo Worker: proxy público não é confiável
+            if (headers && mk.worker) opt.headers = { ...(opt.headers || {}), ...headers };
             const res = await fetch(mk(url), opt);
             clearTimeout(t);
             if (res.ok) return await res.text();
@@ -218,39 +223,72 @@ export async function fetchMetacriticScore(title) {
 
 // Busca completa no HowLongToBeat: retorna { hours, imageUrl } do melhor resultado.
 // A imagem do HLTB é boxart vertical — boa fonte para jogos antigos/ausentes da RAWG.
-export async function fetchHLTBData(title) {
-    const body = JSON.stringify({
+//
+// A busca do site mudou: agora é /api/search/site e exige o cabeçalho x-auth-token
+// com um token curto de /api/search/site/init. O token vale para o IP + o User-Agent
+// de quem pediu, e o site só responde 200 para quem manda Referer dele mesmo (o
+// navegador não deixa o app mandar Referer) — por isso TUDO passa pelo Worker, que
+// repassa o token e se apresenta como navegador. Sem o Worker atualizado o HLTB
+// simplesmente fica indisponível (e o app segue com as outras fontes).
+const HLTB_SEARCH = 'https://howlongtobeat.com/api/search/site';
+const HLTB_INIT = 'https://howlongtobeat.com/api/search/site/init';
+let hltbToken = { token: '', at: 0 };
+
+function hltbBody(title) {
+    return JSON.stringify({
         searchType: 'games', searchTerms: [title], searchPage: 1, size: 3,
-        searchOptions: { games: { userId: 0, platform: '', sortCategory: 'popular', rangeCategory: 'main', rangeTime: { min: 0, max: 0 }, gameplay: { perspective: '', flow: '', genre: '' }, modifier: '' }, users: { sortCategory: 'postcount' } },
-        filter: '', sort: 0, randomizer: 0
+        searchOptions: {
+            games: { userId: 0, platform: '', sortCategory: 'popular', rangeCategory: 'main', rangeTime: { min: 0, max: 0 }, gameplay: { perspective: '', flow: '', genre: '' }, modifier: '' },
+            users: { sortCategory: 'postcount' }, lists: { sortCategory: 'postcount' }
+        },
+        useCache: true
     });
-    const txt = await scrape('https://howlongtobeat.com/api/search', body);
-    if (!txt) return null;
+}
+
+async function hltbNewToken() {
+    const txt = await scrape(HLTB_INIT);
+    if (!txt) { hltbToken = { token: '', at: 0 }; return ''; }
     try {
-        const data = JSON.parse(txt);
-        const g = (data.data || [])[0];
-        if (!g) return null;
-        const sec = g.comp_main || 0;
-        const img = g.game_image ? `https://howlongtobeat.com/games/${g.game_image}` : null;
-        return { hours: sec > 0 ? Math.round(sec / 360) / 10 : null, imageUrl: img };
-    } catch (e) { return null; }
+        const t = JSON.parse(txt).token;
+        if (!t) return '';
+        hltbToken = { token: t, at: Date.now() };
+        return t;
+    } catch (e) { return ''; }
+}
+
+async function hltbSearch(title) {
+    if (!title) return null;
+    const fresh = hltbToken.token && Date.now() - hltbToken.at < 10 * 60 * 1000;
+    let token = fresh ? hltbToken.token : await hltbNewToken();
+    if (!token) return null;
+    let txt = await scrape(HLTB_SEARCH, hltbBody(title), { 'x-auth-token': token });
+    // 403 = token expirado (o site renova na hora): pega outro e repete UMA vez
+    if (!txt) {
+        token = await hltbNewToken();
+        if (!token) return null;
+        txt = await scrape(HLTB_SEARCH, hltbBody(title), { 'x-auth-token': token });
+    }
+    if (!txt) return null;
+    try { return JSON.parse(txt); } catch (e) { return null; }
+}
+
+export async function fetchHLTBData(title) {
+    const data = await hltbSearch(title);
+    if (!data) return null;
+    const g = (data.data || [])[0];
+    if (!g) return null;
+    const sec = g.comp_main || 0;
+    const img = g.game_image ? `https://howlongtobeat.com/games/${g.game_image}` : null;
+    return { hours: sec > 0 ? Math.round(sec / 360) / 10 : null, imageUrl: img };
 }
 
 // Tempo para zerar (história principal) lido da busca do HowLongToBeat
 export async function fetchHLTBTime(title) {
-    const body = JSON.stringify({
-        searchType: 'games', searchTerms: [title], searchPage: 1, size: 3,
-        searchOptions: { games: { userId: 0, platform: '', sortCategory: 'popular', rangeCategory: 'main', rangeTime: { min: 0, max: 0 }, gameplay: { perspective: '', flow: '', genre: '' }, modifier: '' }, users: { sortCategory: 'postcount' } },
-        filter: '', sort: 0, randomizer: 0
-    });
-    const txt = await scrape('https://howlongtobeat.com/api/search', body);
-    if (!txt) return null;
-    try {
-        const data = JSON.parse(txt);
-        const g = (data.data || [])[0];
-        const sec = g && (g.comp_main || 0);
-        return sec > 0 ? Math.round(sec / 360) / 10 : null;
-    } catch (e) { return null; }
+    const data = await hltbSearch(title);
+    if (!data) return null;
+    const g = (data.data || [])[0];
+    const sec = g && (g.comp_main || 0);
+    return sec > 0 ? Math.round(sec / 360) / 10 : null;
 }
 
 export async function blobToSmallJpeg(blob, maxSide = 420) {

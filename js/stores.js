@@ -74,16 +74,29 @@ function ensureRefs(key) {
     return cat;
 }
 
+// Ícone antigo do app (padrões de versões anteriores): o SVG genérico das lojas, o
+// gog-galaxy.jpg (virou .webp — o <img> apontando para o arquivo velho dava 404 no
+// console a cada abertura do app) e a marcação com largura fixa em quadradinho.
+const LEGACY_ICON = /icons\/(?:gog-galaxy\.jpg|(?:gog|epic|itch|amazon)\.svg)|width:\s*1\.2em/;
+const isLegacyIcon = ic => {
+    if (!ic) return true;
+    if (typeof ic === 'object') {
+        if (ic.name === 'steam-logo') return true;        // phosphor antigo da Steam
+        return LEGACY_ICON.test(String(ic.src || ''));
+    }
+    return LEGACY_ICON.test(String(ic));
+};
+
 // Passada do boot: coloca o logo de cada loja (Steam incluída) na categoria e na
 // plataforma dela. Idempotente — preserva ícone que o usuário escolheu por conta
-// própria; só troca os padrões antigos do app (sem ícone, phosphor "steam-logo"
-// ou os SVGs genéricos das versões anteriores).
+// própria; só troca os padrões antigos do app (sem ícone, phosphor "steam-logo",
+// SVGs genéricos e o gog-galaxy.jpg das versões anteriores).
 export function applyStoreCatIcons() {
     Object.entries(STORE_ICONS).forEach(([name, src]) => {
         const cat = appData.categories.find(c => normText(c.name) === normText(name));
-        if (cat && (!cat.icon || (typeof cat.icon === 'object' && cat.icon.name === 'steam-logo'))) cat.icon = brandImg(src);
+        if (cat && isLegacyIcon(cat.icon)) cat.icon = brandImg(src);
         const p = appData.platforms.find(pl => normText(pl.name) === normText(name));
-        if (p && (!p.icon || /icons\/(gog|epic|itch|amazon)\.svg|width:\s*1\.2em/.test(String(p.icon)))) p.icon = brandImg(src);
+        if (p && isLegacyIcon(p.icon)) p.icon = brandImg(src);
     });
 }
 
