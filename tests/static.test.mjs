@@ -112,10 +112,10 @@ test('Módulos: todo import nomeado existe como export no módulo alvo', () => {
 // ---------- 4) GUARDA DE HTML: ids essenciais usados pelo JS existem no index.html ----------
 test('HTML: ids essenciais referenciados pelo JS existem no index.html', () => {
     const html = read(join(ROOT, 'index.html'));
-    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades', 'quick-match', 'qm-body', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'modal-ach', 'ach-detail', 'sh-style-timeline', 'wish-pane-list', 'wish-pane-releases', 'wish-sub-list', 'wish-sub-releases', 'wish-releases-grid', 'wish-summary', 'wish-list-container', 'wish-filter-btn', 'wish-sort-btn', 'wish-x-filter-panel', 'wish-x-sort-panel', 'wish-x-genre', 'wish-x-plat', 'wish-dev-filter', 'wish-pub-filter', 'home-sort-btn', 'home-sort-panel'])
+    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-x-owned', 'gm-classic-decades', 'quick-match', 'qm-body', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'fin-sort-btn', 'fin-sort-panel', 'modal-ach', 'ach-detail', 'sh-style-timeline', 'wish-pane-list', 'wish-pane-releases', 'wish-sub-list', 'wish-sub-releases', 'wish-releases-grid', 'wish-summary', 'wish-list-container', 'wish-filter-btn', 'wish-sort-btn', 'wish-x-filter-panel', 'wish-x-sort-panel', 'wish-x-genre', 'wish-x-plat', 'wish-dev-filter', 'wish-pub-filter', 'home-sort-btn', 'home-sort-panel'])
         assert(html.includes(`id="${id}"`), `index.html deveria ter #${id}`);
     // ids que FORAM REMOVIDOS não podem estar no HTML (senão o JS pode tentar usá-los de volta)
-    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips', 'qm-count', 'home-sort-bar', 'sort-home-manual', 'sort-home-az', 'sort-home-time', 'sort-home-meta'])
+    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips', 'qm-count', 'home-sort-bar', 'sort-home-manual', 'sort-home-az', 'sort-home-time', 'sort-home-meta', 'fin-sort-bar', 'sort-fin-date', 'sort-fin-rating', 'sort-fin-time', 'sort-fin-played', 'sort-fin-portable'])
         assert(!html.includes(`id="${gone}"`), `index.html NÃO deveria ter #${gone} (foi removido)`);
     // o botão de sortear não tem mais números nem o "Sortear agora!" de cima
     assert(!html.includes('Sortear agora!'), 'o botão de sortear em cima foi removido (o confirmar é no final do carrossel)');
@@ -265,6 +265,13 @@ test('Explorar: painéis de filtros e ordenação com layout contido e campos al
     assert(html.includes('id="gm-filter-foot"'), 'index.html tem o rodapé #gm-filter-foot');
     const panelAt = html.indexOf('id="gm-x-filter-panel"');
     assert(panelAt > -1 && html.slice(panelAt, html.indexOf('id="gm-x-sort-panel"')).includes('data-x-close'), 'painel de filtros tem o botão X de fechar');
+    // a checkbox "Ocultar jogos já cadastrados" mora no painel de filtros do Explorar,
+    // nasce marcada e ocupa a linha inteira da grade
+    const checkAt = html.indexOf('id="gm-x-owned"');
+    assert(checkAt > -1, 'checkbox dos já cadastrados existe');
+    assert(/id="gm-x-owned"[^>]*checked/.test(html.slice(checkAt - 200, checkAt + 200)), 'nasce marcada (padrão ligado)');
+    assert(html.includes('gmXHideOwned(this.checked)'), 'a checkbox chama gmXHideOwned');
+    assert(rule('.gm-x-check').includes('grid-column: 1 / -1'), 'linha da checkbox ocupa a grade inteira');
 });
 
 // ---------- 13) GUARDA DA ABA DESEJOS: duas telas + nada de texto solto no topo ----------
@@ -326,7 +333,7 @@ test('IGDB: configuração pede Client ID e Client Secret da Twitch (link sem 40
 // um painel). Os Lançamentos da wishlist também importaram os filtros/ordenações do
 // Explorar em vez de inventar uma segunda barra de filtros.
 
-test('Ordenação: a Fila usa o botão com painel e os Lançamentos importam os do Explorar', () => {
+test('Ordenação: a Fila e os Zerados usam botão com painel; Lançamentos importam os do Explorar', () => {
     const html = read(join(ROOT, 'index.html'));
     const css = read(join(ROOT, 'style.css'));
     const ui = read(join(JS, 'ui.js'));
@@ -354,4 +361,17 @@ test('Ordenação: a Fila usa o botão com painel e os Lançamentos importam os 
     // e nenhum dos dois voltou a ganhar uma barra de chips própria
     assert(!home.includes('class="sort-bar"'), 'a Fila não tem mais barra de ordenação');
     assert(!wish.includes('class="sort-bar"'), 'a tela dos lançamentos não tem barra de chips');
+    // Zerados: a MESMA troca — a barra de chips (Data/Nota/Tempo/Horas/Portátil) saiu
+    // e o botão com painel entrou, na cor de destaque da aba (troféu)
+    const finished = html.slice(html.indexOf('id="tab-finished"'), html.indexOf('id="tab-stats"'));
+    assert(!finished.includes('class="sort-bar"'), 'os Zerados não têm mais barra de ordenação');
+    const finAt = finished.indexOf('id="fin-sort-btn"');
+    assert(finAt > -1, 'os Zerados têm o botão de ordenação');
+    assert(finished.slice(finAt, finished.indexOf('</button>', finAt)).includes('finSortToggle()'), 'o botão abre o painel');
+    assert(finished.includes('id="fin-sort-panel"'), 'e o painel existe dentro da barra de ferramentas');
+    assert(ui.includes('function finSortPanelHtml'), 'o painel dos Zerados é montado no ui.js');
+    assert(ui.includes('gm-x-sort-btn'), 'com as mesmas opções (.gm-x-sort-btn) das outras telas');
+    assert(ui.includes('function paintFinSort'), 'o render pinta o botão (ordem ativa) a cada redesenho');
+    assert(css.includes('#tab-finished .tool-btn.on'), 'marcação do botão na cor dos zerados');
+    assert(css.includes('#tab-finished .gm-x-sort-btn.on'), 'e a opção ativa do painel também');
 });

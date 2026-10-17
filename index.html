@@ -181,6 +181,13 @@
                         <button type="button" class="gm-x-close" aria-label="Fechar filtros" data-x-close><span data-icon="x" data-size="1em"></span></button>
                     </div>
                     <div class="gm-explore-filters" id="gm-explore-filters">
+                        <!-- Ligada por padrão: o Explorar também evita mostrar o que o
+                             usuário já cadastrou (biblioteca/wishlist), mas é a única
+                             tela onde dá para desligar -->
+                        <label class="gm-x-check" title="Esconde os jogos que já estão na sua biblioteca ou wishlist">
+                            <input type="checkbox" id="gm-x-owned" checked onchange="gmXHideOwned(this.checked)">
+                            <span>Ocultar jogos já cadastrados</span>
+                        </label>
                         <div class="gm-x-f-row">
                             <select class="gm-select" id="gm-x-genre" onchange="gmXFilterGenre(this.value)" aria-label="Filtrar por gênero">
                                 <option value="">Todos os gêneros</option>
@@ -289,16 +296,11 @@
         </div>
         <div class="tab-tools" data-tab="finished">
             <button type="button" class="tool-btn" onclick="openFilters('finished')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-finished" style="display:none"></span></button>
+            <button type="button" class="tool-btn" id="fin-sort-btn" onclick="finSortToggle()" aria-haspopup="true" aria-expanded="false" title="Ordenar os zerados"><span data-icon="sort" data-size="1em"></span><span id="fin-sort-label">Ordenar</span></button>
             <button type="button" class="tool-btn" onclick="openShare('finished')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
+            <div class="gm-x-panel" id="fin-sort-panel" hidden></div>
         </div>
         <div class="filter-chips" id="fc-finished" style="display:none"></div>
-        <div class="sort-bar" id="fin-sort-bar">
-            <div class="sort-chip" id="sort-fin-date" onclick="setFinishedSort('date')">Data</div>
-            <div class="sort-chip" id="sort-fin-rating" onclick="setFinishedSort('rating')">Nota</div>
-            <div class="sort-chip" id="sort-fin-time" onclick="setFinishedSort('time')">Tempo</div>
-            <div class="sort-chip" id="sort-fin-played" onclick="setFinishedSort('played')">Horas Jogadas</div>
-            <div class="sort-chip" id="sort-fin-portable" onclick="setFinishedSort('portable')">Portátil</div>
-        </div>
         <div id="finished-list-container">
         </div>
     </div>

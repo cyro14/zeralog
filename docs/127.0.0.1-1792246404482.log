@@ -1,0 +1,82 @@
+gog-galaxy.jpg:1 
+        
+        
+       Failed to load resource: the server responded with a status of 404 (Not Found)
+igdb.js:150 Erro ao buscar capas IGDB: Error: ID da cliente IGDB não configurado. Vá em Settings → Capas e Busca → IGDB Client ID.
+    at igdbApi (igdb.js:57:26)
+    at fetchIGDBCovers (igdb.js:133:28)
+    at coverSources (covers.js:332:27)
+    at coversSearch (covers.js:355:84)
+    at openCoverPicker (covers.js:391:16)
+    at coverPickFromImageModal (ui.js:270:5)
+    at HTMLButtonElement.onclick (index.html:1144:178)
+fetchIGDBCovers @ igdb.js:150
+worker-rapid-dawn-e634.cyromtg.workers.dev/?url=https%3A%2F%2Fhowlongtobeat.com%2Fapi%2Fsearch:1 
+        
+        
+       Failed to load resource: the server responded with a status of 403 ()
+worker-rapid-dawn-e634.cyromtg.workers.dev/?url=https%3A%2F%2Fstore.steampowered.com%2Fapi%2Fstoresearch%2F%3Fterm%3DPok%25C3%25A9mon%2520HeartGold%252C%2520SoulSilver%26cc%3Dus%26l%3Den:1 
+        
+        
+       Failed to load resource: the server responded with a status of 400 ()
+igdb.js:150 Erro ao buscar capas IGDB: Error: ID da cliente IGDB não configurado. Vá em Settings → Capas e Busca → IGDB Client ID.
+    at igdbApi (igdb.js:57:26)
+    at fetchIGDBCovers (igdb.js:133:28)
+    at coverSources (covers.js:332:27)
+    at coversSearch (covers.js:355:84)
+    at HTMLButtonElement.onclick (index.html:954:118)
+fetchIGDBCovers @ igdb.js:150
+worker-rapid-dawn-e634.cyromtg.workers.dev/?url=https%3A%2F%2Fhowlongtobeat.com%2Fapi%2Fsearch:1 
+        
+        
+       Failed to load resource: the server responded with a status of 403 ()
+worker-rapid-dawn-e634.cyromtg.workers.dev/?url=https%3A%2F%2Fstore.steampowered.com%2Fapi%2Fstoresearch%2F%3Fterm%3DPok%25C3%25A9mon%2520SoulSilver%26cc%3Dus%26l%3Den:1 
+        
+        
+       Failed to load resource: the server responded with a status of 400 ()
+index.html:1 Access to fetch at 'https://corsproxy.io/?url=https%3A%2F%2Fhowlongtobeat.com%2Fapi%2Fsearch' from origin 'http://127.0.0.1:5501' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: It does not have HTTP ok status.
+gameApi.js:192 
+        
+        
+       POST https://corsproxy.io/?url=https%3A%2F%2Fhowlongtobeat.com%2Fapi%2Fsearch net::ERR_FAILED
+scrape @ gameApi.js:192
+index.html:1 Access to fetch at 'https://api.cors.lol/?url=https%3A%2F%2Fhowlongtobeat.com%2Fapi%2Fsearch' from origin 'http://127.0.0.1:5501' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
+gameApi.js:192 
+        
+        
+       POST https://api.cors.lol/?url=https%3A%2F%2Fhowlongtobeat.com%2Fapi%2Fsearch net::ERR_FAILED
+scrape @ gameApi.js:192
+gameApi.js:192 
+        
+        
+       GET https://corsproxy.io/?url=https%3A%2F%2Fstore.steampowered.com%2Fapi%2Fstoresearch%2F%3Fterm%3DPok%25C3%25A9mon%2520HeartGold%252C%2520SoulSilver%26cc%3Dus%26l%3Den 401 (Unauthorized)
+scrape @ gameApi.js:192
+index.html:1 Access to fetch at 'https://api.cors.lol/?url=https%3A%2F%2Fstore.steampowered.com%2Fapi%2Fstoresearch%2F%3Fterm%3DPok%25C3%25A9mon%2520HeartGold%252C%2520SoulSilver%26cc%3Dus%26l%3Den' from origin 'http://127.0.0.1:5501' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
+gameApi.js:192 
+        
+        
+       GET https://api.cors.lol/?url=https%3A%2F%2Fstore.steampowered.com%2Fapi%2Fstoresearch%2F%3Fterm%3DPok%25C3%25A9mon%2520HeartGold%252C%2520SoulSilver%26cc%3Dus%26l%3Den net::ERR_FAILED 429 (Too Many Requests)
+scrape @ gameApi.js:192
+index.html:1 Access to fetch at 'https://corsproxy.io/?url=https%3A%2F%2Fhowlongtobeat.com%2Fapi%2Fsearch' from origin 'http://127.0.0.1:5501' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: It does not have HTTP ok status.
+gameApi.js:192 
+        
+        
+       POST https://corsproxy.io/?url=https%3A%2F%2Fhowlongtobeat.com%2Fapi%2Fsearch net::ERR_FAILED
+scrape @ gameApi.js:192
+gameApi.js:192 
+        
+        
+       GET https://corsproxy.io/?url=https%3A%2F%2Fstore.steampowered.com%2Fapi%2Fstoresearch%2F%3Fterm%3DPok%25C3%25A9mon%2520SoulSilver%26cc%3Dus%26l%3Den 401 (Unauthorized)
+scrape @ gameApi.js:192
+index.html:1 Access to fetch at 'https://api.cors.lol/?url=https%3A%2F%2Fhowlongtobeat.com%2Fapi%2Fsearch' from origin 'http://127.0.0.1:5501' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
+gameApi.js:192 
+        
+        
+       POST https://api.cors.lol/?url=https%3A%2F%2Fhowlongtobeat.com%2Fapi%2Fsearch net::ERR_FAILED
+scrape @ gameApi.js:192
+index.html:1 Access to fetch at 'https://api.cors.lol/?url=https%3A%2F%2Fstore.steampowered.com%2Fapi%2Fstoresearch%2F%3Fterm%3DPok%25C3%25A9mon%2520SoulSilver%26cc%3Dus%26l%3Den' from origin 'http://127.0.0.1:5501' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
+gameApi.js:192 
+        
+        
+       GET https://api.cors.lol/?url=https%3A%2F%2Fstore.steampowered.com%2Fapi%2Fstoresearch%2F%3Fterm%3DPok%25C3%25A9mon%2520SoulSilver%26cc%3Dus%26l%3Den net::ERR_FAILED 429 (Too Many Requests)
+scrape @ gameApi.js:192

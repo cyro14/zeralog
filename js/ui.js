@@ -441,6 +441,67 @@ export function setHomeSort(type) {
     saveData(() => render());
 }
 
+// ---------- Ordenação dos Zerados: botão + painel (mesmo padrão da Fila) ----------
+// A aba usava uma barra de chips (Data/Nota/Tempo/Horas/Portátil) ocupando a largura
+// toda. Agora é o mesmo botão das outras abas, abrindo um painel com as opções.
+// "Data" decrescente é o padrão de fábrica: nesse estado o botão fica neutro
+// (rótulo "Ordenar", sem marcação), como o "Manual" da Fila.
+const FIN_SORTS = [
+    ['date', sortLabels.date, 'quando você terminou cada jogo'],
+    ['rating', sortLabels.rating, 'a nota que você deu ao jogo'],
+    ['time', sortLabels.time, 'tempo estimado para zerar'],
+    ['played', sortLabels.played, 'horas registradas de verdade'],
+    ['portable', sortLabels.portable, 'jogos de console portátil primeiro'],
+];
+const finSortNeutral = () => appData.settings.finishedSort === 'date' && appData.settings.finishedSortDir === 'desc';
+
+function finSortPanelHtml() {
+    const cur = appData.settings.finishedSort;
+    return `<div class="gm-x-panel-head">
+            <strong class="gm-x-title">Ordenar zerados</strong>
+            <button type="button" class="gm-x-close" aria-label="Fechar ordenação" onclick="finSortClose()">${icon('x', { size: '1em' })}</button>
+        </div>
+        <div class="gm-x-sorts">${FIN_SORTS.map(([k, label, hint]) => `
+        <button type="button" class="gm-x-sort-btn${k === cur ? ' on' : ''}" data-sort="${k}" onclick="setFinishedSort('${k}')">
+            <span class="gm-sort-name">${esc(label)}</span><small>${esc(hint)}</small><span class="gm-sort-tick">${icon('check', { size: '1em' })}</span>
+        </button>`).join('')}</div>`;
+}
+
+// O botão mostra a ordem ativa (e a seta), como faz o da Fila
+function paintFinSort() {
+    const neutral = finSortNeutral();
+    const btn = document.getElementById('fin-sort-btn');
+    if (btn) btn.classList.toggle('on', !neutral);
+    const label = document.getElementById('fin-sort-label');
+    if (label) label.textContent = neutral ? 'Ordenar' : `${sortLabels[appData.settings.finishedSort] || 'Ordenar'} ${appData.settings.finishedSortDir === 'asc' ? '↑' : '↓'}`;
+}
+
+export function finSortClose() {
+    const panel = document.getElementById('fin-sort-panel');
+    if (panel) panel.hidden = true;
+    const btn = document.getElementById('fin-sort-btn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+export function finSortToggle() {
+    const panel = document.getElementById('fin-sort-panel');
+    if (!panel) return;
+    const open = panel.hidden;
+    if (open) panel.innerHTML = finSortPanelHtml();   // nasce com a ordem atual marcada
+    panel.hidden = !open;
+    const btn = document.getElementById('fin-sort-btn');
+    if (btn) btn.setAttribute('aria-expanded', String(open));
+}
+
+// Clique fora fecha o painel (sem fechar ao clicar no próprio botão, que alterna)
+document.addEventListener('click', e => {
+    const panel = document.getElementById('fin-sort-panel');
+    if (!panel || panel.hidden) return;
+    const t = e.target;
+    if (t && t.closest && (t.closest('#fin-sort-panel') || t.closest('#fin-sort-btn'))) return;
+    finSortClose();
+}, true);
+
 export function setFinishedSort(type) {
     if (appData.settings.finishedSort === type) {
         appData.settings.finishedSortDir = appData.settings.finishedSortDir === 'desc' ? 'asc' : 'desc';
@@ -448,6 +509,7 @@ export function setFinishedSort(type) {
         appData.settings.finishedSort = type;
         appData.settings.finishedSortDir = 'desc';
     }
+    finSortClose();
     saveData(() => renderFinishedTab());
 }
 
@@ -547,20 +609,13 @@ export function renderFinishedTab() {
     const countEl = document.getElementById('count-finished');
     if (countEl) countEl.innerText = finishedAll.length;
 
-    Object.keys(sortLabels).forEach(k => {
-        const el = document.getElementById(`sort-fin-${k}`);
-        if (el) { el.classList.remove('active'); el.innerText = sortLabels[k]; }
-    });
-    const activeChip = document.getElementById(`sort-fin-${appData.settings.finishedSort}`);
-    if(activeChip) {
-        activeChip.classList.add('active');
-        activeChip.innerText = sortLabels[appData.settings.finishedSort] + (appData.settings.finishedSortDir === 'asc' ? ' ↑' : ' ↓');
-    }
-
     const view = appData.settings.finishedView === 'timeline' ? 'timeline' : 'shelf';   // "list" (cards) foi removido: sempre prateleira ou timeline
     ['timeline', 'shelf'].forEach(v => { const el = document.getElementById(`fin-view-${v}`); if (el) el.classList.toggle('active', view === v); });
-    const sortBar = document.getElementById('fin-sort-bar');
-    if (sortBar) sortBar.style.display = view === 'timeline' ? 'none' : '';
+    // Na linha do tempo a ordem vem dos controles da própria tela (direção/agrupamento):
+    // lá o botão de ordenar fica escondido, como a barra antiga ficava
+    const sortBtn = document.getElementById('fin-sort-btn');
+    if (sortBtn) sortBtn.hidden = view === 'timeline';
+    paintFinSort();
 
     if (finishedGames.length === 0) {
         finishedContainer.innerHTML = finishedAll.length ? `<div class="empty-state">Nenhum jogo zerado combina com os filtros.</div>` : `<div class="empty-state">Nenhum jogo finalizado ainda. Hora de focar no backlog!</div>`;

@@ -350,3 +350,61 @@ test('Fila: escolher a ordem fecha o painel, marca o botão e escreve a ordem ne
     appData.settings.sort = 'manual'; appData.settings.homeSortDir = 'asc';
 });
 
+// ---------- Ordenação dos Zerados: botão com painel (a barra de chips saiu) ----------
+// A aba usava chips (Data/Nota/Tempo/Horas/Portátil) na largura toda; agora é o MESMO
+// botão de ordenação das outras abas — e na cor de destaque dos zerados (troféu).
+test('Zerados: a ordenação é um botão com painel (a barra de chips saiu da tela)', async () => {
+    const { finSortToggle } = await import('../js/ui.js');
+    const panel = document.getElementById('fin-sort-panel');
+    panel.hidden = true;
+    finSortToggle();
+    assertEq(panel.hidden, false, 'o botão Ordenar abre o painel');
+    assertEq(document.getElementById('fin-sort-btn')['aria-expanded'], 'true', 'o botão avisa que está aberto');
+    for (const label of ['Data', 'Nota', 'Tempo', 'Horas Jogadas', 'Portátil'])
+        assert(panel.innerHTML.includes(label), `opção "${label}" no painel`);
+    assert(panel.innerHTML.includes("setFinishedSort('date')"), 'cada opção chama setFinishedSort');
+    assert(panel.innerHTML.includes('gm-x-panel-head'), 'painel com cabeçalho (mesmo estilo das outras abas)');
+    assert(panel.innerHTML.includes('finSortClose()'), 'e com o X de fechar');
+    finSortToggle();
+    assertEq(panel.hidden, true, 'tocar de novo fecha');
+    assertEq(document.getElementById('fin-sort-btn')['aria-expanded'], 'false', 'aria-expanded volta a false');
+});
+
+test('Zerados: escolher a ordem fecha o painel, marca o botão e escreve a ordem nele', async () => {
+    const { setFinishedSort, renderFinishedTab } = await import('../js/ui.js');
+    const panel = document.getElementById('fin-sort-panel');
+    const btn = document.getElementById('fin-sort-btn');
+    const label = document.getElementById('fin-sort-label');
+    appData.settings.finishedView = 'shelf';
+    appData.settings.finishedSort = 'date'; appData.settings.finishedSortDir = 'desc';
+    renderFinishedTab();   // pinta o estado neutro de fábrica
+    assertEq(label.textContent, 'Ordenar', 'Data ↓ é o padrão: rótulo neutro, como o Manual da Fila');
+    assert(!btn.classList.contains('on'), 'sem marcação no padrão');
+    panel.hidden = false;
+    setFinishedSort('rating');
+    assertEq(appData.settings.finishedSort, 'rating', 'ordem gravada nas preferências');
+    assertEq(appData.settings.finishedSortDir, 'desc', 'escolher outra opção começa decrescente');
+    assertEq(panel.hidden, true, 'o painel fecha ao escolher');
+    assert(btn.classList.contains('on'), 'o botão fica marcado (como nas outras abas)');
+    assert(label.textContent.includes('Nota'), 'o botão mostra a ordem ativa');
+    assert(label.textContent.includes('↓'), 'e a direção');
+    setFinishedSort('rating');   // tocar na ordem ativa inverte
+    assertEq(appData.settings.finishedSortDir, 'asc', 'tocar na ordem ativa inverte a direção');
+    assert(label.textContent.includes('↑'), 'a seta acompanha');
+    setFinishedSort('date');   // volta ao padrão de fábrica
+    assertEq(label.textContent, 'Ordenar', 'Data (padrão) volta ao rótulo neutro');
+    assert(!btn.classList.contains('on'), 'e sem marcação');
+    appData.settings.finishedSort = 'date'; appData.settings.finishedSortDir = 'desc';
+});
+
+test('Zerados: na linha do tempo o botão de ordenar fica escondido (a ordem vem da própria tela)', async () => {
+    appData.settings.finishedView = 'timeline';
+    appData.games.push({ id: 'fz1', title: 'Jogo Zerado', state: 'finished', platform: 'PC', dateFinished: '15/03/2025', catId: 'c1' });
+    const { renderFinishedTab } = await import('../js/ui.js');
+    renderFinishedTab();
+    assertEq(document.getElementById('fin-sort-btn').hidden, true, 'botão escondido na linha do tempo');
+    appData.settings.finishedView = 'shelf';
+    renderFinishedTab();
+    assertEq(document.getElementById('fin-sort-btn').hidden, false, 'e volta na prateleira');
+});
+

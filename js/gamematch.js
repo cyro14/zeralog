@@ -200,17 +200,29 @@ function deckParams(page) {
     return params;
 }
 
-// Jogos que não devem mais aparecer: já avaliados no swipe ou já na biblioteca/wishlist
-function knownGameKeys() {
-    const d = gm();
+// Jogos que o usuário JÁ CADASTROU (biblioteca ou wishlist). O deck do GameMatch
+// NUNCA os mostra (regra fixa) e o Explorar os esconde por padrão — a checkbox do
+// painel de filtros é o único lugar onde dá para enxergá-los de novo. Casa por
+// rawgId E por título normalizado: o jogo cadastrado à mão (sem rawgId) também conta.
+export function registeredKeys() {
     const ids = new Set(), names = new Set();
-    [...d.likes, ...d.favorites, ...d.rejects, ...d.backlogAdds].forEach(x => {
-        if (x.rawgId) ids.add(x.rawgId);
+    [...appData.games, ...(appData.wishlist || [])].forEach(x => {
+        if (x.rawgId) ids.add(Number(x.rawgId));   // dados importados podem guardar como string
         if (x.title) names.add(normText(x.title));
     });
-    [...appData.games, ...(appData.wishlist || [])].forEach(x => {
-        if (x.rawgId) ids.add(x.rawgId);
-        names.add(normText(x.title));
+    return { ids, names };
+}
+export function gmIsRegistered(g, keys = registeredKeys()) {
+    return !!(g && (keys.ids.has(Number(g.rawgId)) || keys.names.has(normText(g.title))));
+}
+
+// Jogos que não devem mais aparecer: já cadastrados OU já avaliados no swipe
+function knownGameKeys() {
+    const d = gm();
+    const { ids, names } = registeredKeys();
+    [...d.likes, ...d.favorites, ...d.rejects, ...d.backlogAdds].forEach(x => {
+        if (x.rawgId) ids.add(Number(x.rawgId));
+        if (x.title) names.add(normText(x.title));
     });
     return { ids, names };
 }
@@ -729,6 +741,17 @@ let xSort = '';   // '' = ordem natural da categoria (a que veio da RAWG)
 export function gmXFilterGenre(v) { xFilters.genre = v; paintFilterState(); gmExplore(exploreCat); }   // rebusca com o filtro no servidor
 export function gmXFilterPlat(v) { xFilters.plat = v; paintFilterState(); gmExplore(exploreCat); }
 
+// "Ocultar jogos já cadastrados" (checkbox do painel de filtros): LIGADA por padrão.
+// O corte é local, sobre a lista já carregada — desligar revela na hora, sem gastar
+// outra consulta da RAWG (e o "Carregar mais" continua paginando o catálogo inteiro).
+let xHideOwned = true;
+export function gmXHideOwned(on) {
+    xHideOwned = !!on;
+    const box = document.getElementById('gm-x-owned');
+    if (box) box.checked = xHideOwned;
+    paintExplore(exploreCat);
+}
+
 // ---------- Filtros/ordenação reaproveitáveis ----------
 // A aba Lançamentos da wishlist (js/wishview.js) usa EXATAMENTE os mesmos filtros e
 // ordenações do Explorar. Em vez de duplicar as regras, tudo mora aqui e é exportado.
@@ -966,6 +989,9 @@ function fillExploreFilters() {
     const ps = document.getElementById('gm-x-plat');
     if (gs) gs.innerHTML = genreOptionsHtml();
     if (ps) ps.innerHTML = platformOptionsHtml();
+    // a checkbox acompanha o estado do módulo (o HTML já nasce marcada)
+    const own = document.getElementById('gm-x-owned');
+    if (own) own.checked = xHideOwned;
     setupCompanyFilter(document.getElementById('gm-dev-filter'), 'developers', {
         name: () => xFilters.devName,
         set: (id, name) => { xFilters.devId = id; xFilters.devName = name; gmExplore(exploreCat); },
@@ -1049,11 +1075,21 @@ function paintExplore(cat) {
     const grid = document.getElementById('gm-explore-grid');
     const state = exploreState[cat];
     if (!grid || !state) return;
+    // jogos já cadastrados (biblioteca/wishlist) somem com a checkbox ligada (padrão)
+    let pool = state.items, ownedHidden = 0;
+    if (xHideOwned) {
+        const reg = registeredKeys();
+        pool = pool.filter(g => { if (gmIsRegistered(g, reg)) { ownedHidden++; return false; } return true; });
+    }
     // filtros de client-side (gênero/plataforma) valem para todas as abas
-    const iw = xFilters.genre ? state.items.filter(g => gmGenreMatch(g, xFilters.genre)) : state.items;
+    const iw = xFilters.genre ? pool.filter(g => gmGenreMatch(g, xFilters.genre)) : pool;
     const shown = sortBy(xFilters.plat ? iw.filter(g => gmPlatMatch(g, xFilters.plat)) : iw);
     const moreBtn = state.more ? `<div class="gm-x-more"><button type="button" class="gm-cta" onclick="gmXMore()">Carregar mais jogos</button></div>` : (state.items.length ? `<div class="gm-x-more gm-note">Chegamos ao fim por aqui — troque de categoria para descobrir mais.</div>` : '');
-    if (!shown.length) { grid.innerHTML = `<div class="gm-empty"><p>Nenhum jogo com esses filtros${state.more ? ' — toque em "Carregar mais jogos" para ampliar' : ''}.</p></div>` + moreBtn; return; }
+    if (!shown.length) {
+        const why = ownedHidden ? 'Todos os jogos daqui você já cadastrou' : 'Nenhum jogo com esses filtros';
+        grid.innerHTML = `<div class="gm-empty"><p>${why}${state.more ? ' — toque em "Carregar mais jogos" para ampliar' : ''}.</p></div>` + moreBtn;
+        return;
+    }
     grid.innerHTML = shown.map(exploreCardHtml).join('') + moreBtn;
     if (DEPS.hydrateIcons) DEPS.hydrateIcons(grid);
 }

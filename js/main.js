@@ -19,13 +19,13 @@ import { coversSearchGoogle } from './covers.js';
 import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, pickBannerFromGamePage, shelfDo, openShelfDetail, openGamePage, gpClose, gpDo, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, setTimelineGroup, filterByFranchise, toggleAddMenu, closeAddMenu, fabAddGame, fabAddCategory } from './ui.js';
 import { openWiki, wikiChangeSource, wikiSearch, wikiSearchFab, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindHosted, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
 import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSync } from './steam.js';
-import { initGameMatch, gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject, gmXMore, gmXOpen, gmXClose, gmXWish, gmXBacklog, gmGoogle, gmExploreBacklog, gmXFilterGenre, gmXFilterPlat, gmXFilterToggle, gmXFilterClear, gmXFilterRemove, gmXSortToggle, gmXSort } from './gamematch.js';
+import { initGameMatch, gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject, gmXMore, gmXOpen, gmXClose, gmXWish, gmXBacklog, gmGoogle, gmExploreBacklog, gmXFilterGenre, gmXFilterPlat, gmXFilterToggle, gmXFilterClear, gmXFilterRemove, gmXSortToggle, gmXSort, gmXHideOwned } from './gamematch.js';
 import { initStores, storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect, itchSaveKey, itchSync, itchDisconnect, enrichStoreGames } from './stores.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleShelfPlain, saveStateForUndo, undoAction, switchTab, 
     filterGames, setPlatformFilter, togglePortableFilter, setHomeSort, homeSortToggle, homeSortClose,
-    setFinishedSort, toggleCollapse, renderFinishedTab, saveGame,
+    setFinishedSort, finSortToggle, finSortClose, toggleCollapse, renderFinishedTab, saveGame,
     openCatModal, openEditCatModal, saveCategory, askDeleteCategory, moveCategory,
     openGameModal, openEditGameModal, askDeleteGame, toggleState,
     openRatingModal, openEditFinishedModal, cancelRating, skipRating, saveRating, saveFinishedEdit,
@@ -72,6 +72,8 @@ window.setHomeSort = setHomeSort;
 window.homeSortToggle = homeSortToggle;
 window.homeSortClose = homeSortClose;
 window.setFinishedSort = setFinishedSort;
+window.finSortToggle = finSortToggle;
+window.finSortClose = finSortClose;
 window.toggleCollapse = toggleCollapse;
 window.saveGame = saveGame;
 window.openCatModal = openCatModal;
@@ -145,7 +147,7 @@ Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEd
 Object.assign(window, { steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSyncUI: steamSync });
 
 // GameMatch: aba de descoberta estilo Tinder
-Object.assign(window, { gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject, gmXMore, gmXOpen, gmXClose, gmXWish, gmXBacklog, gmGoogle, gmExploreBacklog, gmXFilterGenre, gmXFilterPlat, gmXFilterToggle, gmXFilterClear, gmXFilterRemove, gmXSortToggle, gmXSort });
+Object.assign(window, { gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject, gmXMore, gmXOpen, gmXClose, gmXWish, gmXBacklog, gmGoogle, gmExploreBacklog, gmXFilterGenre, gmXFilterPlat, gmXFilterToggle, gmXFilterClear, gmXFilterRemove, gmXSortToggle, gmXSort, gmXHideOwned });
 Object.assign(window, { storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect, itchSaveKey, itchSync, itchDisconnect });
 
 // Inicialização Principal (o banco é aberto de forma assíncrona antes de desenhar a tela)

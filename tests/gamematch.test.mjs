@@ -6,7 +6,7 @@ import { listGames } from '../js/gameApi.js';
 import {
     GM_GENRES, GM_X_STYLES, GM_PLATFORMS, GENRE_RAWG, PLAT_RAWG_IDS,
     profileGenreOf, matchScore, gmIsClean, farFuture, renderGmProfile, exploreParams,
-    releaseWindow, inReleaseWindow, RELEASES_MONTHS_BACK
+    releaseWindow, inReleaseWindow, RELEASES_MONTHS_BACK, registeredKeys, gmIsRegistered
 } from '../js/gamematch.js';
 
 test('integridade: TODO gênero do filtro do Explorar tem mapeamento para a RAWG', () => {
@@ -290,4 +290,63 @@ test('Explorar: capa vertical já achada (página do jogo) faz a wishlist/backlo
     assert(bg, 'jogo foi para o backlog');
     assertEq(bg.image, 'data:image/jpeg;base64,VERTICAL78', 'backlog nasce com a capa vertical');
     assertEq(bg.wideCover, false, 'marcado como retrato');
+});
+
+// ---------- Jogos já cadastrados: o deck NUNCA mostra; no Explorar é a checkbox ----------
+test('registeredKeys/gmIsRegistered reconhecem biblioteca e wishlist (por id E por título)', () => {
+    appData.games.push({ id: 'g1', title: 'Jogo da Biblioteca', rawgId: 10, platform: 'PC', genres: [] });
+    appData.wishlist.push({ id: 'w1', title: 'Desejo Sem Id', platform: 'PC', genres: [] });   // manual: sem rawgId
+    assert(gmIsRegistered({ rawgId: 10, title: 'Qualquer Coisa' }), 'rawgId cadastrado casa');
+    assert(gmIsRegistered({ rawgId: 999, title: 'jogo da biblioteca' }), 'título da biblioteca casa (normalizado, sem rawgId)');
+    assert(gmIsRegistered({ rawgId: 999, title: 'Desejo Sem ID' }), 'título da wishlist casa (jogo manual)');
+    assert(!gmIsRegistered({ rawgId: 999, title: 'Jogo Novo' }), 'jogo desconhecido passa');
+    assert(!gmIsRegistered(null), 'sem jogo não explode');
+});
+
+test('Deck (Descobrir): jogo já cadastrado (biblioteca ou wishlist) NUNCA entra no deck', async () => {
+    appData.gamematch = { profile: { name: 'T', genres: ['RPG'], platforms: ['PC'], styles: ['single'], price: 'any', era: 'both', time: 'some' }, likes: [], favorites: [], rejects: [], backlogAdds: [], swipeLog: [], genreBoost: {}, platformBoost: {}, franchiseBoost: {}, totalSwipes: 0 };
+    appData.games.push({ id: 'g1', title: 'Jogo da Biblioteca', rawgId: 10, platform: 'PC', genres: ['RPG'] });
+    appData.wishlist.push({ id: 'w1', title: 'Desejo da Wish', rawgId: 20, platform: 'PC', genres: ['RPG'] });
+    const mk = (id, name) => ({ id, name, released: '2020-06-01', background_image: `https://media.rawg.io/media/games/${id}/capa.jpg`, metacritic: 88, rating: 4.4, ratings_count: 500, added: 300, genres: [{ name: 'RPG' }], platforms: [{ platform: { name: 'PC' } }], tags: [{ name: 'singleplayer' }] });
+    // o '' pega TODA outra URL (busca de capa vertical, proxies...): teste hermético, sem rede
+    mockFetch([
+        ['/api/games?', { count: 3, next: null, results: [mk(10, 'Jogo da Biblioteca'), mk(20, 'Desejo da Wish'), mk(30, 'Jogo Novo')] }],
+        ['', { count: 0, results: [] }],
+    ]);
+    const { renderDeck } = await import('../js/gamematch.js');
+    await renderDeck();
+    const deck = elById('gm-deck').innerHTML;
+    assert(!deck.includes('Jogo da Biblioteca'), 'jogo já na biblioteca fica fora do deck');
+    assert(!deck.includes('Desejo da Wish'), 'jogo já na wishlist fica fora do deck');
+    assert(deck.includes('Jogo Novo'), 'e o jogo desconhecido aparece normalmente');
+});
+
+test('Explorar: checkbox "Ocultar jogos já cadastrados" nasce ligada e esconde os cadastrados', async () => {
+    appData.games.push({ id: 'g1', title: 'Jogo da Biblioteca', rawgId: 10, platform: 'PC', genres: ['RPG'] });
+    appData.wishlist.push({ id: 'w1', title: 'Desejo da Wish', rawgId: 20, platform: 'PC', genres: ['RPG'] });
+    const mk = (id, name) => ({ id, name, released: '2023-05-05', background_image: `https://media.rawg.io/media/games/${id}/capa.jpg`, metacritic: 88, added: 300, genres: [{ name: 'RPG' }], platforms: [] });
+    mockFetch([['/api/games?', { count: 3, next: null, results: [mk(10, 'Jogo da Biblioteca'), mk(20, 'Desejo da Wish'), mk(30, 'Jogo Livre')] }]]);
+    const { gmExplore, gmXHideOwned } = await import('../js/gamematch.js');
+    await gmExplore('top');
+    const grid = elById('gm-explore-grid');
+    assertEq(elById('gm-x-owned').checked, true, 'a checkbox nasce marcada (padrão)');
+    assert(!grid.innerHTML.includes('Jogo da Biblioteca'), 'cadastrado na biblioteca escondido');
+    assert(!grid.innerHTML.includes('Desejo da Wish'), 'cadastrado na wishlist escondido');
+    assert(grid.innerHTML.includes('Jogo Livre'), 'jogo não cadastrado aparece');
+    gmXHideOwned(false);
+    assertEq(elById('gm-x-owned').checked, false, 'desligar reflete na checkbox');
+    assert(grid.innerHTML.includes('Jogo da Biblioteca') && grid.innerHTML.includes('Desejo da Wish'), 'desligar revela os cadastrados na hora (sem rebuscar)');
+    gmXHideOwned(true);   // deixa o padrão para os próximos testes
+    assert(!grid.innerHTML.includes('Jogo da Biblioteca'), 'ligar de novo esconde');
+});
+
+test('Explorar: com a checkbox ligada, página só de cadastrados avisa em vez de fingir vazio', async () => {
+    appData.games.push({ id: 'g1', title: 'Jogo Único Cadastrado', rawgId: 40, platform: 'PC', genres: ['RPG'] });
+    const mk = (id, name) => ({ id, name, released: '2021-02-02', background_image: `https://media.rawg.io/media/games/${id}/capa.jpg`, metacritic: 85, added: 100, genres: [{ name: 'RPG' }], platforms: [] });
+    mockFetch([['/api/games?', { count: 1, next: null, results: [mk(40, 'Jogo Único Cadastrado')] }]]);
+    const { gmExplore } = await import('../js/gamematch.js');
+    await gmExplore('top');
+    const grid = elById('gm-explore-grid');
+    assert(grid.innerHTML.includes('Todos os jogos daqui você já cadastrou'), 'a mensagem explica que não é um filtro sem resultados');
+    assert(!grid.innerHTML.includes('Jogo Único Cadastrado'), 'o cadastrado continua escondido');
 });
