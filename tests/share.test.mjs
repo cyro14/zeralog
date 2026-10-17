@@ -103,3 +103,32 @@ test('prateleira normal continua paginando (contraste com minúsculas)', async (
     assert(elById('sh-pages').style.display !== 'none', 'paginador visível');
     assert((elById('sh-page-label').textContent || '').includes('parte') || (elById('sh-page-label').textContent || '').includes('Parte'), 'label de páginas presente');
 });
+
+test('zerados: estilo LINHA DO TEMPO desenha os meses + prateleira (e dá pra trocar)', async () => {
+    gamingData();
+    const items = [
+        { id: 'z1', title: 'Celeste', platform: 'PC', state: 'finished', dateFinished: '10/03/2025', image: null },
+        { id: 'z2', title: 'Hades', platform: 'PC', state: 'finished', dateFinished: '22/03/2025', image: null },
+    ];
+    openShare({ items, mode: 'finished', title: 'Jogos zerados', subtitle: '2 jogos', style: 'timeline' });
+    assert(elById('sh-style-row').style.display !== 'none', 'fileira de estilos visível para os zerados');
+    assert(elById('sh-style-timeline').style.display !== 'none', 'botão Linha do tempo visível');
+    await sleep(80);
+    const t = canvasTexts().join(' | ');
+    assert(t.includes('Março de 2025'), 'mês de conclusão agrupado no rótulo');
+    assert(t.includes('2 jogos'), 'contagem do mês');
+    assert(t.includes(BLOG), 'link do blog na linha do tempo');
+    // trocar para prateleira na própria janela continua funcionando
+    const { shareSetStyle } = await import('../js/share.js');
+    shareSetStyle('shelf');
+    await sleep(80);
+    const t2 = canvasTexts().join(' | ');
+    assert(!t2.includes('Março de 2025'), 'na prateleira comum não há agrupamento por mês');
+    assert(t2.includes(BLOG), 'link do blog na prateleira comum');
+});
+
+test('outras listas: sem opção de linha do tempo e sem nada de cards', async () => {
+    gamingData();
+    openShare({ items: appData.games, mode: 'home', title: 'Minha fila de jogos', style: 'shelf' });
+    assertEq(elById('sh-style-row').style.display, 'none', 'fileira de estilos escondida fora dos zerados (só existe prateleira)');
+});

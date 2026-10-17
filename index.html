@@ -290,6 +290,13 @@
         </div>
     </dialog>
 
+    <!-- Detalhe de uma conquista: o passo a passo de como desbloquear -->
+    <dialog id="modal-ach">
+        <div class="modal-form">
+            <div id="ach-detail"></div>
+        </div>
+    </dialog>
+
     <!-- Toast Undo -->
     <div id="undo-toast"><span id="undo-message">Ação realizada.</span><button class="btn-undo" onclick="undoAction()">Desfazer</button></div>
 
@@ -818,13 +825,12 @@
             <div class="flt-top"><h3 style="margin: 0;" id="sh-heading">Compartilhar imagem</h3><button type="button" class="icon-btn" onclick="closeModal('modal-share')" aria-label="Fechar"><span data-icon="x"></span></button></div>
             <div class="share-controls">
                 <div id="sh-style-row" class="view-toggle" role="group" aria-label="Estilo da imagem">
+                    <button type="button" id="sh-style-timeline" onclick="shareSetStyle('timeline')">Linha do tempo</button>
                     <button type="button" id="sh-style-shelf" onclick="shareSetStyle('shelf')">Prateleira</button>
-                    <button type="button" id="sh-style-cards" onclick="shareSetStyle('cards')">Cards</button>
                 </div>
                 <input type="text" id="sh-title" placeholder="Título da imagem" oninput="shareTitleChanged()">
                 <label class="flag-row" id="sh-titles-row"><input type="checkbox" id="sh-titles" onchange="shareTitlesChanged()"><span>Mostrar os nomes dos jogos na prateleira</span></label>
                 <label class="flag-row" style="margin-top: -8px;"><input type="checkbox" id="sh-tiny" onchange="shareTitlesChanged()"><span>Capas minúsculas — sem prateleira, tudo numa imagem só</span></label>
-                <label class="flag-row" style="margin-top: -8px;"><input type="checkbox" id="sh-chips" checked onchange="shareTitlesChanged()"><span>Mostrar selos e tags nos cards</span></label>
                 <div id="sh-status" class="rawg-msg"></div>
                 <div id="sh-pages" class="share-pages" style="display: none;">
                     <button type="button" class="pill-btn" onclick="sharePage(-1)">‹ Anterior</button>

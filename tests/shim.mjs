@@ -53,6 +53,7 @@ function makeEl() {
         style: (() => { const s = {}; s.setProperty = (k, v) => { s[k] = v; }; s.getPropertyValue = k => s[k] || ''; s.removeProperty = k => { delete s[k]; }; return s; })(),
         classList: { add(...c) { el._cls.push(...c); }, remove() {}, toggle() {}, contains: () => false },
         appendChild(c) { return c; }, addEventListener() {}, removeEventListener() {}, remove() {},
+        setAttribute(k, v) { el[k] = v; }, getAttribute() { return null; },
         querySelector: () => makeEl(), querySelectorAll: () => [], closest: () => makeEl(),
         contains: () => true, getBoundingClientRect: () => ({ top: 0, bottom: 10, left: 10, right: 100, width: 90 }),
         click() {}, focus() {}, blur() {}, close() {},

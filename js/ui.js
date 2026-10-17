@@ -301,7 +301,7 @@ export function filterGames() {
     const term = document.getElementById('search-bar').value.toLowerCase();
     document.querySelectorAll('.category').forEach(cat => {
         let hasVisibleGames = false;
-        cat.querySelectorAll('.game-item, .tl-item, .shelf-item').forEach(item => {
+        cat.querySelectorAll('.game-item, .shelf-item').forEach(item => {
             const titleMatch = item.querySelector('.game-title').innerText.toLowerCase().includes(term) || (item.dataset.franchise || '').includes(term) || (item.dataset.tags || '').includes(term);
             // Lojas de PC (Steam, GOG, Epic, Itch.io...) contam como a plataforma PC
             const platVal = (item.dataset.platform || '').toLowerCase();
@@ -1644,39 +1644,9 @@ function renderTimeline(container, finishedGames) {
     const n100 = finishedGames.filter(g => g.is100).length;
     const summary = [`${finishedGames.length} ${finishedGames.length === 1 ? 'jogo' : 'jogos'}`, n100 ? `${n100} com 100%` : '', avg ? `nota média ${avg}` : ''].filter(Boolean).join(' · ');
 
-    const entry = ({ g, d }) => {
-        const cover = g.image
-            ? `<img src="${esc(g.image)}" alt="" class="gi-cover" onclick="openImageModal('${g.id}')" title="Trocar capa">`
-            : `<div class="gi-cover gi-cover-empty" onclick="openImageModal('${g.id}')" title="Adicionar capa">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`;
-        const chips = [];
-        if (g.franchise) chips.push(franchiseChip(g.franchise));
-        chips.push(...flagChips(g));
-        if (g.userRating) chips.push(`<span class="chip chip-gold">Nota ${esc(g.userRating)}/10</span>`);
-        if (g.is100) chips.push('<span class="chip chip-gold">100%</span>');
-        if (g.isPortable) chips.push('<span class="chip chip-accent">Portátil</span>');
-        const sub = [platformLabel(g.platform)];
-        if (g.meta) sub.push(esc(fmtTime(g.meta)));
-        const when = d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '') : esc(g.dateFinished || 'Sem data');
-        return `<li class="tl-item ${g.is100 ? 'is100' : ''}" data-platform="${esc(g.platform)}" data-portable="${g.isPortable ? 'true' : 'false'}" data-franchise="${esc((g.franchise || '').toLowerCase())}" data-tags="${esc(tagsOf(g))}">
-            <span class="tl-dot"></span>
-            <div class="tl-date">${when}</div>
-            <div class="tl-card">
-                ${cover}
-                <div class="tl-body">
-                    <div class="game-title">${esc(g.title)}</div>
-                    <div class="gi-sub">${sub.join('<span class="dot">·</span>')}</div>
-                    ${chips.length ? `<div class="gi-chips">${chips.join('')}</div>` : ''}
-                    ${g.review ? `<div class="tl-review">${esc(g.review)}</div>` : ''}
-                </div>
-                <div class="gi-actions">
-                    <button type="button" class="icon-btn" onclick="openCardGenerator('${g.id}')" title="Compartilhar" aria-label="Compartilhar">${ICONS.share}</button>
-                    <button type="button" class="icon-btn" onclick="openEditGameModal('${g.id}')" title="Dados do jogo (editar / buscar automático)" aria-label="Dados do jogo">${icon('info', { size: '18px' })}</button>
-                    <button type="button" class="icon-btn" onclick="openEditFinishedModal('${g.id}')" title="Editar conclusão (nota, data, review)" aria-label="Editar conclusão">${ICONS.edit}</button>
-                </div>
-            </div>
-        </li>`;
-    };
-
+    // Exibição em PRATELEIRA (cartuchos na tábua de madeira), igual ao resto do app:
+    // o card antigo da linha do tempo foi aposentado. Cada mês ganha a sua estante;
+    // clicar num cartucho abre o detalhe do jogo, como na prateleira normal.
     const wrap = document.createElement('div');
     wrap.className = 'category';
     wrap.id = 'finished-timeline';
@@ -1684,10 +1654,18 @@ function renderTimeline(container, finishedGames) {
         <div class="tl-top">
             <span class="tl-summary">${esc(summary)}</span>
             <button type="button" class="wiki-tool" onclick="setTimelineDir()">${dir === -1 ? 'Mais recentes primeiro' : 'Mais antigos primeiro'}</button>
-        </div>
-        ${groups.map(grp => `<section class="tl-month"><h3 class="tl-month-title">${esc(grp.label)}<small>${grp.items.length} ${grp.items.length === 1 ? 'jogo' : 'jogos'}</small></h3><ol class="tl-list">${grp.items.map(entry).join('')}</ol></section>`).join('')}
-    `;
+        </div>`;
     container.appendChild(wrap);
+    groups.forEach(grp => {
+        const sec = document.createElement('section');
+        sec.className = 'tl-month';
+        sec.innerHTML = `<h3 class="tl-month-title">${esc(grp.label)}<small>${grp.items.length} ${grp.items.length === 1 ? 'jogo' : 'jogos'}</small></h3>`;
+        const ul = document.createElement('ul');
+        ul.className = 'game-list shelf';
+        sec.appendChild(ul);
+        fillList(ul, grp.items.map(it => it.g));
+        wrap.appendChild(sec);
+    });
 }
 
 // ================= JOGOS CONTÍNUOS (HORAS ISOLADAS) =================

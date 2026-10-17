@@ -1,5 +1,6 @@
-// Imagens para compartilhar: cartão de um jogo, prateleira de cartuchos ou lista de cards
-// (inclusive já filtrados). Desenhadas direto num canvas, com as cores do tema e as logos do app.
+// Imagens para compartilhar: cartão de um jogo, prateleira de cartuchos ou a
+// linha do tempo dos zerados (prateleiras agrupadas por mês de conclusão).
+// Desenhadas direto num canvas, com as cores do tema e as logos do app.
 import { appData } from './store.js';
 import { fmtDate, daysUntil, countdownText } from './releases.js';
 import { ACHIEVEMENTS, gamerXp, levelFromXp, rankOf } from './achievements.js';
@@ -304,6 +305,17 @@ async function drawCart(ctx, item, x, y, w, h, p, showBadges, dim, plain = false
         if (item.state === 'finished' && item.userRating) pill(ctx, bx, by, String(item.userRating), { size: Math.max(12, w * 0.11), padX: 9, bg: 'rgba(0,0,0,0.78)', fg: '#fff' });
     }
 }
+// Tábua de madeira da prateleira (usada pela prateleira normal e pela linha do tempo)
+function drawBoard(ctx, top, cartH, boardH) {
+    const by = top + cartH - 6;
+    const bx = 56 - 26, bw = W - (56 - 26) * 2;
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 12;
+    rr(ctx, bx, by, bw, boardH, 8); const wg = ctx.createLinearGradient(0, by, 0, by + boardH); wg.addColorStop(0, '#a47a4f'); wg.addColorStop(0.35, '#7a5535'); wg.addColorStop(1, '#4a3220'); ctx.fillStyle = wg; ctx.fill(); ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(bx + 8, by + 2, bw - 16, 3);
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 2;
+    for (let k = 0; k < 7; k++) { const ly = by + 12 + k * (boardH - 16) / 6; ctx.beginPath(); ctx.moveTo(bx + 14, ly); ctx.lineTo(bx + bw - 14, ly + (k % 2 ? 2 : -2)); ctx.stroke(); }
+}
+
 export async function renderShelf(items, o) {
     const p = pal(), n = items.length;
     const tiny = !!o.tiny;
@@ -324,16 +336,7 @@ export async function renderShelf(items, o) {
     let y0 = header(ctx, p, o.title, o.subtitle, false) + 10;
     for (let r = 0; r < rows; r++) {
         const top = y0 + r * rowH;
-        if (!tiny) {
-            const by = top + cartH - 6;
-            // tábua de madeira
-            const bx = pad - 26, bw = W - (pad - 26) * 2;
-            ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 12;
-            rr(ctx, bx, by, bw, boardH, 8); const wg = ctx.createLinearGradient(0, by, 0, by + boardH); wg.addColorStop(0, '#a47a4f'); wg.addColorStop(0.35, '#7a5535'); wg.addColorStop(1, '#4a3220'); ctx.fillStyle = wg; ctx.fill(); ctx.restore();
-            ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(bx + 8, by + 2, bw - 16, 3);
-            ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 2;
-            for (let k = 0; k < 7; k++) { const ly = by + 12 + k * (boardH - 16) / 6; ctx.beginPath(); ctx.moveTo(bx + 14, ly); ctx.lineTo(bx + bw - 14, ly + (k % 2 ? 2 : -2)); ctx.stroke(); }
-        }
+        if (!tiny) drawBoard(ctx, top, cartH, boardH);
         for (let k = 0; k < cols; k++) {
             const it = items[r * cols + k]; if (!it) break;
             const x = pad + k * (cartW + gap);
@@ -346,51 +349,69 @@ export async function renderShelf(items, o) {
     return c;
 }
 
-// ---------- 3) lista de cards ----------
-export async function renderCards(items, o) {
-    const p = pal(), n = items.length;
-    const tiny = !!o.tiny;   // "Capas minúsculas": 4 por linha, card curto, sem selos
-    const cols = tiny ? 4 : 2, pad = 48, gap = 22, cw = (W - pad * 2 - gap * (cols - 1)) / cols, chh = tiny ? 122 : 214;
-    const rows = Math.ceil(n / cols);
+// ---------- 3) linha do tempo (prateleira por mês de conclusão) ----------
+// A mesma ordem da aba Zerados: grupos de mês/ano, cada um numa tábua.
+function parseFinishedDate(str) {
+    if (!str) return null;
+    const s = String(str).trim();
+    let y, mo, d, m;
+    if ((m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/))) { d = +m[1]; mo = +m[2]; y = +m[3]; if (y < 100) y += 2000; }
+    else if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else return null;
+    const date = new Date(y, mo - 1, d);
+    return date.getMonth() === mo - 1 && date.getDate() === d ? date : null;
+}
+function timelineGroups(items) {
+    const groups = [];
+    items.forEach(g => {
+        const d = parseFinishedDate(g.dateFinished);
+        const key = d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` : 'none';
+        let grp = groups.find(x => x.key === key);
+        if (!grp) {
+            const label = d ? d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : 'Sem data';
+            grp = { key, label: label.charAt(0).toUpperCase() + label.slice(1), items: [] };
+            groups.push(grp);
+        }
+        grp.items.push(g);
+    });
+    return groups;
+}
+export async function renderTimelineImg(items, o) {
+    const p = pal();
+    const groups = timelineGroups(items);
+    const cols = 8, pad = 56, gap = 16;
+    const cartW = (W - pad * 2 - gap * (cols - 1)) / cols, cartH = cartW * 1.5;
+    const boardH = 44, rowH = cartH + boardH + 26, labelH = 58;
+    const rowsTotal = groups.reduce((a, g) => a + Math.ceil(g.items.length / cols), 0);
     const tmp = document.createElement('canvas').getContext('2d'); tmp.font = `800 62px ${FONT}`;
     const hh = (wrap(tmp, o.title, W - 112, 2).length * 70) + (o.subtitle ? 100 : 40) + 170;
-    const H = Math.round(hh + rows * (chh + gap) + 150);
+    const H = Math.round(hh + groups.length * labelH + rowsTotal * rowH + 170);
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
     backdrop(ctx, H, p, null);
-    const y0 = header(ctx, p, o.title, o.subtitle, false) + 4;
-    for (let i = 0; i < n; i++) {
-        const it = items[i], x = pad + (i % cols) * (cw + gap), y = y0 + Math.floor(i / cols) * (chh + gap);
-        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8; rr(ctx, x, y, cw, chh, tiny ? 14 : 22); ctx.fillStyle = p.card; ctx.fill(); ctx.restore();
-        rr(ctx, x, y, cw, chh, tiny ? 14 : 22); ctx.lineWidth = it.is100 ? 3 : 1.5; ctx.strokeStyle = it.is100 ? p.star : p.border; ctx.stroke();
-        const img = await loadImg(it.image), iw = tiny ? 68 : 118, ih = chh - 36, ix = x + 18, iy = y + 18;
-        const dim = !!(o.gray && it.state !== 'finished');
-        if (img) {
-            if (dim) { ctx.save(); try { ctx.filter = 'grayscale(1)'; } catch (e) {} coverFit(ctx, img, ix, iy, iw, ih, 12); ctx.restore(); }
-            else coverFit(ctx, img, ix, iy, iw, ih, 12);
-        } else { rr(ctx, ix, iy, iw, ih, 12); ctx.fillStyle = rgba(p.muted, 0.2); ctx.fill(); ctx.fillStyle = p.muted; ctx.font = `800 ${tiny ? 30 : 54}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText((it.title.trim()[0] || '?').toUpperCase(), ix + iw / 2, iy + ih / 2); }
-        const tx = ix + iw + 18, tw = cw - iw - 18 * 3;
-        ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = `800 ${tiny ? 21 : 29}px ${FONT}`; ctx.fillStyle = p.text;
-        const tl = wrap(ctx, it.title, tw - (!tiny && it.state === 'finished' && it.userRating ? 70 : 0), 2);
-        tl.forEach((l, k) => ctx.fillText(l, tx, y + (tiny ? 30 : 42) + k * (tiny ? 26 : 34)));
-        const my = y + (tiny ? 34 : 42) + tl.length * (tiny ? 26 : 34) + (tiny ? 4 : 8);
-        await metaLine(ctx, tx, my, it, { size: tiny ? 17 : 21, color: p.muted, maxW: tw });
-        // selos (podem ser desligados na janela de compartilhamento; minúsculas não usa)
-        if (!tiny) {
-            let cx2 = tx, cy2 = my + 16; const chips = o.chips === false ? [] : chipsFor(it, o.mode, p).slice(0, 4);
-            for (const ch of chips) {
-                ctx.font = `700 13px ${FONT}`; const w2 = Math.min(ctx.measureText(ch.t).width + 16, tw);
-                if (cx2 + w2 > tx + tw) { cx2 = tx; cy2 += 24; if (cy2 > y + chh - 28) break; }
-                const r = pill(ctx, cx2, cy2, ellipsis(ctx, ch.t, w2 - 16), { size: 13, padX: 8, bg: ch.bg, border: ch.border, fg: ch.fg || '#fff' }); cx2 += r.w + 5;
+    let y = header(ctx, p, o.title, o.subtitle, false) + 10;
+    for (const grp of groups) {
+        // rótulo do mês: "Março 2025 · 3 jogos"
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.font = `800 36px ${FONT}`; ctx.fillStyle = p.text;
+        const label = ellipsis(ctx, grp.label, W - pad * 2 - 130);
+        ctx.fillText(label, pad, y + 14);
+        ctx.font = `600 24px ${FONT}`; const lw = ctx.measureText(label).width;
+        ctx.fillStyle = p.muted;
+        ctx.fillText(`${grp.items.length} ${grp.items.length === 1 ? 'jogo' : 'jogos'}`, pad + lw + 16, y + 16);
+        y += labelH;
+        const rows = Math.ceil(grp.items.length / cols);
+        for (let r = 0; r < rows; r++) {
+            const top = y + r * rowH;
+            drawBoard(ctx, top, cartH, boardH);
+            for (let k = 0; k < cols; k++) {
+                const it = grp.items[r * cols + k]; if (!it) break;
+                await drawCart(ctx, it, pad + k * (cartW + gap), top, cartW, cartH, p, false, false, o.plain);
             }
         }
-        if (!tiny && it.state === 'finished' && it.userRating) {
-            const bx = x + cw - 46, by = y + 44;
-            ctx.beginPath(); ctx.arc(bx, by, 30, 0, Math.PI * 2); ctx.fillStyle = p.star; ctx.fill();
-            ctx.fillStyle = '#241a00'; ctx.textAlign = 'center'; ctx.font = `900 28px ${FONT}`; ctx.fillText(String(it.userRating), bx, by + 1);
-        } else if (dim) { rr(ctx, x, y, cw, chh, tiny ? 14 : 22); ctx.fillStyle = 'rgba(12,12,18,0.45)'; ctx.fill(); }
+        y += rows * rowH;
     }
-    footer(ctx, H - 66, p, false);
+    footer(ctx, H - 70, p, false);
     return c;
 }
 
@@ -475,7 +496,9 @@ export async function renderGamerId() {
 
 // ---------- janela de compartilhamento ----------
 const $ = id => document.getElementById(id);
-const PER_PAGE = { shelf: 40, cards: 12 };
+// Estilos de imagem: prateleira (qualquer lista) e linha do tempo (zerados, que
+// têm data de conclusão para agrupar por mês). O modo "cards" não existe mais.
+const PER_PAGE = { shelf: 40, timeline: 30 };
 let S = null, timer = null, urls = [];
 let hooks = { toast() {} };
 export const initShare = h => { hooks = h; };
@@ -499,8 +522,8 @@ async function build() {
             S.page = Math.min(S.page, pages - 1);
             const slice = tiny ? S.items : S.items.slice(S.page * per, (S.page + 1) * per);
             const title = S.title + (pages > 1 ? ` · parte ${S.page + 1}/${pages}` : '');
-            const o = { title, subtitle: S.subtitle, titles: $('sh-titles').checked, mode: S.mode, gray: S.gray, plain: !!appData.settings.shelfPlain, chips: $('sh-chips').checked, tiny };
-            canvas = S.style === 'shelf' ? await renderShelf(slice, o) : await renderCards(slice, o);
+            const o = { title, subtitle: S.subtitle, titles: $('sh-titles').checked, mode: S.mode, gray: S.gray, plain: !!appData.settings.shelfPlain, tiny };
+            canvas = S.style === 'timeline' ? await renderTimelineImg(slice, o) : await renderShelf(slice, o);
             $('sh-pages').style.display = pages > 1 ? '' : 'none';
             $('sh-page-label').textContent = `Parte ${S.page + 1} de ${pages}`;
         }
@@ -517,7 +540,11 @@ const rebuildSoon = () => { clearTimeout(timer); timer = setTimeout(build, 260);
 
 export function openShare({ items, mode, title, subtitle, style, gray }) {
     S = { kind: 'list', items, mode, title, subtitle, style: style || 'shelf', gray: gray || null, page: 0, blob: null };
-    $('sh-style-row').style.display = '';
+    // A linha do tempo só existe para os zerados (agrupa pela data de conclusão);
+    // nas outras listas a prateleira é o único estilo — a fileira de estilos soma.
+    const timeline = mode === 'finished';
+    $('sh-style-row').style.display = timeline ? '' : 'none';
+    if ($('sh-style-timeline')) $('sh-style-timeline').style.display = timeline ? '' : 'none';
     $('sh-title').value = title; $('sh-title').style.display = ''; $('sh-titles-row').style.display = '';
     $('sh-titles').checked = items.length <= 24;
     $('sh-heading').textContent = 'Compartilhar imagem';
@@ -543,8 +570,8 @@ export function openGamerIdShare() {
     build();
 }
 function paintStyle() {
+    $('sh-style-timeline').classList.toggle('active', S.style === 'timeline');
     $('sh-style-shelf').classList.toggle('active', S.style === 'shelf');
-    $('sh-style-cards').classList.toggle('active', S.style === 'cards');
 }
 export function shareSetStyle(st) { if (!S || S.kind !== 'list') return; S.style = st; S.page = 0; paintStyle(); build(); }
 export function sharePage(d) { if (!S) return; S.page = Math.max(0, S.page + d); build(); }

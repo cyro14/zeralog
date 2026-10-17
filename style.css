@@ -447,8 +447,23 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
 .chart-container { background: var(--card-bg); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); margin-bottom: 20px; position: relative; height: 250px;}
 
 .achievements-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-.badge { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; text-align: center; transition: all 0.3s; }
+.badge { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; text-align: center; transition: all 0.3s; cursor: pointer; }
+.badge:hover { border-color: var(--accent-playing); transform: translateY(-2px); }
+.badge:focus-visible { outline: 2px solid var(--accent-playing); }
 .badge.locked { filter: grayscale(100%); opacity: 0.4; }
+/* PLATINA: desbloqueou TODAS as conquistas — troféu máximo no topo da grade */
+.badge.platinum { grid-column: 1 / -1; cursor: default; border-color: #dcdce6; background: linear-gradient(135deg, color-mix(in srgb, #e5e4e2 22%, var(--card-bg)), color-mix(in srgb, #a8b2c4 10%, var(--card-bg))); box-shadow: 0 0 22px color-mix(in srgb, #e5e4e2 28%, transparent); }
+.badge.platinum:hover { transform: none; border-color: #dcdce6; }
+.badge.platinum .badge-icon { color: #e5e4e2; }
+.badge.platinum .badge-title { color: #e5e4e2; }
+/* Detalhe da conquista (modal): o passo a passo de como desbloquear */
+.ach-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+.ach-head .badge-icon { margin: 0; color: var(--star-color); }
+.ach-head .badge-icon.locked { color: var(--text-muted); }
+.ach-status { font-size: 0.8em; font-weight: 700; color: var(--text-muted); margin-top: 2px; }
+.ach-status.un { color: var(--accent-finished); }
+.ach-desc { margin: 10px 0 14px; color: var(--text-muted); font-size: 0.92em; }
+.ach-how { border-left: 3px solid var(--accent-playing); padding: 12px 14px; background: color-mix(in srgb, var(--accent-playing) 8%, transparent); border-radius: 0 10px 10px 0; font-size: 0.92em; line-height: 1.5; }
 .badge-icon { font-size: 2.5em; margin-bottom: 10px; display: block; }
 .badge-title { font-weight: bold; font-size: 0.9em; margin-bottom: 5px; color: var(--text-main);}
 .badge-desc { font-size: 0.75em; color: var(--text-muted); }
@@ -582,7 +597,6 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
 /* ===== Card de jogo (visual limpo) ===== */
 .game-item { display: grid; grid-template-columns: 76px 1fr auto; gap: 4px 16px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--border-color); }
 .game-item:has(.gi-cover.wide) { grid-template-columns: 128px 1fr auto; }
-.tl-card:has(.gi-cover.wide) { grid-template-columns: 128px 1fr auto; }
 .game-item:last-child { border-bottom: none; }
 .gi-cover { width: 76px; height: 76px; border-radius: 10px; object-fit: cover; cursor: pointer; border: 1px solid var(--border-color); background: var(--bg-color); }
 .gi-cover-empty { display: flex; align-items: center; justify-content: center; font-size: 1.8em; font-weight: 700; color: var(--text-muted); }
@@ -779,33 +793,20 @@ body.compact-mode .gi-chips, body.compact-mode .gi-progress, body.compact-mode .
 .fr-item small { display: block; margin-top: 4px; color: var(--text-muted); }
 .fr-item.complete .gi-bar span { background: var(--star-color); }
 
-/* ===== Linha do tempo (Zerados) ===== */
+/* ===== Linha do tempo (Zerados): cada mês é uma prateleira de cartuchos ===== */
 .view-toggle { display: inline-flex; border: 1px solid var(--border-color); border-radius: 999px; overflow: hidden; margin-bottom: 14px; }
+#finished-timeline .tl-month { margin-bottom: 6px; }
+#finished-timeline .tl-month-title { margin: 16px 0 10px; }
 .view-toggle button { background: transparent; color: var(--text-muted); border: none; border-radius: 0; padding: 7px 16px; font-size: 0.85em; font-weight: 600; }
 .view-toggle button.active { background: var(--accent-finished); color: var(--on-accent); }
 .tl-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
 .tl-summary { font-size: 0.85em; color: var(--text-muted); }
 .tl-month-title { margin: 18px 0 12px; font-size: 1em; color: var(--accent-finished); display: flex; align-items: baseline; gap: 8px; }
 .tl-month-title small { color: var(--text-muted); font-weight: 600; }
-.tl-list { list-style: none; margin: 0; padding: 0 0 0 22px; border-left: 2px solid var(--border-color); }
-.tl-item { position: relative; margin-bottom: 14px; }
-.tl-dot { position: absolute; left: -30px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent-finished); border: 3px solid var(--card-bg); box-sizing: content-box; }
-.tl-item.is100 .tl-dot { background: var(--star-color); }
-.tl-date { font-size: 0.78em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px; }
-.tl-card { display: grid; grid-template-columns: 76px 1fr auto; gap: 12px; align-items: start; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; }
-.tl-item.is100 .tl-card { border-color: var(--star-color); }
-.tl-card .gi-cover { width: 76px; height: 76px; }
-.tl-card .gi-cover.wide { width: 128px; height: 76px; }
-.tl-body { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.tl-review { font-size: 0.85em; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
-.tl-card .gi-actions { flex-direction: column; }
 
-/* ===== Retrato (celular): lista de zerados compacta ===== */
+/* ===== Retrato (celular) ===== */
 @media (max-width: 600px) {
     .wish-bar { flex-direction: column; align-items: stretch; }
-    .tl-card { grid-template-columns: 56px 1fr auto; gap: 10px; padding: 10px; }
-    .tl-card .gi-cover { width: 56px; height: 56px; }
-    .tl-card .gi-actions { flex-direction: row; grid-column: 2 / -1; justify-self: end; margin-top: -4px; }
 }
 .tab-btn { white-space: nowrap; min-width: 0; }
 

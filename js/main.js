@@ -8,6 +8,7 @@ import { hydrateIcons } from './icons.js';
 import { applyTheme, currentTheme } from './themes.js';
 import { iconSearch, iconWeightChange, iconMore, ensureForData } from './phosphor.js';
 import { initSession, startSession, openEndSession, sessionPreview, sessionFinish, openJournalEntry, saveJournalEntry, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission } from './session.js';
+import { openAchDetail } from './achievements.js';
 import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetDiff, qmToggleEmulated, qmSetPlatform, qmSetFranchise, qmSetScore } from './quickmatch.js';
 import { genreSetBase, genreSetYear } from './genres.js';
 import { coversSearch } from './covers.js';
@@ -35,6 +36,7 @@ import {
 // Anexando ao escopo global para que o index.html possa ler os onlicks
 window.openCardGenerator = openCardGenerator;
 window.viewImage = viewImage;   // visualizador de screenshot (os cards da galeria chamam por onclick)
+window.openAchDetail = openAchDetail;   // detalhe da conquista (como desbloquear)
 Object.assign(window, {
     openFilters, filtersClear, filtersSaveCurrent, shareSetStyle, sharePage, shareTitleChanged, shareTitlesChanged, shareDownload, shareShare,
     setWishSort, toggleWishNotify, refreshDatesUI, paintWishNotify,
@@ -44,7 +46,10 @@ Object.assign(window, {
         const names = { home: 'Minha fila de jogos', finished: 'Jogos zerados', wish: 'Minha wishlist' };
         const view = tab === 'home' ? appData.settings.homeView : tab === 'finished' ? appData.settings.finishedView : appData.settings.wishView;
         const filt = filterSummary(tab);
-        openShare({ items, mode: tab, title: names[tab], subtitle: `${items.length} ${items.length === 1 ? 'jogo' : 'jogos'}${filt.length ? ' · ' + filt.join(' · ') : ''}`, style: view === 'shelf' ? 'shelf' : 'cards' });
+        // Zerados: compartilha como LINHA DO TEMPO quando estiver nela (a opção de
+        // trocar para prateleira fica na janela de compartilhamento)
+        const style = tab === 'finished' ? (view === 'timeline' ? 'timeline' : 'shelf') : 'shelf';
+        openShare({ items, mode: tab, title: names[tab], subtitle: `${items.length} ${items.length === 1 ? 'jogo' : 'jogos'}${filt.length ? ' · ' + filt.join(' · ') : ''}`, style });
     }
 });
 

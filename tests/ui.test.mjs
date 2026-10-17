@@ -1,7 +1,7 @@
 // Testes da página do jogo (js/ui.js): banner "capa de Facebook", atalhos da
 // capa/fundo, screenshots do usuário e extras da RAWG. Hermético: o fetch é
 // mockado, nenhuma rede é necessária.
-import { test, assert, mockFetch, elById, created, sleep } from './shim.mjs';
+import { test, assert, assertEq, mockFetch, elById, created, sleep } from './shim.mjs';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -150,4 +150,27 @@ test('wishlist: sem botão de diário (diário é só dos jogos da biblioteca)',
     await openGamePage('w2', true);
     assert(!lastPage().innerHTML.includes('openJournalEntry'), 'wishlist sem botão de diário');
     assert(!lastPage().innerHTML.includes('gp-sec-foot'), 'sem rodapé de diário na wishlist');
+});
+
+test('Zerados (linha do tempo): cada mês vira uma PRATELEIRA, sem cards', async () => {
+    appData.settings.finishedView = 'timeline';
+    appData.games.push(
+        { id: 'tl1', title: 'Jogo Zerado Um', state: 'finished', platform: 'PC', dateFinished: '15/03/2025', image: 'data:image/jpeg;base64,CAPATL', catId: 'c1' },
+        { id: 'tl2', title: 'Jogo Zerado Dois', state: 'finished', platform: 'PC', dateFinished: '20/04/2025', catId: 'c1' }
+    );
+    const { renderFinishedTab } = await import('../js/ui.js');
+    renderFinishedTab();
+    const wrap = created.find(c => c.id === 'finished-timeline');
+    assert(wrap, 'a linha do tempo foi montada');
+    assert(wrap.innerHTML.includes('tl-top'), 'resumo no topo');
+    const months = created.filter(c => String(c.className) === 'tl-month');
+    assertEq(months.length, 2, 'um bloco por mês');
+    assert(months.some(m => m.innerHTML.includes('Março de 2025')), 'grupo de março');
+    assert(months.some(m => m.innerHTML.includes('Abril de 2025')), 'grupo de abril separado');
+    assert(!months.some(m => m.innerHTML.includes('tl-card')), 'sem cards na linha do tempo (foi substituída pela prateleira)');
+    const shelves = created.filter(c => String(c.className) === 'game-list shelf');
+    assertEq(shelves.length, 2, 'cada mês vira uma prateleira');
+    const carts = created.filter(c => String(c.className).includes('shelf-item'));
+    assertEq(carts.length, 2, 'um cartucho por jogo zerado');
+    assert(carts.every(c => c.innerHTML.includes('cart')), 'cartuchos desenhados na tábua');
 });

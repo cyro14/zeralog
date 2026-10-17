@@ -112,11 +112,15 @@ test('Módulos: todo import nomeado existe como export no módulo alvo', () => {
 // ---------- 4) GUARDA DE HTML: ids essenciais usados pelo JS existem no index.html ----------
 test('HTML: ids essenciais referenciados pelo JS existem no index.html', () => {
     const html = read(join(ROOT, 'index.html'));
-    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades', 'quick-match', 'qm-body', 'qm-count', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf'])
+    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades', 'quick-match', 'qm-body', 'qm-count', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'modal-ach', 'ach-detail', 'sh-style-timeline'])
         assert(html.includes(`id="${id}"`), `index.html deveria ter #${id}`);
     // ids que FORAM REMOVIDOS não podem estar no HTML (senão o JS pode tentar usá-los de volta)
-    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle'])
+    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips'])
         assert(!html.includes(`id="${gone}"`), `index.html NÃO deveria ter #${gone} (foi removido)`);
+    // o modo "cards" acabou: nenhum botão de compartilhar pode oferecer cards
+    assert(!html.includes('>Cards</button>'), 'sem botão de estilo Cards no compartilhar');
+    const share = read(join(JS, 'share.js'));
+    assert(!share.includes('renderCards'), 'renderCards foi aposentado junto com a exibição em cards');
 });
 
 // ---------- 5) GUARDA DO HUB MOBILE: abas com nome, perfil e settings no topo ----------

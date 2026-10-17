@@ -3,6 +3,7 @@
 // no Gamer ID compartilhável). Os contadores ficam em appData.counters.
 import { appData } from './store.js';
 import { icon } from './icons.js';
+import { esc } from './gameApi.js';
 import { hoursOf } from './quickmatch.js';
 
 const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
@@ -71,51 +72,53 @@ export function gamerXp() {
     return ACHIEVEMENTS.filter(a => un.includes(a.id)).reduce((s, a) => s + (a.xp || 0), 0);
 }
 
+// Cada conquista tem "how": as instruções de COMO desbloquear, mostradas ao
+// clicar no card dela (o "desc" é a frase de comemoração, o "how" é o passo a passo).
 export const ACHIEVEMENTS = [
     // Zerar jogos
-    { id: 'ach-1', name: 'Primeiro Passo', desc: 'Zerou seu primeiro jogo!', icon: 'flag', xp: 25, test: c => c.finished >= 1 },
-    { id: 'ach-5', name: 'Embalado', desc: 'Zerou 5 jogos.', icon: 'flame', xp: 50, test: c => c.finished >= 5 },
-    { id: 'ach-10', name: 'Mestre do Backlog', desc: 'Zerou 10 jogos no total.', icon: 'crown', xp: 75, test: c => c.finished >= 10 },
-    { id: 'ach-20', name: 'Fenômeno', desc: 'Zerou 20 jogos no total.', icon: 'trophy', xp: 150, test: c => c.finished >= 20 },
-    { id: 'ach-50', name: 'Imparável', desc: 'Zerou 50 jogos no total. Respeito.', icon: 'gem', xp: 300, test: c => c.finished >= 50 },
+    { id: 'ach-1', name: 'Primeiro Passo', desc: 'Zerou seu primeiro jogo!', icon: 'flag', xp: 25, test: c => c.finished >= 1, how: 'Marque qualquer jogo como zerado: no card dele, use "Marcar como zerado" e preencha a conclusão.' },
+    { id: 'ach-5', name: 'Embalado', desc: 'Zerou 5 jogos.', icon: 'flame', xp: 50, test: c => c.finished >= 5, how: 'Zere 5 jogos — vale qualquer plataforma, inclusive emulados.' },
+    { id: 'ach-10', name: 'Mestre do Backlog', desc: 'Zerou 10 jogos no total.', icon: 'crown', xp: 75, test: c => c.finished >= 10, how: 'Zere 10 jogos no total. A contagem aparece na aba Zerados.' },
+    { id: 'ach-20', name: 'Fenômeno', desc: 'Zerou 20 jogos no total.', icon: 'trophy', xp: 150, test: c => c.finished >= 20, how: 'Zere 20 jogos no total.' },
+    { id: 'ach-50', name: 'Imparável', desc: 'Zerou 50 jogos no total. Respeito.', icon: 'gem', xp: 300, test: c => c.finished >= 50, how: 'Zere 50 jogos no total. Um de cada vez.' },
     // Biblioteca e colecionismo
-    { id: 'ach-covers', name: 'Colecionador', desc: 'Todos os jogos possuem capa.', icon: 'image', xp: 50, test: c => c.allCovers },
-    { id: 'ach-platforms', name: 'Multipotencial', desc: 'Jogos em 3+ plataformas.', icon: 'layers', xp: 50, test: c => c.platforms >= 3 },
-    { id: 'ach-platforms-5', name: 'Cidadão do Mundo', desc: 'Jogos em 5 plataformas diferentes.', icon: 'globe', xp: 75, test: c => c.platforms >= 5 },
-    { id: 'ach-marathon', name: 'Maratonista', desc: '100h+ de jogos na lista.', icon: 'activity', xp: 75, test: c => c.estHours >= 100 },
-    { id: 'ach-hours-500', name: 'Escala Épica', desc: '500h+ somadas na lista.', icon: 'clock', xp: 100, test: c => c.estHours >= 500 },
-    { id: 'ach-backlog-20', name: 'Caixa de Pendências', desc: '20 jogos esperando na fila.', icon: 'archive', xp: 50, test: c => c.backlog >= 20 },
-    { id: 'ach-playing-3', name: 'Três Frentes', desc: '3 jogos marcados como jogando ao mesmo tempo.', icon: 'layers', xp: 50, test: c => c.playing >= 3 },
+    { id: 'ach-covers', name: 'Colecionador', desc: 'Todos os jogos possuem capa.', icon: 'image', xp: 50, test: c => c.allCovers, how: 'Dê uma capa a TODOS os jogos da biblioteca: "Trocar capa" no card de cada jogo (a busca automática da RAWG resolve rápido).' },
+    { id: 'ach-platforms', name: 'Multipotencial', desc: 'Jogos em 3+ plataformas.', icon: 'layers', xp: 50, test: c => c.platforms >= 3, how: 'Tenha jogos cadastrados em 3 plataformas diferentes (PC, consoles, portáteis...).' },
+    { id: 'ach-platforms-5', name: 'Cidadão do Mundo', desc: 'Jogos em 5 plataformas diferentes.', icon: 'globe', xp: 75, test: c => c.platforms >= 5, how: 'Tenha jogos em 5 plataformas diferentes.' },
+    { id: 'ach-marathon', name: 'Maratonista', desc: '100h+ de jogos na lista.', icon: 'activity', xp: 75, test: c => c.estHours >= 100, how: 'Some 100h+ de tempo estimado nos jogos da lista — o total aparece na aba Status.' },
+    { id: 'ach-hours-500', name: 'Escala Épica', desc: '500h+ somadas na lista.', icon: 'clock', xp: 100, test: c => c.estHours >= 500, how: 'Some 500h+ de tempo estimado na lista inteira.' },
+    { id: 'ach-backlog-20', name: 'Caixa de Pendências', desc: '20 jogos esperando na fila.', icon: 'archive', xp: 50, test: c => c.backlog >= 20, how: 'Mantenha 20 jogos com status "Na fila" ao mesmo tempo.' },
+    { id: 'ach-playing-3', name: 'Três Frentes', desc: '3 jogos marcados como jogando ao mesmo tempo.', icon: 'layers', xp: 50, test: c => c.playing >= 3, how: 'Marque 3 jogos como "Jogando" ao mesmo tempo (checkbox no card ou "Marcar como jogando").' },
     // Avaliações e perfeição
-    { id: 'ach-critic', name: 'Crítico de Arte', desc: 'Avaliou 10 jogos zerados.', icon: 'pen', xp: 75, test: c => c.rated >= 10 },
-    { id: 'ach-rated-25', name: 'Connoisseur', desc: 'Avaliou 25 jogos zerados.', icon: 'star', xp: 100, test: c => c.rated >= 25 },
-    { id: 'ach-perfectionist', name: 'Perfeccionista', desc: 'Fez 100% em 1 jogo.', icon: 'gem', xp: 50, test: c => c.count100 >= 1 },
-    { id: 'ach-legend', name: 'Lendário', desc: 'Fez 100% em 5 jogos.', icon: 'award', xp: 150, test: c => c.count100 >= 5 },
-    { id: 'ach-hard', name: 'Sobrevivente', desc: 'Zerou um jogo em dificuldade Difícil ou Extremo.', icon: 'shield', xp: 75, test: c => c.hardDone >= 1 },
+    { id: 'ach-critic', name: 'Crítico de Arte', desc: 'Avaliou 10 jogos zerados.', icon: 'pen', xp: 75, test: c => c.rated >= 10, how: 'Dê sua nota de 0 a 10 ao finalizar: preencha "Sua nota" ao editar a conclusão de 10 jogos zerados.' },
+    { id: 'ach-rated-25', name: 'Connoisseur', desc: 'Avaliou 25 jogos zerados.', icon: 'star', xp: 100, test: c => c.rated >= 25, how: 'Avalie 25 jogos zerados com sua nota pessoal.' },
+    { id: 'ach-perfectionist', name: 'Perfeccionista', desc: 'Fez 100% em 1 jogo.', icon: 'gem', xp: 50, test: c => c.count100 >= 1, how: 'Ao editar a conclusão de um jogo zerado, marque o checkbox "100%".' },
+    { id: 'ach-legend', name: 'Lendário', desc: 'Fez 100% em 5 jogos.', icon: 'award', xp: 150, test: c => c.count100 >= 5, how: 'Marque "100%" na conclusão de 5 jogos zerados.' },
+    { id: 'ach-hard', name: 'Sobrevivente', desc: 'Zerou um jogo em dificuldade Difícil ou Extremo.', icon: 'shield', xp: 75, test: c => c.hardDone >= 1, how: 'Escolha dificuldade "Difícil" ou "Extremo" nos dados de um jogo e zere-o.' },
     // Wishlist
-    { id: 'ach-wish-5', name: 'Sonhador', desc: '5 jogos na wishlist.', icon: 'bookmark', xp: 25, test: c => c.wishCount >= 5 },
-    { id: 'ach-wish-20', name: 'Arquiteto de Desejos', desc: '20 jogos na wishlist.', icon: 'heart', xp: 75, test: c => c.wishCount >= 20 },
-    { id: 'ach-wish-moved', name: 'Desejo Realizado', desc: 'Moveu um jogo da wishlist para a biblioteca.', icon: 'star', xp: 25, test: c => c.wishMoved >= 1 },
+    { id: 'ach-wish-5', name: 'Sonhador', desc: '5 jogos na wishlist.', icon: 'bookmark', xp: 25, test: c => c.wishCount >= 5, how: 'Adicione 5 jogos na aba Desejos (o botão "+ Desejo" busca na RAWG).' },
+    { id: 'ach-wish-20', name: 'Arquiteto de Desejos', desc: '20 jogos na wishlist.', icon: 'heart', xp: 75, test: c => c.wishCount >= 20, how: 'Tenha 20 jogos na wishlist.' },
+    { id: 'ach-wish-moved', name: 'Desejo Realizado', desc: 'Moveu um jogo da wishlist para a biblioteca.', icon: 'star', xp: 25, test: c => c.wishMoved >= 1, how: 'Na aba Desejos, use "Para a fila" num jogo — ou "Jogar agora" para começar na hora.' },
     // Sessões e tempo
-    { id: 'ach-session-1', name: 'Hora de Jogar', desc: 'Registrou sua primeira sessão de jogo.', icon: 'clock', xp: 25, test: c => c.sessions >= 1 },
-    { id: 'ach-session-10h', name: 'Dedicação Total', desc: '10h somadas em sessões de jogo.', icon: 'target', xp: 50, test: c => c.sessionMinutes >= 600 },
-    { id: 'ach-session-50h', name: 'Maratona de Sessões', desc: '50h somadas em sessões de jogo.', icon: 'activity', xp: 100, test: c => c.sessionMinutes >= 3000 },
-    { id: 'ach-endless', name: 'Sem Fim', desc: '100h em jogos contínuos.', icon: 'infinity', xp: 75, test: c => c.contHours >= 100 },
+    { id: 'ach-session-1', name: 'Hora de Jogar', desc: 'Registrou sua primeira sessão de jogo.', icon: 'clock', xp: 25, test: c => c.sessions >= 1, how: 'No card de um jogo, use "Iniciar sessão" e finalize com "Finalizar" na barra do topo.' },
+    { id: 'ach-session-10h', name: 'Dedicação Total', desc: '10h somadas em sessões de jogo.', icon: 'target', xp: 50, test: c => c.sessionMinutes >= 600, how: 'Some 10h em sessões registradas (o cronômetro da barra de sessão conta sozinho).' },
+    { id: 'ach-session-50h', name: 'Maratona de Sessões', desc: '50h somadas em sessões de jogo.', icon: 'activity', xp: 100, test: c => c.sessionMinutes >= 3000, how: 'Some 50h em sessões registradas.' },
+    { id: 'ach-endless', name: 'Sem Fim', desc: '100h em jogos contínuos.', icon: 'infinity', xp: 75, test: c => c.contHours >= 100, how: 'Some 100h jogadas em jogos marcados como Contínuos (as horas vão no card deles).' },
     // Diário, franquias e organização
-    { id: 'ach-diary', name: 'Cronista de Bordo', desc: '10 entradas no Diário de Bordo.', icon: 'book', xp: 50, test: c => c.diary >= 10 },
-    { id: 'ach-franchise', name: 'Completista', desc: 'Zerou todos os jogos de uma franquia (3+ jogos).', icon: 'library', xp: 100, test: c => c.completeFranchise },
-    { id: 'ach-franchises-5', name: 'Arquivista', desc: 'Organizou seus jogos em 5 franquias diferentes.', icon: 'library', xp: 75, test: c => c.franchises >= 5 },
-    { id: 'ach-retro', name: 'Retrô', desc: '3 jogos marcados como emulados.', icon: 'gamepad', xp: 50, test: c => c.emulated >= 3 },
-    { id: 'ach-explorer', name: 'Explorador de Wikis', desc: 'Vinculou wikis a 5 jogos.', icon: 'compass', xp: 50, test: c => c.wikis >= 5 },
-    { id: 'ach-eclectic', name: 'Eclético', desc: 'Zerou jogos de 5 gêneros diferentes.', icon: 'shapes', xp: 75, test: c => c.genresDone >= 5 },
-    { id: 'ach-genres-10', name: 'Poliglota de Gêneros', desc: 'Zerou jogos de 10 gêneros diferentes.', icon: 'shapes', xp: 100, test: c => c.genresDone >= 10 },
-    { id: 'ach-shelf', name: 'Prateleira Cheia', desc: '15 jogos zerados com capa na estante.', icon: 'archive', xp: 100, test: c => c.shelfCovers >= 15 },
+    { id: 'ach-diary', name: 'Cronista de Bordo', desc: '10 entradas no Diário de Bordo.', icon: 'book', xp: 50, test: c => c.diary >= 10, how: 'Escreva 10 entradas no diário: botão "Anotar no diário" dentro da seção do diário, na tela de um jogo.' },
+    { id: 'ach-franchise', name: 'Completista', desc: 'Zerou todos os jogos de uma franquia (3+ jogos).', icon: 'library', xp: 100, test: c => c.completeFranchise, how: 'Preencha o campo "Franquia" nos jogos de uma série com 3+ títulos e zere todos eles.' },
+    { id: 'ach-franchises-5', name: 'Arquivista', desc: 'Organizou seus jogos em 5 franquias diferentes.', icon: 'library', xp: 75, test: c => c.franchises >= 5, how: 'Preencha o campo "Franquia" de jogos de 5 séries diferentes (a busca automática já sugere).' },
+    { id: 'ach-retro', name: 'Retrô', desc: '3 jogos marcados como emulados.', icon: 'gamepad', xp: 50, test: c => c.emulated >= 3, how: 'Marque 3 jogos como emulados (checkbox "Emulado" + console original nos dados do jogo).' },
+    { id: 'ach-explorer', name: 'Explorador de Wikis', desc: 'Vinculou wikis a 5 jogos.', icon: 'compass', xp: 50, test: c => c.wikis >= 5, how: 'Na tela de um jogo, use "Wiki" para vincular a página da Wikipedia/Fandom dele — 5 jogos e pronto.' },
+    { id: 'ach-eclectic', name: 'Eclético', desc: 'Zerou jogos de 5 gêneros diferentes.', icon: 'shapes', xp: 75, test: c => c.genresDone >= 5, how: 'Zere jogos de 5 gêneros diferentes (os gêneros vêm da busca automática ou do preenchimento manual).' },
+    { id: 'ach-genres-10', name: 'Poliglota de Gêneros', desc: 'Zerou jogos de 10 gêneros diferentes.', icon: 'shapes', xp: 100, test: c => c.genresDone >= 10, how: 'Zere jogos de 10 gêneros diferentes.' },
+    { id: 'ach-shelf', name: 'Prateleira Cheia', desc: '15 jogos zerados com capa na estante.', icon: 'archive', xp: 100, test: c => c.shelfCovers >= 15, how: 'Zere 15 jogos que tenham capa — a estante da aba Zerados fica cheia.' },
     // Personalização e GameMatch
-    { id: 'ach-shots', name: 'Fotógrafo de Tela', desc: 'Enviou uma screenshot própria num jogo.', icon: 'image', xp: 50, test: c => c.userShots >= 1 },
-    { id: 'ach-banner', name: 'Cenógrafo', desc: 'Colocou um fundo personalizado na página de um jogo.', icon: 'image', xp: 50, test: c => c.banners >= 1 },
-    { id: 'ach-match-10', name: 'Cupido de Jogos', desc: '10 matches no GameMatch (curtidas ou favoritos).', icon: 'heart', xp: 50, test: c => c.matches >= 10 },
-    { id: 'ach-photo', name: 'Rosto Marcado', desc: 'Definiu sua foto de perfil.', icon: 'user', xp: 25, test: c => c.photo },
-    { id: 'ach-bio', name: 'Cronista Pessoal', desc: 'Escreveu uma descrição no seu perfil.', icon: 'pen', xp: 25, test: c => c.bio }
+    { id: 'ach-shots', name: 'Fotógrafo de Tela', desc: 'Enviou uma screenshot própria num jogo.', icon: 'image', xp: 50, test: c => c.userShots >= 1, how: 'Na tela de um jogo, seção "Suas screenshots": envie a primeira imagem.' },
+    { id: 'ach-banner', name: 'Cenógrafo', desc: 'Colocou um fundo personalizado na página de um jogo.', icon: 'image', xp: 50, test: c => c.banners >= 1, how: 'Na tela de um jogo, toque no banner do topo e escolha "Enviar imagem" para o fundo.' },
+    { id: 'ach-match-10', name: 'Cupido de Jogos', desc: '10 matches no GameMatch (curtidas ou favoritos).', icon: 'heart', xp: 50, test: c => c.matches >= 10, how: 'No GameMatch, curta (→) ou favorite (⭐) 10 jogos no deck de Descobrir.' },
+    { id: 'ach-photo', name: 'Rosto Marcado', desc: 'Definiu sua foto de perfil.', icon: 'user', xp: 25, test: c => c.photo, how: 'Na aba Perfil, use "Enviar foto" (ou conecte sua conta da Steam para puxar o avatar).' },
+    { id: 'ach-bio', name: 'Cronista Pessoal', desc: 'Escreveu uma descrição no seu perfil.', icon: 'pen', xp: 25, test: c => c.bio, how: 'Na aba Perfil, escreva uma descrição sobre você e salve.' }
 ];
 
 const safe = (a, ctx) => { try { return !!a.test(ctx); } catch (e) { return false; } };
@@ -138,13 +141,42 @@ export function renderAchievements() {
     if (!grid) return;
     const ctx = buildContext();
     let done = 0;
-    grid.innerHTML = ACHIEVEMENTS.map(a => {
+    const cards = ACHIEVEMENTS.map(a => {
         const ok = safe(a, ctx);
         if (ok) done++;
-        return `<div class="badge ${ok ? '' : 'locked'}" id="${a.id}"><span class="badge-icon">${icon(a.icon, { size: '1em' })}</span><div class="badge-title">${a.name}</div><div class="badge-desc">${a.desc}</div><div class="badge-xp">+${a.xp} XP</div></div>`;
+        // cada conquista é clicável: abre o passo a passo de como desbloquear
+        return `<div class="badge ${ok ? '' : 'locked'}" id="${a.id}" role="button" tabindex="0" onclick="openAchDetail('${a.id}')" onkeydown="if(event.key==='Enter')openAchDetail('${a.id}')" title="Ver como conquistar" aria-label="Como conquistar: ${esc(a.name)}"><span class="badge-icon">${icon(a.icon, { size: '1em' })}</span><div class="badge-title">${esc(a.name)}</div><div class="badge-desc">${esc(a.desc)}</div><div class="badge-xp">+${a.xp} XP</div></div>`;
     }).join('');
+    // PLATINA: desbloqueou tudo — o troféu máximo, no topo da grade
+    const all = ACHIEVEMENTS.length > 0 && done >= ACHIEVEMENTS.length;
+    const platina = all
+        ? `<div class="badge platinum"><span class="badge-icon">${icon('trophy', { size: '1em' })}</span><div class="badge-title">Platina do ZeraLog</div><div class="badge-desc">Você desbloqueou TODAS as ${ACHIEVEMENTS.length} conquistas. Isso é história!</div><div class="badge-xp">∞ XP</div></div>`
+        : '';
+    grid.innerHTML = platina + cards;
     const label = document.getElementById('ach-progress');
-    if (label) label.textContent = `${done}/${ACHIEVEMENTS.length}`;
+    if (label) label.textContent = all ? `${done}/${ACHIEVEMENTS.length} · PLATINA!` : `${done}/${ACHIEVEMENTS.length}`;
     const sn = document.getElementById('sn-ach');
     if (sn) sn.textContent = `${done}/${ACHIEVEMENTS.length}`;
+}
+
+// Detalhe da conquista: comemoração, XP, status e o COMO conquistar
+export function openAchDetail(id) {
+    const a = ACHIEVEMENTS.find(x => x.id === id);
+    if (!a) return;
+    const un = (Array.isArray(appData.unlockedAchievements) ? appData.unlockedAchievements : []).includes(id);
+    const box = document.getElementById('ach-detail');
+    if (!box) return;
+    box.innerHTML = `
+        <div class="ach-head">
+            <span class="badge-icon big ${un ? '' : 'locked'}">${icon(a.icon, { size: '2em' })}</span>
+            <div>
+                <h3 style="margin: 0;">${esc(a.name)}</h3>
+                <div class="ach-status ${un ? 'un' : ''}">${un ? 'Desbloqueada' : 'Ainda bloqueada'} · +${a.xp} XP</div>
+            </div>
+        </div>
+        <p class="ach-desc">${esc(a.desc)}</p>
+        <div class="ach-how"><strong>Como conquistar:</strong><br>${esc(a.how)}</div>
+        <div class="modal-actions"><button onclick="closeModal('modal-ach')">Fechar</button></div>
+    `;
+    document.getElementById('modal-ach').showModal();
 }
