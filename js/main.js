@@ -4,7 +4,7 @@ import { openShare, openCardGenerator, initShare, shareSetStyle, sharePage, shar
 import { initFilters, openFilters, filtersClear, filtersSaveCurrent, filterSummary } from './filters.js';
 import { checkReleases, refreshReleaseDates, registerPeriodicCheck, fmtDate } from './releases.js';
 import { getTabGames, setWishSort, toggleWishNotify, refreshDatesUI, paintWishNotify } from './ui.js';
-import { initWishView, wishSubShow, wishReleasesLoad, wishReleasesMore, wishReleasesAdd } from './wishview.js';
+import { initWishView, wishSubShow, wishReleasesLoad, wishReleasesMore, wishReleasesAdd, wishFilterToggle, wishSortToggle, wishFilterGenre, wishFilterPlat, wishFilterClear, wishFilterRemove, wishSort, wishClosePanels } from './wishview.js';
 import { hydrateIcons } from './icons.js';
 import { applyTheme, currentTheme } from './themes.js';
 import { iconSearch, iconWeightChange, iconMore, ensureForData } from './phosphor.js';
@@ -24,7 +24,7 @@ import { initStores, storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect,
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleShelfPlain, saveStateForUndo, undoAction, switchTab, 
-    filterGames, setPlatformFilter, togglePortableFilter, setHomeSort, toggleTimeSortMenu, setTimeSort,
+    filterGames, setPlatformFilter, togglePortableFilter, setHomeSort, homeSortToggle, homeSortClose,
     setFinishedSort, toggleCollapse, renderFinishedTab, saveGame,
     openCatModal, openEditCatModal, saveCategory, askDeleteCategory, moveCategory,
     openGameModal, openEditGameModal, askDeleteGame, toggleState,
@@ -42,6 +42,7 @@ Object.assign(window, {
     openFilters, filtersClear, filtersSaveCurrent, shareSetStyle, sharePage, shareTitleChanged, shareTitlesChanged, shareDownload, shareShare,
     setWishSort, toggleWishNotify, refreshDatesUI, paintWishNotify,
     wishSubShow, wishReleasesLoad, wishReleasesMore, wishReleasesAdd,
+    wishFilterToggle, wishSortToggle, wishFilterGenre, wishFilterPlat, wishFilterClear, wishFilterRemove, wishSort, wishClosePanels,
     openShare: tab => {
         const items = getTabGames(tab);
         if (!items.length) { triggerToast('Não há jogos para compartilhar nesta tela (confira os filtros).', false); return; }
@@ -68,8 +69,8 @@ window.filterGames = filterGames;
 window.setPlatformFilter = setPlatformFilter;
 window.togglePortableFilter = togglePortableFilter;
 window.setHomeSort = setHomeSort;
-window.toggleTimeSortMenu = toggleTimeSortMenu;
-window.setTimeSort = setTimeSort;
+window.homeSortToggle = homeSortToggle;
+window.homeSortClose = homeSortClose;
 window.setFinishedSort = setFinishedSort;
 window.toggleCollapse = toggleCollapse;
 window.saveGame = saveGame;

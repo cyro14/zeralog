@@ -110,21 +110,11 @@
 
         <div class="tab-tools" data-tab="home">
             <button type="button" class="tool-btn" onclick="openFilters('home')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-home" style="display:none"></span></button>
+            <button type="button" class="tool-btn" id="home-sort-btn" onclick="homeSortToggle()" aria-haspopup="true" aria-expanded="false" title="Ordenar a fila"><span data-icon="sort" data-size="1em"></span><span id="home-sort-label">Ordenar</span></button>
             <button type="button" class="tool-btn" onclick="openShare('home')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
+            <div class="gm-x-panel" id="home-sort-panel" hidden></div>
         </div>
         <div class="filter-chips" id="fc-home" style="display:none"></div>
-
-        <div class="sort-bar" id="home-sort-bar">
-            <div class="sort-chip active" id="sort-home-manual" onclick="setHomeSort('manual')">Manual</div>
-            <div class="sort-chip" id="sort-home-az" onclick="setHomeSort('az')">A-Z</div>
-            <select class="sort-chip sort-time" id="sort-home-time" onchange="setTimeSort(this.value)" aria-label="Ordenar por tempo">
-                <option value="">Tempo ▾</option>
-                <option value="time">Tempo para zerar</option>
-                <option value="played">Tempo jogado</option>
-                <option value="close">Mais próximo de zerar</option>
-            </select>
-            <div class="sort-chip" id="sort-home-meta" onclick="setHomeSort('meta')">Nota</div>
-        </div>
 
         <div id="app-container"></div>
 
@@ -249,8 +239,44 @@
             <div id="wish-list-container"></div>
         </section>
 
-        <!-- Tela 2: os lançamentos (a mesma vitrine da categoria "Lançamentos" do Explorar) -->
+        <!-- Tela 2: os lançamentos (a mesma vitrine da categoria "Lançamentos" do Explorar,
+             com os mesmos filtros e ordenações) -->
         <section class="wish-pane" id="wish-pane-releases">
+            <div class="gm-x-tools" id="wish-x-tools">
+                <button type="button" class="gm-tool-btn" id="wish-filter-btn" onclick="wishFilterToggle()" aria-haspopup="true" aria-expanded="false" title="Filtros de gênero, plataforma e estúdio">
+                    <span data-icon="filter" data-size="1.05em"></span><span class="gm-tool-label">Filtros</span><span class="gm-tool-badge" id="wish-filter-badge" hidden></span>
+                </button>
+                <button type="button" class="gm-tool-btn" id="wish-sort-btn" onclick="wishSortToggle()" aria-haspopup="true" aria-expanded="false" title="Ordenar os lançamentos">
+                    <span data-icon="sort" data-size="1.05em"></span><span class="gm-tool-label" id="wish-sort-label">Ordenar</span>
+                </button>
+                <div class="gm-x-panel" id="wish-x-filter-panel" hidden>
+                    <div class="gm-x-panel-head">
+                        <strong class="gm-x-title">Filtrar por</strong>
+                        <button type="button" class="gm-x-close" aria-label="Fechar filtros" data-x-close><span data-icon="x" data-size="1em"></span></button>
+                    </div>
+                    <div class="gm-explore-filters" id="wish-explore-filters">
+                        <div class="gm-x-f-row">
+                            <select class="gm-select" id="wish-x-genre" onchange="wishFilterGenre(this.value)" aria-label="Filtrar por gênero">
+                                <option value="">Todos os gêneros</option>
+                            </select>
+                            <select class="gm-select" id="wish-x-plat" onchange="wishFilterPlat(this.value)" aria-label="Filtrar por plataforma">
+                                <option value="">Todas as plataformas</option>
+                            </select>
+                        </div>
+                        <div class="gm-co-wrap" id="wish-dev-filter">
+                            <input type="text" class="gm-co-input" placeholder="Desenvolvedora..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Filtrar por desenvolvedora">
+                        </div>
+                        <div class="gm-co-wrap" id="wish-pub-filter">
+                            <input type="text" class="gm-co-input" placeholder="Publicadora..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Filtrar por publicadora">
+                        </div>
+                    </div>
+                    <div class="gm-x-panel-foot is-empty" id="wish-filter-foot">
+                        <div class="gm-x-chips" id="wish-filter-chips"></div>
+                        <button type="button" class="gm-x-clear" id="wish-filter-clear" onclick="wishFilterClear()" hidden>Limpar filtros</button>
+                    </div>
+                </div>
+                <div class="gm-x-panel" id="wish-x-sort-panel" hidden></div>
+            </div>
             <div class="gm-explore-grid" id="wish-releases-grid"></div>
         </section>
     </div>

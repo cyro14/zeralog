@@ -112,10 +112,10 @@ test('Módulos: todo import nomeado existe como export no módulo alvo', () => {
 // ---------- 4) GUARDA DE HTML: ids essenciais usados pelo JS existem no index.html ----------
 test('HTML: ids essenciais referenciados pelo JS existem no index.html', () => {
     const html = read(join(ROOT, 'index.html'));
-    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades', 'quick-match', 'qm-body', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'modal-ach', 'ach-detail', 'sh-style-timeline', 'wish-pane-list', 'wish-pane-releases', 'wish-sub-list', 'wish-sub-releases', 'wish-releases-grid', 'wish-summary', 'wish-list-container'])
+    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades', 'quick-match', 'qm-body', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'modal-ach', 'ach-detail', 'sh-style-timeline', 'wish-pane-list', 'wish-pane-releases', 'wish-sub-list', 'wish-sub-releases', 'wish-releases-grid', 'wish-summary', 'wish-list-container', 'wish-filter-btn', 'wish-sort-btn', 'wish-x-filter-panel', 'wish-x-sort-panel', 'wish-x-genre', 'wish-x-plat', 'wish-dev-filter', 'wish-pub-filter', 'home-sort-btn', 'home-sort-panel'])
         assert(html.includes(`id="${id}"`), `index.html deveria ter #${id}`);
     // ids que FORAM REMOVIDOS não podem estar no HTML (senão o JS pode tentar usá-los de volta)
-    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips', 'qm-count'])
+    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips', 'qm-count', 'home-sort-bar', 'sort-home-manual', 'sort-home-az', 'sort-home-time', 'sort-home-meta'])
         assert(!html.includes(`id="${gone}"`), `index.html NÃO deveria ter #${gone} (foi removido)`);
     // o botão de sortear não tem mais números nem o "Sortear agora!" de cima
     assert(!html.includes('Sortear agora!'), 'o botão de sortear em cima foi removido (o confirmar é no final do carrossel)');
@@ -298,4 +298,39 @@ test('Desejos: submenu alterna as duas telas; resumo é painel e não texto solt
     assert(ui.includes('class="wish-sum"'), 'o resumo é pintado como painel (.wish-sum)');
     assert(css.includes('.wish-sum {') && css.includes('.wish-stat {'), 'o painel do resumo tem estilo');
     assert(!tab.includes('wish-bar'), 'a barra antiga (texto + botão) saiu do HTML');
+});
+
+// ---------- 14) ORDENAÇÃO PADRONIZADA: botão + painel (Fila e Lançamentos) ----------
+// A Fila usava uma barra de chips (Manual / A-Z / Tempo / Nota) que ocupava a largura
+// toda. Ela passou a usar o MESMO botão de ordenação das outras telas (botão que abre
+// um painel). Os Lançamentos da wishlist também importaram os filtros/ordenações do
+// Explorar em vez de inventar uma segunda barra de filtros.
+test('Ordenação: a Fila usa o botão com painel e os Lançamentos importam os do Explorar', () => {
+    const html = read(join(ROOT, 'index.html'));
+    const css = read(join(ROOT, 'style.css'));
+    const ui = read(join(JS, 'ui.js'));
+    const view = read(join(JS, 'wishview.js'));
+    // a Fila perdeu a barra de chips e ganhou o botão "Ordenar"
+    assert(!html.includes('id="home-sort-bar"'), 'a barra de ordenação da Fila saiu do HTML');
+    const home = html.slice(html.indexOf('id="tab-home"'), html.indexOf('id="tab-gamematch"'));
+    const at = home.indexOf('id="home-sort-btn"');
+    assert(at > -1, 'a Fila tem o botão de ordenação');
+    assert(home.slice(at, home.indexOf('</button>', at)).includes('homeSortToggle()'), 'o botão abre o painel');
+    assert(home.includes('id="home-sort-panel"'), 'e o painel existe dentro da barra de ferramentas');
+    assert(ui.includes('function homeSortPanelHtml'), 'o painel da Fila é montado no ui.js');
+    assert(ui.includes('gm-x-sort-btn'), 'com as mesmas opções (.gm-x-sort-btn) das outras telas');
+    assert(ui.includes('function paintHomeSort'), 'o render pinta o botão (ordem ativa) a cada redesenho');
+    // o painel abre ancorado na barra de ferramentas, não no botãozinho de 90px
+    assert(/\.tab-tools\s*\{[^}]*position:\s*relative/.test(css), '.tab-tools posiciona o painel de ordenação');
+    // Lançamentos da wishlist: os MESMOS botões e painéis do Explorar, com estado próprio
+    const wish = html.slice(html.indexOf('id="wish-pane-releases"'), html.indexOf('<!-- FINISHED TAB -->'));
+    for (const id of ['wish-filter-btn', 'wish-sort-btn', 'wish-x-filter-panel', 'wish-x-sort-panel', 'wish-filter-foot', 'wish-filter-clear'])
+        assert(wish.includes(`id="${id}"`), `#${id} na tela dos lançamentos`);
+    assert(wish.includes('wishFilterToggle()') && wish.includes('wishSortToggle()'), 'os botões abrem os painéis');
+    assert(wish.includes('wishFilterGenre(this.value)') && wish.includes('wishFilterPlat(this.value)'), 'os selects aplicam o filtro');
+    assert(view.includes('sortPanelHtml(wSort'), 'a ordenação importa as opções do Explorar (js/gamematch.js)');
+    assert(view.includes('paintFilterWidget'), 'e os filtros usam a mesma pintura de chips/badge do Explorar');
+    // e nenhum dos dois voltou a ganhar uma barra de chips própria
+    assert(!home.includes('class="sort-bar"'), 'a Fila não tem mais barra de ordenação');
+    assert(!wish.includes('class="sort-bar"'), 'a tela dos lançamentos não tem barra de chips');
 });

@@ -278,3 +278,45 @@ test('FAB "+": HTML dentro da aba Fila, círculo no CSS e menu com as duas opç�
     assert(!css.includes('.btn-add-cat'), 'CSS do botão antigo removido junto');
 });
 
+// ---------- Ordenação da Fila: botão com painel (mesmo padrão do Explorar) ----------
+// A Fila tinha uma barra de chips (Manual / A-Z / Tempo / Nota) que ocupava a largura
+// toda. Agora ela usa o mesmo botão de ordenação das outras telas: um botão que abre
+// um painel com as opções e mostra a ordem ativa no próprio rótulo.
+test('Fila: a ordenação é um botão com painel (a barra de chips saiu da tela)', async () => {
+    const { homeSortToggle } = await import('../js/ui.js');
+    const panel = document.getElementById('home-sort-panel');
+    panel.hidden = true;
+    homeSortToggle();
+    assertEq(panel.hidden, false, 'o botão Ordenar abre o painel');
+    assertEq(document.getElementById('home-sort-btn')['aria-expanded'], 'true', 'o botão avisa que está aberto');
+    for (const label of ['Manual', 'A-Z', 'Nota', 'Tempo p/ zerar', 'Tempo jogado', 'Perto de zerar'])
+        assert(panel.innerHTML.includes(label), `opção "${label}" no painel`);
+    assert(panel.innerHTML.includes("setHomeSort('manual')"), 'cada opção chama setHomeSort');
+    assert(panel.innerHTML.includes('gm-x-panel-head'), 'painel com cabeçalho (mesmo estilo do Explorar)');
+    assert(panel.innerHTML.includes("homeSortClose()"), 'e com o X de fechar');
+    homeSortToggle();
+    assertEq(panel.hidden, true, 'tocar de novo fecha');
+    assertEq(document.getElementById('home-sort-btn')['aria-expanded'], 'false', 'aria-expanded volta a false');
+});
+
+test('Fila: escolher a ordem fecha o painel, marca o botão e escreve a ordem nele', async () => {
+    const { setHomeSort } = await import('../js/ui.js');
+    const panel = document.getElementById('home-sort-panel');
+    const btn = document.getElementById('home-sort-btn');
+    const label = document.getElementById('home-sort-label');
+    panel.hidden = false;
+    setHomeSort('az');
+    assertEq(appData.settings.sort, 'az', 'ordem gravada nas preferências');
+    assertEq(panel.hidden, true, 'o painel fecha ao escolher');
+    assert(btn.classList.contains('on'), 'o botão fica marcado (como no Explorar)');
+    assert(label.textContent.includes('A-Z'), 'o botão mostra a ordem ativa');
+    assert(label.textContent.includes('↑'), 'e a direção');
+    setHomeSort('az');   // tocar na ordem ativa inverte
+    assertEq(appData.settings.homeSortDir, 'desc', 'tocar na ordem ativa inverte a direção');
+    assert(label.textContent.includes('↓'), 'a seta acompanha');
+    setHomeSort('manual');
+    assertEq(label.textContent, 'Ordenar', 'Manual volta ao rótulo neutro');
+    assert(!btn.classList.contains('on'), 'e sem marcação no padrão');
+    appData.settings.sort = 'manual'; appData.settings.homeSortDir = 'asc';
+});
+

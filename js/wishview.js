@@ -5,10 +5,15 @@
 //                     (os mais esperados, do maior hype para o menor), aqui
 //                     dentro para não obrigar a trocar de aba para descobrir
 //                     um jogo e mandá-lo para a wish list com um toque.
-// O estado da tela de lançamentos é próprio: os filtros do Explorar não mexem nela.
+// Os filtros e as ordenações são os MESMOS do Explorar (js/gamematch.js exporta as
+// regras), mas o estado é próprio: filtrar aqui não mexe na aba GameMatch.
 import { appData, saveData } from './store.js';
 import { listGames, esc, normText, resizeUrl, describeError } from './gameApi.js';
-import { exploreById, exploreParams, gmIsClean, matchScore, gmXOpen, gmBuy, gmExploreWish } from './gamematch.js';
+import {
+    exploreById, exploreParams, gmIsClean, matchScore, gmXOpen, gmBuy, gmExploreWish,
+    X_SORTS, applyFilterParams, sortBy, gmGenreMatch, gmPlatMatch, sortPanelHtml,
+    genreOptionsHtml, platformOptionsHtml, setupCompanyFilter, paintFilterWidget
+} from './gamematch.js';
 import { icon } from './icons.js';
 import { countdownText, daysUntil, fmtDate } from './releases.js';
 
@@ -22,8 +27,16 @@ const isSub = v => WISH_SUBS.includes(v);
 export const wishSub = () => (isSub(appData.settings.wishSub) ? appData.settings.wishSub : 'list');
 
 // Estado da grade de lançamentos (independente da aba Explorar)
-const rel = { page: 0, items: [], more: true, loaded: false, busy: false, error: '' };
+const rel = { page: 0, items: [], more: true, loaded: false, busy: false, again: false, error: '' };
 export const wishReleasesState = () => rel;
+
+// Filtros/ordenação da tela de lançamentos — cópia própria dos do Explorar
+const wf = { genre: '', plat: '', devId: 0, devName: '', pubId: 0, pubName: '' };
+let wSort = '';   // '' = ordem da categoria (hype da RAWG)
+export const wishFiltersState = () => wf;
+export const wishSortState = () => wSort;
+const WISH_FILTER_IDS = { chips: 'wish-filter-chips', badge: 'wish-filter-badge', btn: 'wish-filter-btn', clear: 'wish-filter-clear', foot: 'wish-filter-foot' };
+const hasWishFilters = () => !!(wf.genre || wf.plat || wf.devId || wf.pubId);
 
 /* ---------------- as duas telas ---------------- */
 function paintWishSub() {
@@ -40,6 +53,7 @@ function paintWishSub() {
     const tab = document.getElementById('tab-wish');
     const active = !tab || (tab.classList && tab.classList.contains('active'));
     document.body.classList.toggle('wish-rel-tab', releases && active);
+    paintWishTools();
 }
 
 // O botão do submenu troca de tela sem sair da aba
@@ -65,7 +79,144 @@ export function initWishView(deps = {}) {
         if (e.detail && e.detail.tab === 'wish') syncWishView();
         else document.body.classList.remove('wish-rel-tab');   // saiu da aba: a busca do topo volta
     });
+    // Painéis de filtros/ordenação: fecham no X, no clique fora e no Esc (como no Explorar)
+    document.addEventListener('click', e => {
+        const { fp, sp, open } = wishPanels();
+        if (!open) return;
+        const t = e.target;
+        if (t && t.closest && t.closest('[data-x-close]')) { wishClosePanels(); return; }
+        if (t && t.closest && (t.closest('#wish-x-tools') || t.closest('.gm-co-list'))) return;
+        wishClosePanels();
+    }, true);
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape') return;
+        if (wishPanels().open) { wishClosePanels(); e.stopPropagation(); }   // Esc fecha o painel, não a tela
+    }, true);
     syncWishView();
+}
+
+/* ---------------- filtros e ordenação (os mesmos do Explorar) ---------------- */
+function wishPanels() {
+    const fp = document.getElementById('wish-x-filter-panel');
+    const sp = document.getElementById('wish-x-sort-panel');
+    return { fp, sp, open: !!((fp && !fp.hidden) || (sp && !sp.hidden)) };
+}
+
+export function wishClosePanels() {
+    for (const [pid, bid] of [['wish-x-filter-panel', 'wish-filter-btn'], ['wish-x-sort-panel', 'wish-sort-btn']]) {
+        const panel = document.getElementById(pid);
+        if (panel) panel.hidden = true;
+        const btn = document.getElementById(bid);
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+}
+
+// Monta os campos uma vez só (selects de gênero/plataforma e os buscadores de estúdio)
+function fillWishFilters() {
+    const panel = document.getElementById('wish-x-filter-panel');
+    if (panel && !panel.dataset.ready) { panel.dataset.ready = '1'; panel.hidden = true; }
+    const sortPanel = document.getElementById('wish-x-sort-panel');
+    if (sortPanel && !sortPanel.dataset.ready) { sortPanel.dataset.ready = '1'; sortPanel.hidden = true; }
+    const gs = document.getElementById('wish-x-genre');
+    if (gs && !gs.dataset.ready) { gs.dataset.ready = '1'; gs.innerHTML = genreOptionsHtml(); }
+    const ps = document.getElementById('wish-x-plat');
+    if (ps && !ps.dataset.ready) { ps.dataset.ready = '1'; ps.innerHTML = platformOptionsHtml(); }
+    setupCompanyFilter(document.getElementById('wish-dev-filter'), 'developers', {
+        name: () => wf.devName,
+        set: (id, name) => { wf.devId = id; wf.devName = name; paintWishFilterState(); wishReleasesLoad(true); },
+    });
+    setupCompanyFilter(document.getElementById('wish-pub-filter'), 'publishers', {
+        name: () => wf.pubName,
+        set: (id, name) => { wf.pubId = id; wf.pubName = name; paintWishFilterState(); wishReleasesLoad(true); },
+    });
+}
+
+function paintWishFilterState() {
+    paintFilterWidget(WISH_FILTER_IDS, wf, 'wishFilterRemove');
+}
+
+function paintWishSortButton() {
+    const btn = document.getElementById('wish-sort-btn');
+    if (btn) btn.classList.toggle('on', !!wSort);
+    const label = document.getElementById('wish-sort-label');
+    if (label) {
+        const opt = X_SORTS.find(s => s[0] === wSort) || X_SORTS[0];
+        label.textContent = opt[1] === 'Padrão' ? 'Ordenar' : opt[1];
+    }
+}
+
+function paintWishTools() {
+    paintWishSortButton();
+    paintWishFilterState();
+}
+
+export function wishFilterToggle() {
+    fillWishFilters();
+    const panel = document.getElementById('wish-x-filter-panel');
+    if (!panel) return;
+    const open = panel.hidden;
+    wishClosePanels();
+    panel.hidden = !open;
+    const btn = document.getElementById('wish-filter-btn');
+    if (btn) btn.setAttribute('aria-expanded', String(open));
+}
+
+export function wishSortToggle() {
+    fillWishFilters();
+    const panel = document.getElementById('wish-x-sort-panel');
+    if (!panel) return;
+    const open = panel.hidden;
+    wishClosePanels();
+    if (open) panel.innerHTML = sortPanelHtml(wSort, 'wishSort', 'Ordenar por', 'wishClosePanels');
+    panel.hidden = !open;
+    const btn = document.getElementById('wish-sort-btn');
+    if (btn) btn.setAttribute('aria-expanded', String(open));
+}
+
+// Filtrar é consulta ao servidor: volta para a 1ª página com o filtro aplicado
+export function wishFilterGenre(v) {
+    wf.genre = v || '';
+    const el = document.getElementById('wish-x-genre');
+    if (el) el.value = wf.genre;
+    paintWishFilterState();
+    wishReleasesLoad(true);
+}
+
+export function wishFilterPlat(v) {
+    wf.plat = v || '';
+    const el = document.getElementById('wish-x-plat');
+    if (el) el.value = wf.plat;
+    paintWishFilterState();
+    wishReleasesLoad(true);
+}
+
+export function wishFilterRemove(kind) {
+    if (kind === 'genre') { wf.genre = ''; const el = document.getElementById('wish-x-genre'); if (el) el.value = ''; }
+    if (kind === 'plat') { wf.plat = ''; const el = document.getElementById('wish-x-plat'); if (el) el.value = ''; }
+    if (kind === 'dev') { wf.devId = 0; wf.devName = ''; const el = document.querySelector('#wish-dev-filter input'); if (el) el.value = ''; }
+    if (kind === 'pub') { wf.pubId = 0; wf.pubName = ''; const el = document.querySelector('#wish-pub-filter input'); if (el) el.value = ''; }
+    paintWishFilterState();
+    wishReleasesLoad(true);
+}
+
+export function wishFilterClear() {
+    wf.genre = ''; wf.plat = ''; wf.devId = 0; wf.devName = ''; wf.pubId = 0; wf.pubName = '';
+    const gs = document.getElementById('wish-x-genre'); if (gs) gs.value = '';
+    const ps = document.getElementById('wish-x-plat'); if (ps) ps.value = '';
+    const di = document.querySelector('#wish-dev-filter input'); if (di) di.value = '';
+    const pi = document.querySelector('#wish-pub-filter input'); if (pi) pi.value = '';
+    paintWishFilterState();
+    wishReleasesLoad(true);
+}
+
+// Ordenar é no cliente, sobre o que já está na grade (não gasta requisição)
+export function wishSort(kind) {
+    wSort = X_SORTS.some(s => s[0] === kind) ? kind : '';
+    const panel = document.getElementById('wish-x-sort-panel');
+    if (panel) panel.hidden = true;
+    const btn = document.getElementById('wish-sort-btn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+    paintWishReleases();
 }
 
 /* ---------------- lançamentos ---------------- */
@@ -78,11 +229,20 @@ function keepUpcoming(g) {
 }
 
 async function fetchWishReleases(page) {
-    const res = await listGames(exploreParams('releases', page));   // -added: os mais esperados primeiro
+    const params = exploreParams('releases', page);   // -added: os mais esperados primeiro
+    applyFilterParams(params, wf);                    // gênero/plataforma/estúdio vão na consulta
+    const res = await listGames(params);
     const items = res.items.filter(g => gmIsClean(g) && g.image && keepUpcoming(g));
     // A página do jogo (gmXOpen) e o botão da capa usam este mapa — o item daqui precisa estar nele
     items.forEach(g => exploreById.set(g.rawgId, g));
     return { items, more: res.more };
+}
+
+// Filtro local (acompanha o do servidor) + ordenação escolhida
+function shownReleases() {
+    const byGenre = wf.genre ? rel.items.filter(g => gmGenreMatch(g, wf.genre)) : rel.items;
+    const byPlat = wf.plat ? byGenre.filter(g => gmPlatMatch(g, wf.plat)) : byGenre;
+    return sortBy(byPlat, wSort);
 }
 
 const inWishlist = g => (appData.wishlist || []).some(w =>
@@ -114,6 +274,7 @@ function releaseCard(g) {
 }
 
 function paintWishReleases() {
+    paintWishTools();
     const grid = document.getElementById('wish-releases-grid');
     if (!grid) return;
     if (rel.error) {
@@ -121,20 +282,26 @@ function paintWishReleases() {
         return;
     }
     if (!rel.loaded) { grid.innerHTML = '<div class="gm-loading">Buscando os lançamentos...</div>'; return; }
-    if (!rel.items.length) {
-        grid.innerHTML = '<div class="gm-empty"><p>Nenhum lançamento para mostrar agora.</p><button type="button" class="gm-cta" onclick="wishReleasesLoad(true)">Tentar de novo</button></div>';
+    const items = shownReleases();
+    if (!items.length) {
+        // Com filtro ativo a saída é limpá-los; sem filtro, é tentar de novo
+        grid.innerHTML = hasWishFilters()
+            ? '<div class="gm-empty"><p>Nenhum lançamento com esses filtros.</p><button type="button" class="gm-cta" onclick="wishFilterClear()">Limpar filtros</button></div>'
+            : '<div class="gm-empty"><p>Nenhum lançamento para mostrar agora.</p><button type="button" class="gm-cta" onclick="wishReleasesLoad(true)">Tentar de novo</button></div>';
         return;
     }
     const foot = rel.more
         ? '<div class="gm-x-more"><button type="button" class="gm-cta" onclick="wishReleasesMore()">Carregar mais lançamentos</button></div>'
         : '<div class="gm-x-more gm-note">Esses são os lançamentos de agora — volte depois para ver as novidades.</div>';
-    grid.innerHTML = rel.items.map(releaseCard).join('') + foot;
+    grid.innerHTML = items.map(releaseCard).join('') + foot;
 }
 
 export async function wishReleasesLoad(force = false) {
-    if (rel.busy) return;
+    // trocou de filtro no meio de uma busca: refaz assim que a atual terminar (senão o filtro se perdia)
+    if (rel.busy) { if (force) rel.again = true; return; }
     if (rel.loaded && !force) { paintWishReleases(); return; }
     rel.busy = true;
+    rel.again = false;
     rel.error = '';
     rel.loaded = false;
     paintWishReleases();   // "Buscando os lançamentos..."
@@ -151,6 +318,7 @@ export async function wishReleasesLoad(force = false) {
     } finally {
         rel.busy = false;
         paintWishReleases();
+        if (rel.again) { rel.again = false; wishReleasesLoad(true); }
     }
 }
 

@@ -683,18 +683,8 @@ async function fetchExplorePage(cat, append) {
     const state = exploreState[cat] || (exploreState[cat] = { page: 0, items: [], more: true });
     state.page++;
     const params = exploreParams(cat, state.page);
-    // Filtros de gênero/plataforma viram parâmetros da busca (servidor), não só corte local:
-    if (xFilters.genre) {
-        const m = GENRE_RAWG[xFilters.genre];
-        if (m && m.genre) { params.genres = m.genre; delete params.tags; }
-        else if (m && m.tag) { params.tags = m.tag; delete params.genres; }
-    }
-    if (xFilters.plat) {
-        const ids = PLAT_RAWG_IDS[xFilters.plat];
-        if (ids) params.platforms = ids.join(',');
-    }
-    if (xFilters.devId) params.developers = xFilters.devId;   // estúdio escolhido no autocomplete
-    if (xFilters.pubId) params.publishers = xFilters.pubId;   // publicadora escolhida no autocomplete
+    // Filtros de gênero/plataforma viram parâmetros da busca (servidor), não só corte local
+    applyFilterParams(params, xFilters);
     const res = await listGames(params);
     let items = res.items.filter(g => gmIsClean(g) && g.image && (cat === 'releases' || !farFuture(g)));   // 2030 só na aba Lançamentos
     if (cat === 'releases') {
@@ -714,6 +704,82 @@ const xFilters = { genre: '', plat: '', devId: 0, devName: '', pubId: 0, pubName
 let xSort = '';   // '' = ordem natural da categoria (a que veio da RAWG)
 export function gmXFilterGenre(v) { xFilters.genre = v; paintFilterState(); gmExplore(exploreCat); }   // rebusca com o filtro no servidor
 export function gmXFilterPlat(v) { xFilters.plat = v; paintFilterState(); gmExplore(exploreCat); }
+
+// ---------- Filtros/ordenação reaproveitáveis ----------
+// A aba Lançamentos da wishlist (js/wishview.js) usa EXATAMENTE os mesmos filtros e
+// ordenações do Explorar. Em vez de duplicar as regras, tudo mora aqui e é exportado.
+export const X_FILTER_IDS = { chips: 'gm-filter-chips', badge: 'gm-filter-badge', btn: 'gm-filter-btn', clear: 'gm-filter-clear', foot: 'gm-filter-foot' };
+
+// Filtro escolhido -> parâmetros da busca da RAWG (gênero vira genres OU tags, sem os dois)
+export function filterParams(f = xFilters) {
+    const p = {};
+    if (f.genre) {
+        const m = GENRE_RAWG[f.genre];
+        if (m && m.genre) p.genres = m.genre;
+        else if (m && m.tag) p.tags = m.tag;
+    }
+    if (f.plat && PLAT_RAWG_IDS[f.plat]) p.platforms = PLAT_RAWG_IDS[f.plat].join(',');
+    if (f.devId) p.developers = f.devId;   // estúdio escolhido no autocomplete
+    if (f.pubId) p.publishers = f.pubId;   // publicadora escolhida no autocomplete
+    return p;
+}
+
+export function applyFilterParams(params, f = xFilters) {
+    const extra = filterParams(f);
+    if (extra.genres) delete params.tags;
+    if (extra.tags) delete params.genres;
+    return Object.assign(params, extra);
+}
+
+// Corte local que acompanha o filtro do servidor (a RAWG devolve nomes com sinônimos)
+export const gmGenreMatch = (g, genre) => !genre || profileGenreOf(g).includes(genre);
+export const gmPlatMatch = (g, plat) => {
+    if (!plat) return true;
+    const kws = PLAT_KEYWORDS[plat] || [];
+    return (g.platforms || []).some(p => {
+        const np = normText(p);
+        return np === normText(plat) || np.includes(normText(plat)) || kws.some(k => np.includes(k));
+    });
+};
+
+// Opções dos selects do painel de filtros
+export function genreOptionsHtml() {
+    return '<option value="">Todos os gêneros</option>'
+        + '<optgroup label="Gêneros">' + GM_GENRES.map(g => `<option value="${g}">${g}</option>`).join('') + '</optgroup>'
+        + '<optgroup label="Estilos (Steam)">' + GM_X_STYLES.map(g => `<option value="${g}">${g}</option>`).join('') + '</optgroup>';
+}
+export function platformOptionsHtml() {
+    return '<option value="">Todas as plataformas</option>' + GM_PLATFORMS.map(p => `<option value="${p}">${p}</option>`).join('');
+}
+
+// Chips dos filtros ativos + badge de contagem + botão limpar (só o rodapé do painel)
+export function filterChips(f) {
+    const chips = [];
+    if (f.genre) chips.push(['genre', `Gênero: ${f.genre}`]);
+    if (f.plat) chips.push(['plat', `Plataforma: ${f.plat}`]);
+    if (f.devName) chips.push(['dev', `Dev: ${f.devName}`]);
+    if (f.pubName) chips.push(['pub', `Pub: ${f.pubName}`]);
+    return chips;
+}
+
+// ids: { chips, badge, btn, clear, foot } — removeFn: nome da função global que tira o filtro
+export function paintFilterWidget(ids, f, removeFn) {
+    const chips = filterChips(f);
+    const wrap = document.getElementById(ids.chips);
+    if (wrap) wrap.innerHTML = chips.map(([k, label]) => `<span class="gm-x-chip">${esc(label)}<button type="button" title="Remover" aria-label="Remover ${esc(label)}" onclick="${removeFn}('${k}')">${icon('x', { size: '0.9em' })}</button></span>`).join('');
+    const badge = document.getElementById(ids.badge);
+    if (badge) { badge.hidden = !chips.length; badge.textContent = chips.length || ''; }
+    const btn = document.getElementById(ids.btn);
+    if (btn) btn.classList.toggle('on', chips.length > 0);
+    const clear = document.getElementById(ids.clear);
+    if (clear) clear.hidden = !chips.length;
+    // o rodapé (chips + limpar) só existe quando há filtro ativo: sem isso sobrava
+    // uma linha vazia com só a borda de cima no fim do painel
+    const foot = document.getElementById(ids.foot);
+    if (foot) foot.classList.toggle('is-empty', !chips.length);
+    if (DEPS.hydrateIcons && wrap) DEPS.hydrateIcons(wrap);
+    return chips;
+}
 
 // ---------- Botões Filtros/Ordenar + painéis (Explorar) ----------
 // Fecha os dois painéis de uma vez (usado pelo X, pelo clique fora e pelo Esc).
@@ -778,7 +844,7 @@ document.addEventListener('keydown', e => {
 }, true);
 
 // Opções de ordenação (client-side, sobre os jogos já carregados na categoria)
-const X_SORTS = [
+export const X_SORTS = [
     ['', 'Padrão', 'a ordem da categoria escolhida'],
     ['az', 'A → Z', 'título em ordem alfabética'],
     ['za', 'Z → A', 'título de trás para frente'],
@@ -788,18 +854,27 @@ const X_SORTS = [
     ['old', 'Mais antigos', 'data de lançamento'],
 ];
 
+// HTML do painel de ordenação — fnName é a função global chamada ao escolher (gmXSort,
+// wishSort...) e closeFn (opcional) pinta o X do cabeçalho já com o clique certo.
+export function sortPanelHtml(current, fnName = 'gmXSort', title = 'Ordenar por', closeFn = '') {
+    const close = closeFn
+        ? `<button type="button" class="gm-x-close" aria-label="Fechar ordenação" onclick="${closeFn}()">${icon('x', { size: '1em' })}</button>`
+        : `<button type="button" class="gm-x-close" aria-label="Fechar ordenação" data-x-close>${icon('x', { size: '1em' })}</button>`;
+    return `<div class="gm-x-panel-head">
+            <strong class="gm-x-title">${esc(title)}</strong>
+            ${close}
+        </div>
+        <div class="gm-x-sorts">${X_SORTS.map(([k, label, hint]) => `
+        <button type="button" class="gm-x-sort-btn${k === current ? ' on' : ''}" data-sort="${k}" onclick="${fnName}('${k}')">
+            <span class="gm-sort-name">${esc(label)}</span><small>${esc(hint)}</small><span class="gm-sort-tick">${icon('check', { size: '1em' })}</span>
+        </button>`).join('')}</div>`;
+}
+
 function fillSortPanel() {
     const panel = document.getElementById('gm-x-sort-panel');
     if (!panel || panel.dataset.done) return;
     panel.dataset.done = '1';
-    panel.innerHTML = `<div class="gm-x-panel-head">
-            <strong class="gm-x-title">Ordenar por</strong>
-            <button type="button" class="gm-x-close" aria-label="Fechar ordenação" data-x-close>${icon('x', { size: '1em' })}</button>
-        </div>
-        <div class="gm-x-sorts">${X_SORTS.map(([k, label, hint]) => `
-        <button type="button" class="gm-x-sort-btn${k === xSort ? ' on' : ''}" data-sort="${k}" onclick="gmXSort('${k}')">
-            <span class="gm-sort-name">${esc(label)}</span><small>${esc(hint)}</small><span class="gm-sort-tick">${icon('check', { size: '1em' })}</span>
-        </button>`).join('')}</div>`;
+    panel.innerHTML = sortPanelHtml(xSort, 'gmXSort');
     if (DEPS.hydrateIcons) DEPS.hydrateIcons(panel);
 }
 
@@ -823,37 +898,21 @@ export function gmXSort(kind) {
 const sortScore = g => (g.metacritic || 0) || Math.round((g.rating || 0) * 20);
 const sortReleased = g => (g.released ? new Date(g.released).getTime() : 0);
 
-function applyXSort(items) {
+// Ordenação no cliente sobre a lista já carregada (mesmas opções no Explorar e na wishlist)
+export function sortBy(items, kind = xSort) {
     const arr = [...items];
-    if (xSort === 'az') return arr.sort((a, b) => String(a.title).localeCompare(String(b.title)));
-    if (xSort === 'za') return arr.sort((a, b) => String(b.title).localeCompare(String(a.title)));
-    if (xSort === 'mc') return arr.sort((a, b) => sortScore(b) - sortScore(a));
-    if (xSort === 'added') return arr.sort((a, b) => (b.added || 0) - (a.added || 0));
-    if (xSort === 'new') return arr.sort((a, b) => sortReleased(b) - sortReleased(a));
-    if (xSort === 'old') return arr.sort((a, b) => sortReleased(a) - sortReleased(b));
+    if (kind === 'az') return arr.sort((a, b) => String(a.title).localeCompare(String(b.title)));
+    if (kind === 'za') return arr.sort((a, b) => String(b.title).localeCompare(String(a.title)));
+    if (kind === 'mc') return arr.sort((a, b) => sortScore(b) - sortScore(a));
+    if (kind === 'added') return arr.sort((a, b) => (b.added || 0) - (a.added || 0));
+    if (kind === 'new') return arr.sort((a, b) => sortReleased(b) - sortReleased(a));
+    if (kind === 'old') return arr.sort((a, b) => sortReleased(a) - sortReleased(b));
     return arr;   // padrão: a ordem que veio da categoria (hype, match, data...)
 }
 
 // Chips dos filtros ativos + badge de contagem + botão limpar
 function paintFilterState() {
-    const chips = [];
-    if (xFilters.genre) chips.push(['genre', `Gênero: ${xFilters.genre}`]);
-    if (xFilters.plat) chips.push(['plat', `Plataforma: ${xFilters.plat}`]);
-    if (xFilters.devName) chips.push(['dev', `Dev: ${xFilters.devName}`]);
-    if (xFilters.pubName) chips.push(['pub', `Pub: ${xFilters.pubName}`]);
-    const wrap = document.getElementById('gm-filter-chips');
-    if (wrap) wrap.innerHTML = chips.map(([k, label]) => `<span class="gm-x-chip">${esc(label)}<button type="button" title="Remover" aria-label="Remover ${esc(label)}" onclick="gmXFilterRemove('${k}')">${icon('x', { size: '0.9em' })}</button></span>`).join('');
-    const badge = document.getElementById('gm-filter-badge');
-    if (badge) { badge.hidden = !chips.length; badge.textContent = chips.length || ''; }
-    const btn = document.getElementById('gm-filter-btn');
-    if (btn) btn.classList.toggle('on', chips.length > 0);
-    const clear = document.getElementById('gm-filter-clear');
-    if (clear) clear.hidden = !chips.length;
-    // o rodapé (chips + limpar) só existe quando há filtro ativo: sem isso sobrava
-    // uma linha vazia com só a borda de cima no fim do painel
-    const foot = document.getElementById('gm-filter-foot');
-    if (foot) foot.classList.toggle('is-empty', !chips.length);
-    if (DEPS.hydrateIcons && wrap) DEPS.hydrateIcons(wrap);
+    paintFilterWidget(X_FILTER_IDS, xFilters, 'gmXFilterRemove');
 }
 
 export function gmXFilterRemove(kind) {
@@ -881,12 +940,16 @@ function fillExploreFilters() {
     bar.dataset.done = '1';
     const gs = document.getElementById('gm-x-genre');
     const ps = document.getElementById('gm-x-plat');
-    if (gs) gs.innerHTML = '<option value="">Todos os gêneros</option>'
-        + '<optgroup label="Gêneros">' + GM_GENRES.map(g => `<option value="${g}">${g}</option>`).join('') + '</optgroup>'
-        + '<optgroup label="Estilos (Steam)">' + GM_X_STYLES.map(g => `<option value="${g}">${g}</option>`).join('') + '</optgroup>';
-    if (ps) ps.innerHTML = '<option value="">Todas as plataformas</option>' + GM_PLATFORMS.map(p => `<option value="${p}">${p}</option>`).join('');
-    setupCompanyFilter(document.getElementById('gm-dev-filter'), 'developers');
-    setupCompanyFilter(document.getElementById('gm-pub-filter'), 'publishers');
+    if (gs) gs.innerHTML = genreOptionsHtml();
+    if (ps) ps.innerHTML = platformOptionsHtml();
+    setupCompanyFilter(document.getElementById('gm-dev-filter'), 'developers', {
+        name: () => xFilters.devName,
+        set: (id, name) => { xFilters.devId = id; xFilters.devName = name; gmExplore(exploreCat); },
+    });
+    setupCompanyFilter(document.getElementById('gm-pub-filter'), 'publishers', {
+        name: () => xFilters.pubName,
+        set: (id, name) => { xFilters.pubId = id; xFilters.pubName = name; gmExplore(exploreCat); },
+    });
     paintFilterState();
     // Os painéis de Filtros e Ordenar moram no HTML: na primeira pintura garantimos
     // que eles existem e nascem fechados (abrir um fecha o outro).
@@ -899,24 +962,20 @@ function fillExploreFilters() {
 // ---------- Filtro de desenvolvedora/publicadora com autocomplete ----------
 // A RAWG tem ~465 mil estúdios, então não dá para baixar uma lista fixa: o usuário
 // digita 2+ letras, busca na API e escolhe na lista de sugestões que abre embaixo.
-function setupCompanyFilter(wrap, kind) {
+// ctl: { name() -> filtro atual, set(id, nome) -> aplica o filtro escolhido }.
+export function setupCompanyFilter(wrap, kind, ctl) {
     if (!wrap || wrap.dataset.done) return;
     wrap.dataset.done = '1';
     const input = wrap.querySelector('input');
     if (!input) return;
-    const isDev = kind === 'developers';
     const list = document.createElement('div');
     list.className = 'gm-co-list';
     list.hidden = true;
     list.addEventListener('mousedown', e => e.preventDefault());   // clicar numa sugestão não desfoca o campo
     document.body.appendChild(list);   // fixo na tela: não fica preso no overflow da barra de filtros
     let timer = null, seq = 0;
-    const curName = () => isDev ? xFilters.devName : xFilters.pubName;
-    const apply = (id, name) => {
-        if (isDev) { xFilters.devId = id; xFilters.devName = name; }
-        else { xFilters.pubId = id; xFilters.pubName = name; }
-        gmExplore(exploreCat);
-    };
+    const curName = () => ctl.name();
+    const apply = (id, name) => ctl.set(id, name);
     const close = () => { list.hidden = true; list.innerHTML = ''; };
     const openAt = () => {
         const r = input.getBoundingClientRect();
@@ -967,17 +1026,8 @@ function paintExplore(cat) {
     const state = exploreState[cat];
     if (!grid || !state) return;
     // filtros de client-side (gênero/plataforma) valem para todas as abas
-    const iw = xFilters.genre ? state.items.filter(g => profileGenreOf(g).includes(xFilters.genre)) : state.items;
-    // Plataforma: a RAWG devolve nomes como "Android"/"iOS"/"PC" — o filtro antigo comparava
-    // "mobile" com esses nomes (nunca dava match) e a grade ficava vazia. Usa os apelidos.
-    const platMatch = g => {
-        const kws = PLAT_KEYWORDS[xFilters.plat] || [];
-        return (g.platforms || []).some(p => {
-            const np = normText(p);
-            return np === normText(xFilters.plat) || np.includes(normText(xFilters.plat)) || kws.some(k => np.includes(k));
-        });
-    };
-    const shown = applyXSort(xFilters.plat ? iw.filter(platMatch) : iw);
+    const iw = xFilters.genre ? state.items.filter(g => gmGenreMatch(g, xFilters.genre)) : state.items;
+    const shown = sortBy(xFilters.plat ? iw.filter(g => gmPlatMatch(g, xFilters.plat)) : iw);
     const moreBtn = state.more ? `<div class="gm-x-more"><button type="button" class="gm-cta" onclick="gmXMore()">Carregar mais jogos</button></div>` : (state.items.length ? `<div class="gm-x-more gm-note">Chegamos ao fim por aqui — troque de categoria para descobrir mais.</div>` : '');
     if (!shown.length) { grid.innerHTML = `<div class="gm-empty"><p>Nenhum jogo com esses filtros${state.more ? ' — toque em "Carregar mais jogos" para ampliar' : ''}.</p></div>` + moreBtn; return; }
     grid.innerHTML = shown.map(exploreCardHtml).join('') + moreBtn;

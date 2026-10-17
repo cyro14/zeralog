@@ -372,6 +372,64 @@ export function togglePortableFilter() {
     render();
 }
 
+// ---------- Ordenação da Fila: botão + painel (mesmo padrão do Explorar) ----------
+// Opções na ordem em que aparecem no painel. Chave = o mesmo valor de settings.sort.
+const HOME_SORTS = [
+    ['manual', 'Manual', 'a ordem em que você arrastou'],
+    ['az', 'A-Z', 'título em ordem alfabética'],
+    ['meta', 'Nota', 'a nota que você deu ao jogo'],
+    ['time', 'Tempo p/ zerar', 'tempo estimado para terminar'],
+    ['played', 'Tempo jogado', 'horas já jogadas'],
+    ['close', 'Perto de zerar', 'quanto falta para terminar'],
+];
+
+function homeSortPanelHtml() {
+    const cur = appData.settings.sort;
+    return `<div class="gm-x-panel-head">
+            <strong class="gm-x-title">Ordenar a fila</strong>
+            <button type="button" class="gm-x-close" aria-label="Fechar ordenação" onclick="homeSortClose()">${icon('x', { size: '1em' })}</button>
+        </div>
+        <div class="gm-x-sorts">${HOME_SORTS.map(([k, label, hint]) => `
+        <button type="button" class="gm-x-sort-btn${k === cur ? ' on' : ''}" data-sort="${k}" onclick="setHomeSort('${k}')">
+            <span class="gm-sort-name">${esc(label)}</span><small>${esc(hint)}</small><span class="gm-sort-tick">${icon('check', { size: '1em' })}</span>
+        </button>`).join('')}</div>`;
+}
+
+// O botão mostra a ordem ativa (e a seta), como faziam os chips antigos
+function paintHomeSort() {
+    const s = appData.settings.sort;
+    const btn = document.getElementById('home-sort-btn');
+    if (btn) btn.classList.toggle('on', s !== 'manual');
+    const label = document.getElementById('home-sort-label');
+    if (label) label.textContent = s === 'manual' ? 'Ordenar' : `${homeSortLabels[s] || 'Ordenar'} ${appData.settings.homeSortDir === 'asc' ? '↑' : '↓'}`;
+}
+
+export function homeSortClose() {
+    const panel = document.getElementById('home-sort-panel');
+    if (panel) panel.hidden = true;
+    const btn = document.getElementById('home-sort-btn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+export function homeSortToggle() {
+    const panel = document.getElementById('home-sort-panel');
+    if (!panel) return;
+    const open = panel.hidden;
+    if (open) panel.innerHTML = homeSortPanelHtml();   // nasce com a ordem atual marcada
+    panel.hidden = !open;
+    const btn = document.getElementById('home-sort-btn');
+    if (btn) btn.setAttribute('aria-expanded', String(open));
+}
+
+// Clique fora fecha o painel (sem fechar ao clicar no próprio botão, que alterna)
+document.addEventListener('click', e => {
+    const panel = document.getElementById('home-sort-panel');
+    if (!panel || panel.hidden) return;
+    const t = e.target;
+    if (t && t.closest && (t.closest('#home-sort-panel') || t.closest('#home-sort-btn'))) return;
+    homeSortClose();
+}, true);
+
 export function setHomeSort(type) {
     if (appData.settings.sort === type && type !== 'manual') {
         appData.settings.homeSortDir = appData.settings.homeSortDir === 'desc' ? 'asc' : 'desc';
@@ -379,26 +437,9 @@ export function setHomeSort(type) {
         appData.settings.sort = type;
         appData.settings.homeSortDir = (type === 'az' || type === 'time' || type === 'close') ? 'asc' : 'desc';
     }
+    homeSortClose();
     saveData(() => render());
 }
-
-// Chip "Tempo": abre o menu com as 3 formas de ordenação por tempo
-export function toggleTimeSortMenu(ev) {
-    ev && ev.stopPropagation();
-    const m = document.getElementById('sort-time-menu');
-    if (m) m.hidden = !m.hidden;
-}
-// Reforço: se o click inline falhar em qualquer navegador, a delegação cobre o chip
-document.addEventListener('click', e => {
-    if (e.target && e.target.id === 'sort-home-time') toggleTimeSortMenu(e);
-    if (e.target && e.target.dataset && e.target.dataset.tsort) setTimeSort(e.target.dataset.tsort);
-});
-export function setTimeSort(kind) {
-    const m = document.getElementById('sort-time-menu');
-    if (m) m.hidden = true;
-    setHomeSort(kind);
-}
-document.addEventListener('click', () => { const m = document.getElementById('sort-time-menu'); if (m && !m.hidden) m.hidden = true; });
 
 export function setFinishedSort(type) {
     if (appData.settings.finishedSort === type) {
@@ -421,21 +462,8 @@ export function toggleCollapse(id, event) {
 }
 
 export function render() {
-    // chips simples: Manual, A-Z e Nota
-    const s = appData.settings.sort;
-    ['manual', 'az', 'meta'].forEach(k => {
-        const el = document.getElementById(`sort-home-${k}`);
-        if (!el) return;
-        el.classList.toggle('active', s === k);
-        el.innerText = homeSortLabels[k] + (s === k && k !== 'manual' ? (appData.settings.homeSortDir === 'asc' ? ' ↑' : ' ↓') : '');
-    });
-    // seletor de tempo: mostra a forma atual (zerar/jogado/perto de zerar)
-    const timeChip = document.getElementById('sort-home-time');
-    const isTimeKind = ['time', 'played', 'close'].includes(s);
-    if (timeChip) {
-        timeChip.classList.toggle('active', !!isTimeKind);
-        timeChip.value = isTimeKind ? s : '';
-    }
+    // ordenação da fila: o botão mostra a ordem ativa (o painel é montado ao abrir)
+    paintHomeSort();
 
     const containerHome = document.getElementById('app-container'); 
     const finishedContainer = document.getElementById('finished-list-container');

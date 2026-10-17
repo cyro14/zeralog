@@ -4,8 +4,11 @@ import { test, assert, assertEq, elById, mockFetch, sleep } from './shim.mjs';
 import { appData } from '../js/store.js';
 import { initGameMatch, exploreById } from '../js/gamematch.js';
 import {
-    wishSub, wishSubShow, syncWishView, wishReleasesLoad, wishReleasesMore, wishReleasesAdd, wishReleasesState, initWishView
+    wishSub, wishSubShow, syncWishView, wishReleasesLoad, wishReleasesMore, wishReleasesAdd, wishReleasesState, initWishView,
+    wishFilterToggle, wishSortToggle, wishFilterGenre, wishFilterPlat, wishFilterClear, wishSort,
+    wishFiltersState, wishSortState
 } from '../js/wishview.js';
+import { gmXFilterGenre, gmXFilterClear } from '../js/gamematch.js';
 import { renderWishlist } from '../js/ui.js';
 
 initWishView({ toast: () => {} });   // silencia os avisos (o app injeta o toast de verdade no main.js)
@@ -192,4 +195,104 @@ test('Wish list vazia: a mensagem ensina as duas telas em vez de deixar um texto
     assert(box.includes('+ Desejo'), 'aponta o botão de cadastrar');
     assert(box.includes('Lançamentos'), 'e a outra tela da aba');
     assertEq(elById('wish-summary').innerHTML, '', 'sem jogos, nenhum resumo sobrando no topo');
+});
+
+// ---------- Lançamentos: os filtros e ordenações do Explorar, aqui dentro ----------
+const clearWishKeys = () => Object.assign(wishFiltersState(), { genre: '', plat: '', devId: 0, devName: '', pubId: 0, pubName: '' });
+
+test('Lançamentos: filtros e ordenações do Explorar, com estado próprio', async () => {
+    resetReleases();
+    clearWishKeys();
+    const urls = [];
+    mockFetch([['/api/games?', u => {
+        urls.push(decodeURIComponent(u));
+        return { count: 3, next: null, results: [
+            RAW(21, 'Zelda do Futuro', inDays(30), { added: 500, metacritic: 90 }),
+            RAW(22, 'Astro Lançamento', inDays(60), { added: 900, metacritic: 95, platforms: [{ platform: { name: 'PlayStation 5' } }] }),
+            RAW(23, 'Minecraft 2', inDays(90), { added: 7000, metacritic: 80 }),
+        ] };
+    }]]);
+    await wishReleasesLoad(true);   // ordem do servidor: Zelda, Astro, Minecraft (hype)
+
+    // os dois painéis são os mesmos do Explorar (gênero/estilo, plataforma, estúdio, publicadora)
+    wishFilterToggle();
+    assertEq(elById('wish-x-filter-panel').hidden, false, 'o botão Filtros abre o painel');
+    assert(elById('wish-x-genre').innerHTML.includes('RPG'), 'select de gênero com a lista do Explorar');
+    assert(elById('wish-x-genre').innerHTML.includes('Metroidvania'), 'inclusive os estilos (Steam)');
+    assert(elById('wish-x-plat').innerHTML.includes('Nintendo Switch'), 'select de plataforma do Explorar');
+    wishSortToggle();
+    assertEq(elById('wish-x-sort-panel').hidden, false, 'o botão Ordenar abre o painel');
+    assertEq(elById('wish-x-filter-panel').hidden, true, 'abrir um fecha o outro');
+    const sp = elById('wish-x-sort-panel').innerHTML;
+    for (const label of ['Padrão', 'A → Z', 'Z → A', 'Melhor nota', 'Mais hypados', 'Mais recentes', 'Mais antigos'])
+        assert(sp.includes(label), `opção "${label}" importada do Explorar`);
+    assert(sp.includes("wishSort('az')"), 'as opções chamam a ordenação desta tela');
+    assert(sp.includes('gm-x-panel-head'), 'painel com cabeçalho, como no Explorar');
+
+    // ordenar é no cliente: muda a ordem e NÃO gasta requisição
+    const pos = t => grid().innerHTML.indexOf(t);
+    const before = urls.length;
+    wishSort('az');
+    assert(pos('Astro Lançamento') < pos('Minecraft 2') && pos('Minecraft 2') < pos('Zelda do Futuro'), 'A-Z reordena a grade');
+    assertEq(urls.length, before, 'ordenar não refaz a busca');
+    assertEq(elById('wish-sort-label').textContent, 'A → Z', 'o botão mostra a ordem ativa');
+    assert(elById('wish-sort-btn').classList.contains('on'), 'e fica marcado (como no Explorar)');
+    wishSort('added');
+    assert(pos('Minecraft 2') < pos('Astro Lançamento'), 'mais hypados primeiro');
+    wishSort('');
+    assert(pos('Zelda do Futuro') < pos('Astro Lançamento'), 'padrão volta à ordem da categoria');
+    assertEq(elById('wish-sort-label').textContent, 'Ordenar', 'e o rótulo volta ao neutro');
+
+    // filtrar é consulta ao servidor: o filtro vai na URL e volta para a 1ª página
+    wishFilterGenre('Aventura');
+    await sleep(10);
+    assert(urls[urls.length - 1].includes('genres=adventure'), 'gênero vai como parâmetro da busca (servidor)');
+    assert(elById('wish-filter-chips').innerHTML.includes('Gênero: Aventura'), 'chip do filtro ativo');
+    assertEq(elById('wish-filter-badge').textContent, '1', 'badge com 1 filtro');
+    assertEq(elById('wish-filter-badge').hidden, false, 'badge visível');
+    wishFilterPlat('PC');
+    await sleep(10);
+    assert(urls[urls.length - 1].includes('platforms=4'), 'plataforma vai como parâmetro da busca');
+    assert(!grid().innerHTML.includes('Astro Lançamento'), 'o corte local deixa só o que é PC');
+    assertEq(elById('wish-filter-badge').textContent, '2', 'dois filtros ativos');
+    wishFilterClear();
+    await sleep(20);
+    assertEq(elById('wish-filter-badge').hidden, true, 'badge some ao limpar');
+    assertEq(wishFiltersState().genre, '', 'gênero limpo');
+    assertEq(wishSortState(), '', 'ordenação no padrão');
+    assert(grid().innerHTML.includes('Astro Lançamento'), 'a grade volta completa');
+});
+
+test('Lançamentos: filtrar aqui não mexe nos filtros do Explorar', async () => {
+    resetReleases();
+    clearWishKeys();
+    mockFetch([['/api/games?', { count: 0, results: [], next: null }]]);
+    gmXFilterGenre('RPG');   // filtro ativo no Explorar
+    assert(elById('gm-filter-chips').innerHTML.includes('Gênero: RPG'), 'o Explorar marca o filtro dele');
+    wishFilterGenre('Aventura');
+    await sleep(20);
+    assert(elById('gm-filter-chips').innerHTML.includes('Gênero: RPG'), 'o Explorar continua como estava');
+    assert(!elById('gm-filter-chips').innerHTML.includes('Aventura'), 'o filtro da wishlist não vaza para o Explorar');
+    assert(elById('wish-filter-chips').innerHTML.includes('Aventura'), 'e o da wishlist fica na wishlist');
+    clearWishKeys();          // devolve os dois lados ao padrão (sem disparar busca)
+    gmXFilterClear();
+    await sleep(10);
+});
+
+test('Lançamentos: filtro sem resultado explica e oferece limpar', async () => {
+    resetReleases();
+    clearWishKeys();
+    wishSort('');
+    mockFetch([['/api/games?', { count: 1, next: null, results: [
+        RAW(31, 'Só Plataforma', inDays(20), { platforms: [{ platform: { name: 'Xbox One' } }] })
+    ] }]]);
+    await wishReleasesLoad(true);
+    wishFilterPlat('PC');
+    await sleep(10);
+    assert(grid().innerHTML.includes('Nenhum lançamento com esses filtros'), 'avisa que o filtro cortou tudo');
+    assert(grid().innerHTML.includes('wishFilterClear()'), 'e oferece limpar os filtros');
+    assert(!grid().innerHTML.includes('wishReleasesLoad(true)'), 'sem convidar a "tentar de novo" (o catálogo respondeu)');
+    wishFilterClear();
+    await sleep(20);
+    assert(grid().innerHTML.includes('Só Plataforma'), 'limpando, o lançamento volta');
 });
