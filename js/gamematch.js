@@ -715,13 +715,21 @@ export function gmXFilterGenre(v) { xFilters.genre = v; paintFilterState(); gmEx
 export function gmXFilterPlat(v) { xFilters.plat = v; paintFilterState(); gmExplore(exploreCat); }
 
 // ---------- Botões Filtros/Ordenar + painéis (Explorar) ----------
+// Fecha os dois painéis de uma vez (usado pelo X, pelo clique fora e pelo Esc).
+export function gmXClosePanels() {
+    for (const [pid, bid] of [['gm-x-filter-panel', 'gm-filter-btn'], ['gm-x-sort-panel', 'gm-sort-btn']]) {
+        const panel = document.getElementById(pid);
+        if (panel) panel.hidden = true;
+        const btn = document.getElementById(bid);
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+}
+
 export function gmXFilterToggle() {
     const panel = document.getElementById('gm-x-filter-panel');
-    const sortPanel = document.getElementById('gm-x-sort-panel');
     if (!panel) return;
     const open = panel.hidden;
-    if (sortPanel) sortPanel.hidden = true;
-    if (document.getElementById('gm-sort-btn')) document.getElementById('gm-sort-btn').setAttribute('aria-expanded', 'false');
+    gmXClosePanels();
     panel.hidden = !open;
     const btn = document.getElementById('gm-filter-btn');
     if (btn) btn.setAttribute('aria-expanded', String(open));
@@ -729,16 +737,20 @@ export function gmXFilterToggle() {
 
 export function gmXSortToggle() {
     const panel = document.getElementById('gm-x-sort-panel');
-    const filterPanel = document.getElementById('gm-x-filter-panel');
     if (!panel) return;
     const open = panel.hidden;
-    if (filterPanel) filterPanel.hidden = true;
-    if (document.getElementById('gm-filter-btn')) document.getElementById('gm-filter-btn').setAttribute('aria-expanded', 'false');
+    gmXClosePanels();
     if (open) fillSortPanel();
     panel.hidden = !open;
     const btn = document.getElementById('gm-sort-btn');
     if (btn) btn.setAttribute('aria-expanded', String(open));
 }
+
+// Botão X do cabeçalho dos painéis (delegado: o painel de ordenar é repintado)
+document.addEventListener('click', e => {
+    if (!e.target.closest || !e.target.closest('[data-x-close]')) return;
+    gmXClosePanels();
+});
 
 // Fecha os painéis ao clicar fora deles (ou nos botões um do outro)
 document.addEventListener('click', e => {
@@ -749,17 +761,19 @@ document.addEventListener('click', e => {
     // não pode fechar o painel de filtros
     const inside = e.target.closest && (e.target.closest('.gm-x-tools') || e.target.closest('.gm-co-list'));
     if (inside) return;
-    if (fp && !fp.hidden) { fp.hidden = true; const b = document.getElementById('gm-filter-btn'); if (b) b.setAttribute('aria-expanded', 'false'); }
-    if (sp && !sp.hidden) { sp.hidden = true; const b = document.getElementById('gm-sort-btn'); if (b) b.setAttribute('aria-expanded', 'false'); }
+    gmXClosePanels();
 }, true);
 document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     let closed = false;
     for (const pid of ['gm-x-filter-panel', 'gm-x-sort-panel']) {
         const p = document.getElementById(pid);
-        if (p && !p.hidden) { p.hidden = true; closed = true; const b = document.getElementById(pid === 'gm-x-filter-panel' ? 'gm-filter-btn' : 'gm-sort-btn'); if (b) b.setAttribute('aria-expanded', 'false'); }
+        if (p && !p.hidden) closed = true;
     }
-    if (closed) e.stopPropagation();   // Esc fecha o painel sem fechar a tela de trás
+    if (closed) {
+        gmXClosePanels();
+        e.stopPropagation();   // Esc fecha o painel sem fechar a tela de trás
+    }
 }, true);
 
 // Opções de ordenação (client-side, sobre os jogos já carregados na categoria)
@@ -777,9 +791,13 @@ function fillSortPanel() {
     const panel = document.getElementById('gm-x-sort-panel');
     if (!panel || panel.dataset.done) return;
     panel.dataset.done = '1';
-    panel.innerHTML = `<div class="gm-x-sorts">${X_SORTS.map(([k, label, hint]) => `
+    panel.innerHTML = `<div class="gm-x-panel-head">
+            <strong class="gm-x-title">Ordenar por</strong>
+            <button type="button" class="gm-x-close" aria-label="Fechar ordenação" data-x-close>${icon('x', { size: '1em' })}</button>
+        </div>
+        <div class="gm-x-sorts">${X_SORTS.map(([k, label, hint]) => `
         <button type="button" class="gm-x-sort-btn${k === xSort ? ' on' : ''}" data-sort="${k}" onclick="gmXSort('${k}')">
-            <span>${esc(label)}</span><small>${esc(hint)}</small><span class="gm-sort-tick">${icon('check', { size: '1em' })}</span>
+            <span class="gm-sort-name">${esc(label)}</span><small>${esc(hint)}</small><span class="gm-sort-tick">${icon('check', { size: '1em' })}</span>
         </button>`).join('')}</div>`;
     if (DEPS.hydrateIcons) DEPS.hydrateIcons(panel);
 }
@@ -792,7 +810,10 @@ export function gmXSort(kind) {
         panel.hidden = true;
     }
     const btn = document.getElementById('gm-sort-btn');
-    if (btn) btn.setAttribute('aria-expanded', 'false');
+    if (btn) {
+        btn.setAttribute('aria-expanded', 'false');
+        btn.classList.toggle('on', !!xSort);   // mesma marcação azul do botão Filtros
+    }
     const label = document.getElementById('gm-sort-label');
     if (label) label.textContent = (X_SORTS.find(s => s[0] === xSort) || X_SORTS[0])[1] === 'Padrão' ? 'Ordenar' : (X_SORTS.find(s => s[0] === xSort) || X_SORTS[0])[1];
     paintExplore(exploreCat);
@@ -827,6 +848,10 @@ function paintFilterState() {
     if (btn) btn.classList.toggle('on', chips.length > 0);
     const clear = document.getElementById('gm-filter-clear');
     if (clear) clear.hidden = !chips.length;
+    // o rodapé (chips + limpar) só existe quando há filtro ativo: sem isso sobrava
+    // uma linha vazia com só a borda de cima no fim do painel
+    const foot = document.getElementById('gm-filter-foot');
+    if (foot) foot.classList.toggle('is-empty', !chips.length);
     if (DEPS.hydrateIcons && wrap) DEPS.hydrateIcons(wrap);
 }
 

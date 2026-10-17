@@ -237,3 +237,32 @@ test('Buscador de capas: fechado, o dialog some (display só com [open])', () =>
     assert(tag, 'dialog#modal-covers existe no index.html');
     assert(!/style\s*=\s*"[^"]*display/.test(tag[0]), 'sem display inline no dialog do buscador');
 });
+
+// ---------- 12) GUARDA DO EXPLORAR: painéis de filtros/ordenação legíveis ----------
+// O painel esticava na largura toda (selects de 700px no desktop), os campos de
+// estúdio colavam um no outro e o rodapé vazio desenhava só a borda de cima.
+test('Explorar: painéis de filtros e ordenação com layout contido e campos alinhados', () => {
+    const css = read(join(ROOT, 'style.css'));
+    const rule = sel => { const at = css.indexOf(sel + ' {'); assert(at > -1, `regra ${sel} existe`); return css.slice(at, css.indexOf('}', at)); };
+    const panel = rule('.gm-x-panel');
+    assert(panel.includes('width: min(100%, 560px)'), 'painel com largura de leitura (não estica na tela toda)');
+    assert(panel.includes('max-height') && panel.includes('overflow-y: auto'), 'painel rola quando a lista não cabe');
+    assert(panel.includes('box-sizing: border-box'), 'painel sem estourar a largura por causa do padding');
+    const filters = rule('.gm-explore-filters');
+    assert(filters.includes('display: grid'), 'filtros em grade (gênero/plataforma em cima, estúdio/publicadora embaixo)');
+    assert(filters.includes('gap:'), 'grade dos filtros com respiro entre os campos');
+    assert(rule('.gm-x-f-row').includes('display: contents'), 'os selects entram direto na grade do painel');
+    // campos não podem somar padding à largura (foi o que estourava a linha no celular)
+    for (const sel of ['.gm-select', '.gm-co-input', '.gm-x-sort-btn'])
+        assert(rule(sel).includes('box-sizing: border-box'), `${sel} com box-sizing: border-box`);
+    // regressões de display vencendo o atributo hidden (bolinha azul vazia / rodapé fantasma)
+    assert(css.includes('.gm-tool-badge[hidden] { display: none; }'), 'badge de filtros some quando não há filtro ativo');
+    assert(css.includes('.gm-x-panel-foot.is-empty { display: none; }'), 'rodapé do painel some quando não há chip');
+    // celular: uma coluna só, sem espremer os campos
+    assert(/@media \(max-width: 520px\) \{[\s\S]*?\.gm-explore-filters \{ grid-template-columns: 1fr; \}/.test(css), 'no celular os filtros viram uma coluna');
+    // e o HTML acompanha: rodapé com id (o JS liga/desliga) e o X de fechar nos painéis
+    const html = read(join(ROOT, 'index.html'));
+    assert(html.includes('id="gm-filter-foot"'), 'index.html tem o rodapé #gm-filter-foot');
+    const panelAt = html.indexOf('id="gm-x-filter-panel"');
+    assert(panelAt > -1 && html.slice(panelAt, html.indexOf('id="gm-x-sort-panel"')).includes('data-x-close'), 'painel de filtros tem o botão X de fechar');
+});

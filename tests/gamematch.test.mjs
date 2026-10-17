@@ -203,7 +203,7 @@ test('Explorar: gmXSort ordena a grade no cliente (A-Z, nota, hype, data)', asyn
 
 test('Explorar: botões Filtros/Ordenar abrem painéis; badge e chips contam os filtros ativos', async () => {
     mockFetch([['/api/games?', { count: 0, results: [] }]]);
-    const { gmExplore, gmXFilterToggle, gmXSortToggle, gmXFilterGenre, gmXFilterClear, gmXSort } = await import('../js/gamematch.js');
+    const { gmExplore, gmXFilterToggle, gmXSortToggle, gmXFilterGenre, gmXFilterClear, gmXSort, gmXClosePanels } = await import('../js/gamematch.js');
     await gmExplore('top');
     const fp = elById('gm-x-filter-panel'), sp = elById('gm-x-sort-panel');
     fp.hidden = true; sp.hidden = true;
@@ -216,16 +216,34 @@ test('Explorar: botões Filtros/Ordenar abrem painéis; badge e chips contam os 
     gmXSortToggle();
     assert(sp.hidden === true, 'segundo clique fecha o painel');
     assert(elById('gm-x-sort-panel').innerHTML.includes('gm-x-sort-btn'), 'opções de ordenação pintadas');
+    assert(elById('gm-x-sort-panel').innerHTML.includes('gm-x-panel-head'), 'painel de ordenar tem cabeçalho com título');
+    assert(elById('gm-x-sort-panel').innerHTML.includes('gm-sort-name'), 'cada opção tem o nome em .gm-sort-name (dica ao lado/abaixo)');
+    // o X do cabeçalho fecha os dois painéis (gmXClosePanels é o que o clique usa)
+    gmXFilterToggle();
+    gmXClosePanels();
+    assert(fp.hidden === true && sp.hidden === true, 'fechar pelo X deixa os dois painéis fechados');
+    assert(elById('gm-filter-btn')['aria-expanded'] === 'false', 'botão Filtros volta para aria-expanded="false"');
     // filtro ativo: badge com a contagem, chip do gênero e botão de limpar
+    const foot = elById('gm-filter-foot');
+    assert(foot.classList.contains('is-empty'), 'sem filtro ativo o rodapé do painel fica escondido');
     gmXFilterGenre('RPG');
     const badge = elById('gm-filter-badge');
     assert(badge.hidden === false && badge.textContent === '1', 'badge com 1 filtro ativo');
     assert(elById('gm-filter-chips').innerHTML.includes('RPG'), 'chip do gênero ativo');
     assert(elById('gm-filter-clear').hidden === false, 'botão de limpar visível');
+    assert(!foot.classList.contains('is-empty'), 'com filtro ativo o rodapé (chips + limpar) aparece');
     gmXFilterClear();
     assert(elById('gm-filter-badge').hidden === true, 'badge some ao limpar');
     assert(!elById('gm-filter-chips').innerHTML.includes('RPG'), 'chip do gênero sai ao limpar');
+    assert(foot.classList.contains('is-empty'), 'rodapé some de novo ao limpar os filtros');
+    // a marcação de "ordem ativa" mora no próprio botão Ordenar
+    const sortBtn = elById('gm-sort-btn');
+    gmXSort('');
+    assert(!sortBtn.classList.contains('on'), 'ordem padrão: botão Ordenar sem marcação');
+    gmXSort('mc');
+    assert(sortBtn.classList.contains('on'), 'com ordem aplicada o botão Ordenar fica marcado');
     gmXSort('');   // deixa o padrão para os próximos testes
+    assert(!sortBtn.classList.contains('on'), 'voltar ao padrão tira a marcação do botão');
 });
 
 test('Explorar: capa vertical já achada (página do jogo) faz a wishlist/backlog nascerem RETRATO', async () => {

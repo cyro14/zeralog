@@ -177,6 +177,10 @@
                     <span data-icon="sort" data-size="1.05em"></span><span class="gm-tool-label" id="gm-sort-label">Ordenar</span>
                 </button>
                 <div class="gm-x-panel" id="gm-x-filter-panel" hidden>
+                    <div class="gm-x-panel-head">
+                        <strong class="gm-x-title">Filtrar por</strong>
+                        <button type="button" class="gm-x-close" aria-label="Fechar filtros" data-x-close><span data-icon="x" data-size="1em"></span></button>
+                    </div>
                     <div class="gm-explore-filters" id="gm-explore-filters">
                         <div class="gm-x-f-row">
                             <select class="gm-select" id="gm-x-genre" onchange="gmXFilterGenre(this.value)" aria-label="Filtrar por gênero">
@@ -193,7 +197,7 @@
                             <input type="text" class="gm-co-input" placeholder="Publicadora..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Filtrar por publicadora">
                         </div>
                     </div>
-                    <div class="gm-x-panel-foot">
+                    <div class="gm-x-panel-foot is-empty" id="gm-filter-foot">
                         <div class="gm-x-chips" id="gm-filter-chips"></div>
                         <button type="button" class="gm-x-clear" id="gm-filter-clear" onclick="gmXFilterClear()" hidden>Limpar filtros</button>
                     </div>

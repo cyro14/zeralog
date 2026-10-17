@@ -52,9 +52,15 @@ function makeEl() {
         innerHTML: '', className: '', id: '', value: '', hidden: false, files: [], dataset: {}, isConnected: true, _cls: [], _shown: 0, _texts: [],
         style: (() => { const s = {}; s.setProperty = (k, v) => { s[k] = v; }; s.getPropertyValue = k => s[k] || ''; s.removeProperty = k => { delete s[k]; }; return s; })(),
         classList: {
-            add(...c) { el._cls.push(...c); },
+            // como no DOM, cada classe aparece UMA vez (o toggle true repetido não duplica)
+            add(...c) { c.forEach(x => { if (!el._cls.includes(x)) el._cls.push(x); }); },
             remove(...c) { c.forEach(x => { const i = el._cls.indexOf(x); if (i > -1) el._cls.splice(i, 1); }); },
-            toggle(c, force) { const on = force === undefined ? !el._cls.includes(c) : !!force; if (on) el._cls.push(c); else { const i = el._cls.indexOf(c); if (i > -1) el._cls.splice(i, 1); } },
+            toggle(c, force) {
+                const on = force === undefined ? !el._cls.includes(c) : !!force;
+                const i = el._cls.indexOf(c);
+                if (on && i === -1) el._cls.push(c);
+                else if (!on && i > -1) el._cls.splice(i, 1);
+            },
             contains: c => el._cls.includes(c),
         },
         appendChild(c) { return c; }, addEventListener() {}, removeEventListener() {}, remove() {},
