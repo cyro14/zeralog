@@ -5,7 +5,8 @@ import { appData } from '../js/store.js';
 import { listGames } from '../js/gameApi.js';
 import {
     GM_GENRES, GM_X_STYLES, GM_PLATFORMS, GENRE_RAWG, PLAT_RAWG_IDS,
-    profileGenreOf, matchScore, gmIsClean, farFuture, renderGmProfile, exploreParams
+    profileGenreOf, matchScore, gmIsClean, farFuture, renderGmProfile, exploreParams,
+    releaseWindow, inReleaseWindow, RELEASES_MONTHS_BACK
 } from '../js/gamematch.js';
 
 test('integridade: TODO gênero do filtro do Explorar tem mapeamento para a RAWG', () => {
@@ -69,27 +70,48 @@ test('farFuture: datas futuras só valem quando o perfil pede lançamentos', () 
     assert(!farFuture({ released: '2030-06-01' }), 'perfil de lançamentos aceita o futuro');
 });
 
-// ---------- Lançamentos: janela de 3 anos, 40 por página, ordenados pelo hype ----------
+// ---------- Lançamentos: últimos meses até 3 anos à frente, 40 por página, hype ----------
 test('Lançamentos (releases): params ordenam pelo maior hype (RAWG -added)', () => {
-    const y = new Date().getFullYear();
-    const today = new Date().toISOString().slice(0, 10);
+    const w = releaseWindow();
     const p = exploreParams('releases', 1);
     assertEq(p.ordering, '-added', 'hype primeiro = quem tem mais "added" na RAWG (GTA VI, remakes no topo)');
     assert(!('exclude_additions' in p), 'sem exclude_additions: remakes são "addition" na RAWG e precisam aparecer');
-    assertEq(p.dates, `${today},${y + 3}-12-31`, 'janela do hoje até 3 anos à frente (anos seguintes incluídos)');
+    assertEq(p.dates, `${w.from},${w.to}`, 'janela dos últimos meses até 3 anos à frente');
     assertEq(p.page_size, 40, '40 por página');
-    // jogos que passam e que NÃO passam no filtro local de lançamentos
-    const maxY = y + 3;
-    const ok = { title: 'Dentro', released: `${maxY}-06-01`, image: 'https://x/capa.jpg', rawgId: 1, genres: [], tags: [], platforms: [] };
-    const tooFar = { title: 'Longe demais', released: `${maxY + 1}-01-01`, image: 'https://x/capa.jpg', rawgId: 2, genres: [], tags: [], platforms: [] };
-    const noCapa = { title: 'Sem capa', released: `${y + 1}-01-01`, image: null, rawgId: 3, genres: [], tags: [], platforms: [] };
-    const tba = { title: 'TBA', released: null, tba: true, image: 'https://x/capa.jpg', rawgId: 4, genres: [], tags: [], platforms: [] };
-    // valida o corte: dentro da janela e com capa
-    assert(ok.released && +String(ok.released).slice(0, 4) <= maxY, 'dentro da janela de 3 anos');
-    assert(+(String(tooFar.released).slice(0, 4)) > maxY, 'fora da janela é rejeitado');
-    assert(!noCapa.image, 'sem capa é rejeitado');
-    assert(!tba.released, 'TBA sem data é rejeitado');
 });
+
+test('Lançamentos: a janela cobre alguns meses de passado, não um ano inteiro', () => {
+    // Bug real: com "hoje até +3 anos" o Switch devolvia 5 jogos e next=null — o
+    // "carregar mais" morria. Com alguns meses de passado a plataforma já pagina.
+    assert(RELEASES_MONTHS_BACK >= 1 && RELEASES_MONTHS_BACK <= 9, 'alguns meses (nem só o futuro, nem 1 ano)');
+    const w = releaseWindow(new Date(2026, 9, 17));   // 17/10/2026
+    const mesPassado = new Date(2026, 9 - RELEASES_MONTHS_BACK, 1);
+    assertEq(w.from.slice(0, 7), `${mesPassado.getFullYear()}-${String(mesPassado.getMonth() + 1).padStart(2, '0')}`, 'começa N meses atrás');
+    assertEq(w.from.slice(8), '17', 'no mesmo dia do mês');
+    assertEq(w.to, '2029-12-31', 'vai até o fim do 3º ano à frente');
+    // nada de data fixa no código: a janela acompanha o ano corrente
+    assertEq(w.to, `${new Date(2026, 9, 17).getFullYear() + 3}-12-31`, '3 anos à frente do ano corrente');
+    assertEq(releaseWindow(new Date(2030, 0, 5)).to, '2033-12-31', 'acompanha o ano corrente');
+    // 31 de março menos N meses não pode estourar o fim do mês (31/09 não existe)
+    const clamp = releaseWindow(new Date(2026, 2, 31));
+    const mesEsperado = String(((3 - RELEASES_MONTHS_BACK + 11) % 12) + 1).padStart(2, '0');
+    assertEq(clamp.from.slice(5, 7), mesEsperado, 'cai no mês certo');
+    const fimDoMes = new Date(+clamp.from.slice(0, 4), +clamp.from.slice(5, 7), 0).getDate();
+    assertEq(+clamp.from.slice(8, 10), Math.min(31, fimDoMes), 'dia limitado ao último do mês');
+});
+
+test('Lançamentos: jogo sem data fixa (tba) fica fora — a RAWG não lista esses', () => {
+    // "Metroid Prime 4" está como tba na RAWG: não tem data, então o filtro por data
+    // nunca o devolve. É a limitação real por trás do "poucos jogos".
+    const hoje = new Date(2026, 9, 17);
+    assert(!inReleaseWindow({ released: '', tba: true }, hoje), 'tba não entra');
+    assert(inReleaseWindow({ released: '2026-08-01' }, hoje), 'o que saiu há 2 meses entra');
+    assert(inReleaseWindow({ released: '2027-05-01' }, hoje), 'o futuro entra');
+    assert(!inReleaseWindow({ released: '2025-01-01' }, hoje), 'mais velho que a janela fica fora');
+    assert(!inReleaseWindow({ released: `${hoje.getFullYear() + 4}-01-01` }, hoje), 'longe demais fica fora');
+});
+
+
 
 test('AO VIVO: Lançamentos vêm do maior hype para o menor (GTA VI no topo)', async () => {
     const res = await live(listGames(exploreParams('releases', 1)));
@@ -98,6 +120,14 @@ test('AO VIVO: Lançamentos vêm do maior hype para o menor (GTA VI no topo)', a
     for (let i = 1; i < added.length; i++)
         assert(added[i] <= added[i - 1], `hype em ordem decrescente (posição ${i}: ${added[i]} > ${added[i - 1]})`);
     assert(added[0] > added[added.length - 1], 'o topo tem mais hype que o fim da página');
+});
+
+test('AO VIVO: plataforma com filtro rende bem mais que 5 jogos (o bug do "só 5")', async () => {
+    // Sem rede/chave este teste pula. Ele existe porque o filtro por plataforma
+    // devolvia 5 jogos no Switch (a RAWG só tinha 5 com data futura).
+    const res = await live(listGames({ ...exploreParams('releases', 1), platforms: '7' }));
+    assert(res.items.length > 0, `o Switch tem lançamentos (${res.items.length} na 1ª página)`);
+    assert(res.count > 5, `a lista passa dos 5 do futuro puro (count=${res.count})`);
 });
 
 // ---------- aba Perfil (foto do usuário > foto da Steam > inicial) ----------

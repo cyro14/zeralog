@@ -616,9 +616,37 @@ export let exploreById = new Map();      // id -> objeto de jogo (p/ página do 
 let classicDecade = '';           // '' | '1980' | '1990' | '2000' | '2010'
 let exploreCat = 'you';
 
+// Janela da categoria "Lançamentos": dos ÚLTIMOS MESES (o que acabou de sair)
+// até 3 anos à frente. Dois motivos, medidos na RAWG em out/2026:
+//  1. a API quase não tem jogo com data futura (Switch 5, PS4 1, Xbox One 2) —
+//     só o futuro deixava a plataforma com 5 cartões e o "carregar mais" morto
+//     (next=null). Com alguns meses de passado a mesma plataforma rende dezenas;
+//  2. jogo que ainda não tem data fixa (tba) NÃO pode ser listado: o filtro é por
+//     data e a RAWG ignora qualquer parâmetro de "sem data" (tba=true volta o
+//     catálogo inteiro). Ex.: "Metroid Prime 4" está como tba e nunca aparece.
+// Aumentar RELEASES_MONTHS_BACK traz mais volume (Switch: 3m=12, 6m=23, 12m=55).
+export const RELEASES_MONTHS_BACK = 6;
+export const RELEASES_YEARS_AHEAD = 3;
+const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export function releaseWindow(now = new Date()) {
+    // Começo da janela: o mesmo dia, N meses atrás (31/03 - 3 meses = 31/12, sem pular fevereiro)
+    const day = now.getDate();
+    const from = new Date(now.getFullYear(), now.getMonth() - RELEASES_MONTHS_BACK, 1);
+    const lastDay = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+    from.setDate(Math.min(day, lastDay));
+    const toYear = now.getFullYear() + RELEASES_YEARS_AHEAD;
+    return { from: isoLocal(from), to: `${toYear}-12-31`, fromYear: from.getFullYear(), toYear };
+}
+// Mesmo corte da consulta, usado pelas telas (a RAWG devolve nomes/datas com sinônimos)
+export function inReleaseWindow(g, now = new Date()) {
+    if (!g || !g.released) return false;              // sem data fixa: fora (a API não lista)
+    const w = releaseWindow(now);
+    const d = String(g.released).slice(0, 10);
+    return d >= w.from && +d.slice(0, 4) <= w.toYear;
+}
+
 export function exploreParams(cat, page) {
     const today = new Date().toISOString().slice(0, 10);
-    const y = new Date().getFullYear();
     switch (cat) {
         case 'you': { const p = deckParams(page); return { ...p, ordering: poolOrder }; }
         case 'hot': {
@@ -629,12 +657,12 @@ export function exploreParams(cat, page) {
         case 'releases': {
             // Lançamentos = os mais ESPERADOS primeiro. O "hype" da RAWG é quantas
             // pessoas adicionaram o jogo à lista delas (ordering=-added), então
-            // GTA VI, remakes e afins vêm no topo, com data do hoje até 3 anos à
-            // frente — os anos seguintes entram logo abaixo e nas próximas páginas.
+            // GTA VI, remakes e afins vêm no topo. A janela vai do ano passado
+            // (o que saiu recentemente) até 3 anos à frente (LEIA releaseWindow).
             // SEM exclude_additions: remakes/remasters são marcados como "addition"
             // na RAWG e são justamente os queridinhos (ex.: Prince of Persia Remake).
-            const maxYear = y + 3;
-            return { ordering: '-added', dates: `${today},${maxYear}-12-31`, page_size: 40, page };
+            const w = releaseWindow();
+            return { ordering: '-added', dates: `${w.from},${w.to}`, page_size: 40, page };
         }
         case 'gems': {
             // Joias: indies pouco falados (poucas avaliações) — metade das vezes puxa clássicos indie antigos
@@ -687,11 +715,7 @@ async function fetchExplorePage(cat, append) {
     applyFilterParams(params, xFilters);
     const res = await listGames(params);
     let items = res.items.filter(g => gmIsClean(g) && g.image && (cat === 'releases' || !farFuture(g)));   // 2030 só na aba Lançamentos
-    if (cat === 'releases') {
-        // Lançamentos: precisa ter data de lançamento dentro da janela de 3 anos
-        const maxY = new Date().getFullYear() + 3;
-        items = items.filter(g => g.released && +String(g.released).slice(0, 4) <= maxY);
-    }
+    if (cat === 'releases') items = items.filter(g => inReleaseWindow(g));   // mesmo corte da consulta (releaseWindow)
     if (cat === 'gems') items = items.filter(g => (g.ratingsCount || 0) >= 25 && (g.ratingsCount || 0) <= 1500);   // só indie pouco falado
     if (cat === 'you') items = items.map(g => ({ ...g, _match: matchScore(g) })).sort((a, b) => b._match - a._match);
     state.items = append ? state.items.concat(items) : items;

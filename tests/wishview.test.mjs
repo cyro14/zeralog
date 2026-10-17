@@ -2,7 +2,7 @@
 // Lançamentos), a grade paginada dos lançamentos e a entrada deles na lista.
 import { test, assert, assertEq, elById, mockFetch, sleep } from './shim.mjs';
 import { appData } from '../js/store.js';
-import { initGameMatch, exploreById } from '../js/gamematch.js';
+import { initGameMatch, exploreById, releaseWindow } from '../js/gamematch.js';
 import {
     wishSub, wishSubShow, syncWishView, wishReleasesLoad, wishReleasesMore, wishReleasesAdd, wishReleasesState, initWishView,
     wishFilterToggle, wishSortToggle, wishFilterGenre, wishFilterPlat, wishFilterClear, wishSort,
@@ -83,19 +83,22 @@ test('Desejos: ao abrir a aba a tela salva é restaurada (e só busca se a aba e
     assertEq(wishReleasesState().page, 0, 'nenhuma página pedida');
 });
 
-test('Lançamentos: grade com os mais esperados primeiro, só o que ainda vai lançar', async () => {
+test('Lançamentos: grade com os mais esperados primeiro, dentro da janela (últimos meses até +3)', async () => {
     resetReleases();
     let seen = '';
+    const w = releaseWindow();
     mockFetch([['/api/games?', u => {
         seen = u;
         return {
-            count: 6, next: 'https://api.rawg.io/api/games?page=2',
+            count: 7, next: 'https://api.rawg.io/api/games?page=2',
             results: [
                 RAW(1, 'GTA VI', inDays(40), { added: 9000 }),
                 RAW(2, 'Jogo Sem Capa', inDays(10), { background_image: null }),
                 RAW(3, 'Jogo Adulto', inDays(20), { tags: [{ name: 'hentai' }] }),
                 RAW(4, 'Jogo de 2039', `${YEAR + 13}-05-01`),
-                RAW(6, 'Prince of Persia Remake', inDays(90), { added: 4000 })
+                RAW(6, 'Prince of Persia Remake', inDays(90), { added: 4000 }),
+                RAW(7, 'Saiu Mês Passado', inDays(-45), { added: 3000 }),
+                RAW(8, 'Jogo Antigo', `${YEAR - 1}-06-01`, { added: 2000 })
             ]
         };
     }]]);
@@ -103,20 +106,49 @@ test('Lançamentos: grade com os mais esperados primeiro, só o que ainda vai la
     const html = grid().innerHTML;
     assert(html.includes('GTA VI'), 'o mais esperado aparece');
     assert(html.includes('Prince of Persia Remake'), 'o segundo também (remakes do hype entram)');
+    assert(html.includes('Saiu Mês Passado'), 'o que saiu há poucos meses entra (a RAWG quase não tem data futura)');
+    assert(!html.includes('Jogo Antigo'), 'mais velho que a janela fica de fora');
     assert(!html.includes('Jogo Sem Capa'), 'sem capa não entra na vitrine');
     assert(!html.includes('Jogo Adulto'), 'conteúdo adulto continua bloqueado');
-    assert(!html.includes('Jogo de 2039'), 'fora da janela de 3 anos não entra');
+    assert(!html.includes('Jogo de 2039'), 'fora da janela de 3 anos à frente não entra');
     // a consulta é a MESMA dos Lançamentos do Explorar: hype primeiro, 40 por página
     const query = decodeURIComponent(seen);
     assert(seen.includes('ordering=-added'), 'os mais esperados primeiro (hype da RAWG)');
     assert(seen.includes('page_size=40'), 'página cheia de lançamentos');
-    assert(/dates=\d{4}-\d{2}-\d{2},\d{4}-12-31/.test(query), 'a janela tem começo e fim');
-    assert(query.includes(`${YEAR + 3}-12-31`), 'vai de hoje até 3 anos à frente');
+    assert(query.includes(`dates=${w.from},${w.to}`), 'janela: últimos meses até 3 anos à frente');
     assert(html.includes('wishReleasesMore()'), 'tem o botão de carregar mais');
-    // o cartão mostra a contagem regressiva e a % de combinação
+    // o cartão mostra a contagem regressiva (ou "lançado há...") e a % de combinação
     assert(html.includes('wish-rel-when'), 'data em destaque no cartão');
+    assert(html.includes('Lançado há'), 'o jogo recente mostra há quanto tempo saiu');
     assert(html.includes('gm-match'), 'a % de combinação continua no cartão');
 });
+
+test('Lançamentos: filtro de plataforma com lista longa continua paginando (bug do "só 5")', async () => {
+    resetReleases();
+    clearWishKeys();
+    const urls = [];
+    mockFetch([['/api/games?', u => {
+        urls.push(decodeURIComponent(u));
+        const page = +(u.match(/[?&]page=(\d+)/) || [0, 1])[1];
+        const hasNext = page < 3;
+        return {
+            count: 128, next: hasNext ? `https://api.rawg.io/api/games?page=${page + 1}` : null,
+            results: [RAW(100 + page, `Jogo de Switch ${page}`, inDays(30 + page), { platforms: [{ platform: { name: 'Nintendo Switch' } }] })]
+        };
+    }]]);
+    wishFilterPlat('Nintendo Switch');
+    await sleep(10);
+    assert(urls[0] && urls[0].includes('platforms=7'), 'a plataforma vai na consulta (Switch = 7 na RAWG)');
+    assert(urls[0].includes(`dates=${releaseWindow().from}`), 'e a janela é a mesma (últimos meses + futuro)');
+    assert(grid().innerHTML.includes('wishReleasesMore()'), 'com 128 jogos o "carregar mais" aparece');
+    await wishReleasesMore();
+    await wishReleasesMore();
+    assertEq(wishReleasesState().page, 3, 'chegou à 3ª página (o filtro não morre na 1ª)');
+    assert(grid().innerHTML.includes('Jogo de Switch 1') && grid().innerHTML.includes('Jogo de Switch 3'), 'as páginas emendaram na grade');
+    assert(!grid().innerHTML.includes('wishReleasesMore()'), 'sem 4ª página, o botão some no fim');
+    clearWishKeys();
+});
+
 
 test('Lançamentos: "carregar mais" emenda a próxima página e some no fim da lista', async () => {
     resetReleases();

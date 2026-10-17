@@ -2,9 +2,10 @@
 // A aba Desejos tem um submenu com duas telas:
 //   • "Wish list"   — a lista do jogador (js/ui.js desenha os itens e o resumo);
 //   • "Lançamentos" — a mesma vitrine da categoria Lançamentos do Explorar
-//                     (os mais esperados, do maior hype para o menor), aqui
-//                     dentro para não obrigar a trocar de aba para descobrir
-//                     um jogo e mandá-lo para a wish list com um toque.
+//                     (os mais esperados, do maior hype para o menor, dos
+//                     últimos meses até 3 anos à frente), aqui dentro para não
+//                     obrigar a trocar de aba para descobrir um jogo e mandá-lo
+//                     para a wish list com um toque.
 // Os filtros e as ordenações são os MESMOS do Explorar (js/gamematch.js exporta as
 // regras), mas o estado é próprio: filtrar aqui não mexe na aba GameMatch.
 import { appData, saveData } from './store.js';
@@ -12,7 +13,7 @@ import { listGames, esc, normText, resizeUrl, describeError } from './gameApi.js
 import {
     exploreById, exploreParams, gmIsClean, matchScore, gmXOpen, gmBuy, gmExploreWish,
     X_SORTS, applyFilterParams, sortBy, gmGenreMatch, gmPlatMatch, sortPanelHtml,
-    genreOptionsHtml, platformOptionsHtml, setupCompanyFilter, paintFilterWidget
+    genreOptionsHtml, platformOptionsHtml, setupCompanyFilter, paintFilterWidget, inReleaseWindow
 } from './gamematch.js';
 import { icon } from './icons.js';
 import { countdownText, daysUntil, fmtDate } from './releases.js';
@@ -220,19 +221,15 @@ export function wishSort(kind) {
 }
 
 /* ---------------- lançamentos ---------------- */
-// Só o que ainda vai lançar (hoje até 3 anos à frente), fora de conteúdo adulto e com capa
-function keepUpcoming(g) {
-    const today = new Date().getFullYear();
-    const year = g.released ? +String(g.released).slice(0, 4) : 0;
-    const left = daysUntil(g.released);
-    return !!g.released && year >= today && year <= today + 3 && left !== null && left >= 0;
-}
-
+// O corte é o mesmo da consulta (js/gamematch.js, releaseWindow/inReleaseWindow):
+// dos últimos meses (o que acabou de sair) até 3 anos à frente. Só o futuro deixava
+// a tela com 5 cartões no Switch — a RAWG quase não tem jogo com data futura, e
+// jogo sem data fixa (tba) nem pode ser listado por lá.
 async function fetchWishReleases(page) {
     const params = exploreParams('releases', page);   // -added: os mais esperados primeiro
     applyFilterParams(params, wf);                    // gênero/plataforma/estúdio vão na consulta
     const res = await listGames(params);
-    const items = res.items.filter(g => gmIsClean(g) && g.image && keepUpcoming(g));
+    const items = res.items.filter(g => gmIsClean(g) && g.image && inReleaseWindow(g));
     // A página do jogo (gmXOpen) e o botão da capa usam este mapa — o item daqui precisa estar nele
     items.forEach(g => exploreById.set(g.rawgId, g));
     return { items, more: res.more };
