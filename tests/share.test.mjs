@@ -108,7 +108,7 @@ test('zerados: estilo LINHA DO TEMPO agrupa por ANO (e por mês quando a tela pe
     gamingData();
     appData.settings.timelineGroup = 'year';
     const items = [
-        { id: 'z1', title: 'Celeste', platform: 'PC', state: 'finished', dateFinished: '10/03/2025', image: null },
+        { id: 'z1', title: 'Celeste', platform: 'PC', state: 'finished', dateFinished: '10/03/2025', userRating: 9, image: null },
         { id: 'z2', title: 'Hades', platform: 'PC', state: 'finished', dateFinished: '22/03/2025', image: null },
     ];
     openShare({ items, mode: 'finished', title: 'Jogos zerados', subtitle: '2 jogos', style: 'timeline' });
@@ -119,6 +119,7 @@ test('zerados: estilo LINHA DO TEMPO agrupa por ANO (e por mês quando a tela pe
     assert(t.includes('2025'), 'ano de conclusão agrupado no rótulo (padrão da tela)');
     assert(!t.includes('Março de 2025'), 'sem separar por mês no padrão');
     assert(t.includes('2 jogos'), 'contagem do ano');
+    assert(t.includes('nota média 9.0'), 'a nota média do período aparece no capítulo');
     assert(t.includes(BLOG), 'link do blog na linha do tempo');
     // a opção "Por mês" da tela dos zerados vale também para a imagem
     appData.settings.timelineGroup = 'month';

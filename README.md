@@ -208,14 +208,14 @@ Toda tela de jogos (**Fila, Zerados e Desejos**) tem o botão **Filtros**. Escol
 - **Resultado na própria tela:** os filtros aparecem como chips removíveis; na **prateleira** o resultado vira uma prateleira nova, e as categorias sem resultado somem.
 - **Meus filtros:** salve uma combinação com um nome e reaplique depois. Os filtros ativos ficam salvos por tela.
 
-### 11c. Compartilhar imagens (jogo, cards e prateleira)
+### 11c. Compartilhar imagens (jogo, prateleira e linha do tempo)
 
 O botão **Compartilhar** de cada tela (e o botão de compartilhar de um jogo zerado) gera uma imagem pronta para postar, com as cores do seu tema e as logos **ZeraLog x Anywhere Gamer**:
 
 - **Prateleira:** cartuchos sobre tábuas de madeira, selo dourado nos 100%, nota em cada capa e, se quiser, os nomes dos jogos.
-- **Cards:** lista em duas colunas com capa, plataforma (ícone), ano, gêneros e selos (nota, 100%, data, emulado, dificuldade, lançamento).
+- **Linha do tempo dos zerados:** um capítulo por ano (ou por mês, como estiver na tela), com o ano em letras grandes, a contagem e a nota média do período; as capas ficam grandes e centradas, e a tábua de madeira acompanha a largura da fileira (não estica com poucos jogos).
 - **Cartão de um jogo:** capa grande sobre fundo desfocado com a cor da capa, nota, selo 100%, plataforma, selos e um trecho da sua review.
-- A imagem respeita os **filtros ativos** (o subtítulo lista os filtros) e a ordem da tela. Mais de 40 jogos viram partes numeradas (12 por parte nos cards).
+- A imagem respeita os **filtros ativos** (o subtítulo lista os filtros) e a ordem da tela. Mais de 40 jogos na prateleira (ou 30 na linha do tempo) viram partes numeradas.
 - **Baixar imagem** salva um PNG; **Compartilhar** usa o menu do celular quando o navegador permite enviar arquivos.
 
 ### 12. Estatísticas (em submenus)
@@ -350,7 +350,7 @@ zeralog/
     ├── genres.js       # gráfico de gêneros (Chart.js + alternativa em SVG)
     ├── franchises.js   # franquias em sanfona e busca de mais jogos da série
     ├── filters.js      # filtros universais (campos, combinação, painel e chips)
-    ├── share.js        # imagens para compartilhar (cartão, prateleira, cards)
+    ├── share.js        # imagens para compartilhar (cartão, prateleira, linha do tempo)
     ├── releases.js     # datas de lançamento, contagem regressiva, avisos e atualização
     ├── covers.js       # capas verticais (Steam e Wikipédia automáticas, buscador manual, lote)
     ├── crop.js         # recorte de capa 2:3 (arrastar, zoom, imagem inteira)

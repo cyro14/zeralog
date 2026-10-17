@@ -307,15 +307,15 @@ async function drawCart(ctx, item, x, y, w, h, p, showBadges, dim, plain = false
     }
 }
 // Tábua de madeira da prateleira (usada pela prateleira normal e pela linha do tempo)
-function drawBoard(ctx, top, cartH, boardH) {
+function drawBoardSpan(ctx, x, w, top, cartH, boardH) {
     const by = top + cartH - 6;
-    const bx = 56 - 26, bw = W - (56 - 26) * 2;
     ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 12;
-    rr(ctx, bx, by, bw, boardH, 8); const wg = ctx.createLinearGradient(0, by, 0, by + boardH); wg.addColorStop(0, '#a47a4f'); wg.addColorStop(0.35, '#7a5535'); wg.addColorStop(1, '#4a3220'); ctx.fillStyle = wg; ctx.fill(); ctx.restore();
-    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(bx + 8, by + 2, bw - 16, 3);
+    rr(ctx, x, by, w, boardH, 8); const wg = ctx.createLinearGradient(0, by, 0, by + boardH); wg.addColorStop(0, '#a47a4f'); wg.addColorStop(0.35, '#7a5535'); wg.addColorStop(1, '#4a3220'); ctx.fillStyle = wg; ctx.fill(); ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x + 8, by + 2, w - 16, 3);
     ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 2;
-    for (let k = 0; k < 7; k++) { const ly = by + 12 + k * (boardH - 16) / 6; ctx.beginPath(); ctx.moveTo(bx + 14, ly); ctx.lineTo(bx + bw - 14, ly + (k % 2 ? 2 : -2)); ctx.stroke(); }
+    for (let k = 0; k < 7; k++) { const ly = by + 12 + k * (boardH - 16) / 6; ctx.beginPath(); ctx.moveTo(x + 14, ly); ctx.lineTo(x + w - 14, ly + (k % 2 ? 2 : -2)); ctx.stroke(); }
 }
+function drawBoard(ctx, top, cartH, boardH) { drawBoardSpan(ctx, 56 - 26, W - (56 - 26) * 2, top, cartH, boardH); }
 
 export async function renderShelf(items, o) {
     const p = pal(), n = items.length;
@@ -387,37 +387,59 @@ function timelineGroups(items) {
 export async function renderTimelineImg(items, o) {
     const p = pal();
     const groups = timelineGroups(items);
-    const cols = 8, pad = 56, gap = 16;
-    const cartW = (W - pad * 2 - gap * (cols - 1)) / cols, cartH = cartW * 1.5;
-    const boardH = 44, rowH = cartH + boardH + 26, labelH = 58;
-    const rowsTotal = groups.reduce((a, g) => a + Math.ceil(g.items.length / cols), 0);
+    // Layout "recap": capítulos por ano (ou mês) com o rótulo grande centralizado e
+    // as capas GRANDES embaixo, centradas — a prateleira de madeira acompanha a
+    // largura das capas (nunca estica a tábua até a borda com 2 jogos só).
+    const COLS = 5, pad = 56, gap = 18;
+    const cartW = (W - pad * 2 - gap * (COLS - 1)) / COLS, cartH = cartW * 1.5;
+    const boardH = 40;
+    const showTitles = !!o.titles;
+    const rowH = cartH + boardH + (showTitles ? 38 : 10);   // tábua (cartH-6 → +boardH) + título
+    const labelH = 144, groupGap = 40;
+    const rowsTotal = groups.reduce((a, g) => a + Math.ceil(g.items.length / COLS), 0);
     const tmp = document.createElement('canvas').getContext('2d'); tmp.font = `800 62px ${FONT}`;
-    const hh = (wrap(tmp, o.title, W - 112, 2).length * 70) + (o.subtitle ? 100 : 40) + 170;
-    const H = Math.round(hh + groups.length * labelH + rowsTotal * rowH + 170);
+    const titleLines = wrap(tmp, o.title, W - 112, 2).length;
+    const subLines = o.subtitle ? wrap(tmp, o.subtitle, W - 112, 2).length : 0;
+    const headerEnd = 190 + titleLines * 70 + 4 + (subLines ? subLines * 36 + 14 : 0) + 30;
+    const H = Math.round(headerEnd + 16 + groups.length * (labelH + groupGap) + rowsTotal * rowH + 120);
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
     backdrop(ctx, H, p, null);
-    let y = header(ctx, p, o.title, o.subtitle, false) + 10;
+    let y = header(ctx, p, o.title, o.subtitle, false) + 16;
     for (const grp of groups) {
-        // rótulo do mês: "Março 2025 · 3 jogos"
-        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-        ctx.font = `800 36px ${FONT}`; ctx.fillStyle = p.text;
-        const label = ellipsis(ctx, grp.label, W - pad * 2 - 130);
-        ctx.fillText(label, pad, y + 14);
-        ctx.font = `600 24px ${FONT}`; const lw = ctx.measureText(label).width;
-        ctx.fillStyle = p.muted;
-        ctx.fillText(`${grp.items.length} ${grp.items.length === 1 ? 'jogo' : 'jogos'}`, pad + lw + 16, y + 16);
+        // Abertura do capítulo: barrinha com as cores do app, o ano/mês em letras
+        // grandes e a contagem (com a nota média do período, se houver).
+        const bw = 64, bh = 6;
+        const bg = ctx.createLinearGradient(W / 2 - bw / 2, 0, W / 2 + bw / 2, 0);
+        bg.addColorStop(0, p.play); bg.addColorStop(1, p.fin);
+        ctx.fillStyle = bg; rr(ctx, (W - bw) / 2, y, bw, bh, bh / 2); ctx.fill();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = p.text;
+        const label = ellipsis(ctx, grp.label, W - 160);
+        ctx.font = `800 ${label.length <= 6 ? 84 : 56}px ${FONT}`;
+        ctx.fillText(label, W / 2, y + 56);
+        const rated = grp.items.map(g => parseFloat(g.userRating)).filter(n => !isNaN(n));
+        const avg = rated.length ? (rated.reduce((a, b) => a + b, 0) / rated.length).toFixed(1) : null;
+        ctx.font = `600 26px ${FONT}`; ctx.fillStyle = p.muted;
+        ctx.fillText(`${grp.items.length} ${grp.items.length === 1 ? 'jogo' : 'jogos'}${avg ? ` · nota média ${avg}` : ''}`, W / 2, y + 112);
         y += labelH;
-        const rows = Math.ceil(grp.items.length / cols);
+        const rows = Math.ceil(grp.items.length / COLS);
         for (let r = 0; r < rows; r++) {
-            const top = y + r * rowH;
-            drawBoard(ctx, top, cartH, boardH);
-            for (let k = 0; k < cols; k++) {
-                const it = grp.items[r * cols + k]; if (!it) break;
-                await drawCart(ctx, it, pad + k * (cartW + gap), top, cartW, cartH, p, false, false, o.plain);
+            const slice = grp.items.slice(r * COLS, (r + 1) * COLS);
+            const rowW = slice.length * cartW + (slice.length - 1) * gap;
+            const x0 = (W - rowW) / 2;
+            drawBoardSpan(ctx, x0 - 22, rowW + 44, y, cartH, boardH);   // tábua do tamanho da fileira
+            for (let k = 0; k < slice.length; k++) {
+                const it = slice[k], x = x0 + k * (cartW + gap);
+                await drawCart(ctx, it, x, y, cartW, cartH, p, true, false, o.plain);
+                if (showTitles) {
+                    ctx.font = `600 18px ${FONT}`; ctx.fillStyle = rgba(p.text, 0.9);
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(ellipsis(ctx, it.title, cartW + gap - 8), x + cartW / 2, y + cartH + 52);
+                }
             }
+            y += rowH;
         }
-        y += rows * rowH;
+        y += groupGap;
     }
     footer(ctx, H - 70, p, false);
     return c;
