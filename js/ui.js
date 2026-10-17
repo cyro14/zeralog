@@ -265,6 +265,26 @@ export function coverPickFromImageModal() {
     });
 }
 
+// Buscador de artes de FUNDO (tela cheia): escolhe uma horizontal online e
+// salva como userBanner — o topo "capa de Facebook" da página do jogo.
+export function pickBannerFromGamePage(id) {
+    const game = findItemAny(id);
+    if (!game) return;
+    const isWish = !appData.games.some(g => g.id === id);
+    openCoverPicker({
+        title: game.title,
+        rawgId: game.rawgId,
+        mode: 'banner',
+        onPick: (src) => {
+            saveStateForUndo();
+            game.userBanner = src;
+            saveData(null);
+            openGamePage(game.id, isWish);
+            triggerToast('Fundo atualizado!');
+        }
+    });
+}
+
 // ================= RENDERIZAÇÃO E LISTAS =================
 export function getSortedGames(gamesArray, sortType, isFinishedTab = false) {
     const sort = sortType || (isFinishedTab ? appData.settings.finishedSort : appData.settings.sort); 
@@ -1132,13 +1152,13 @@ export function openGamePage(id, isWish = false) {
     if (isWish) {
         actions.push(btn(`${ic('bookmark')} Para a fila`, 'wishToBacklog', true));
         if (!g.continuous) actions.push(btn(`${ic('play')} Jogar agora`, 'wishToPlaying'));
-        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('image')} Trocar capa`, 'openImageModal'), btn(`${ic('edit')} Editar`, 'openEditWishModal'), btn(`${ic('trash')} Remover`, 'askDeleteWish', false, true));
+        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('image')} Trocar capa`, 'openImageModal'), btn(`${ic('image')} Trocar fundo`, 'pickBannerFromGamePage'), btn(`${ic('edit')} Editar`, 'openEditWishModal'), btn(`${ic('trash')} Remover`, 'askDeleteWish', false, true));
     } else {
         if (g.continuous || playing) actions.push(btn(`${ic('play')} Iniciar sessão`, 'startSession', true));
         if (!finished && !g.continuous && !playing) actions.push(btn(`${ic('play')} Jogar agora`, 'playNow', true));
         if (finished) actions.push(btn(`${ic('share')} Compartilhar`, 'openCardGenerator', true));
         if (!finished && !g.continuous) actions.push(btn(playing ? `${ic('stop')} Parar de jogar` : `${ic('play')} Marcar como jogando`, 'markPlaying'), btn(`${ic('check')} Marcar como zerado`, 'markFinished'));
-        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('edit')} Editar`, 'openEditGameModal'), btn(`${ic('image')} Trocar capa`, 'openImageModal'));
+        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('edit')} Editar`, 'openEditGameModal'), btn(`${ic('image')} Trocar capa`, 'openImageModal'), btn(`${ic('image')} Trocar fundo`, 'pickBannerFromGamePage'));
         if (finished) actions.push(btn(`${ic('edit')} Editar conclusão`, 'openEditFinishedModal'));
         else actions.push(btn(`${ic('bookmark')} Voltar à wishlist`, 'backlogToWish'));
         actions.push(btn(`${ic('trash')} Remover`, 'askDeleteGame', false, true));
@@ -1218,6 +1238,7 @@ function gpBannerMenu(g, isWish) {
     m.style.left = `${Math.max(8, Math.min(Math.round(r.left), window.innerWidth - 230))}px`;
     m.innerHTML = `
         <button type="button" data-a="view">Ver em tela cheia</button>
+        <button type="button" data-a="search">Buscar fundo online</button>
         <button type="button" data-a="upload">${g.userBanner ? 'Trocar imagem de fundo' : 'Enviar imagem de fundo'}</button>
         ${g.userBanner ? `<button type="button" data-a="reset">Voltar para a arte do jogo</button>` : ''}`;
     document.body.appendChild(m);
@@ -1227,6 +1248,7 @@ function gpBannerMenu(g, isWish) {
         const btn = e.target.closest('button');
         if (!btn) return;
         if (btn.dataset.a === 'view') { const img = banner.querySelector('img'); close(); if (img && img.src) viewImage(img.src); }
+        else if (btn.dataset.a === 'search') { close(); pickBannerFromGamePage(g.id); }
         else if (btn.dataset.a === 'upload') { close(); const f = document.getElementById('gp-bg-file'); if (f) f.click(); }
         else if (btn.dataset.a === 'reset') { close(); delete g.userBanner; saveData(null); openGamePage(g.id, isWish); }
     });

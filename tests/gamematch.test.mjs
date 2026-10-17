@@ -1,6 +1,6 @@
 // Testes do GameMatch (js/gamematch.js): perfil, motor de match, filtros do
 // Explorar e bloqueio de conteúdo adulto.
-import { test, assert, assertEq, elById, live } from './shim.mjs';
+import { test, assert, assertEq, elById, live, mockFetch, sleep } from './shim.mjs';
 import { appData } from '../js/store.js';
 import { listGames } from '../js/gameApi.js';
 import {
@@ -167,4 +167,79 @@ test('perfil: a foto aparece no círculo do topo mesmo sem perfil do GameMatch',
     try { renderGmProfile(); } finally { document.querySelectorAll = orig; }
     assert(circles[0].innerHTML.includes('SEMPERFIL'), 'círculo do desktop pintado sem perfil montado');
     assert(circles[1].innerHTML.includes('SEMPERFIL'), 'círculo do mobile pintado sem perfil montado');
+});
+
+// ---------- Explorar: botões Filtros/Ordenar, painéis e capa vertical ----------
+const EXPLORE_MOCK = ['/api/games?', {
+    count: 3, results: [
+        { id: 1, name: 'Zelda BotW', released: '2017-03-03', background_image: 'https://media.rawg.io/media/games/z/z.jpg', metacritic: 97, added: 500, genres: [{ name: 'Adventure' }], platforms: [] },
+        { id: 2, name: 'Astro Bot', released: '2024-09-06', background_image: 'https://media.rawg.io/media/games/a/a.jpg', metacritic: 94, added: 900, genres: [{ name: 'Platformer' }], platforms: [] },
+        { id: 3, name: 'Minecraft', released: '2011-11-18', background_image: 'https://media.rawg.io/media/games/m/m.jpg', metacritic: 93, added: 7000, genres: [{ name: 'Indie' }], platforms: [] },
+    ],
+}];
+
+test('Explorar: gmXSort ordena a grade no cliente (A-Z, nota, hype, data)', async () => {
+    mockFetch([EXPLORE_MOCK]);
+    const { gmExplore, gmXSort } = await import('../js/gamematch.js');
+    await gmExplore('top');
+    const grid = elById('gm-explore-grid');
+    const order = () => ['Zelda BotW', 'Astro Bot', 'Minecraft'].map(t => grid.innerHTML.indexOf(`>${t}<`));
+    assert(order()[0] < order()[1] && order()[1] < order()[2], 'sem sort: ordem original (Zelda, Astro, Minecraft)');
+    gmXSort('az');
+    assert(order()[1] < order()[2] && order()[2] < order()[0], 'A-Z: Astro, Minecraft, Zelda');
+    gmXSort('za');
+    assert(order()[0] < order()[2] && order()[2] < order()[1], 'Z-A: Zelda, Minecraft, Astro');
+    gmXSort('mc');
+    assert(order()[0] < order()[1], 'melhor nota: Zelda (97) na frente');
+    gmXSort('added');
+    assert(order()[2] < order()[1], 'mais hypados: Minecraft (7000) na frente');
+    gmXSort('new');
+    assert(order()[1] < order()[0], 'mais recentes: Astro (2024) na frente');
+    gmXSort('old');
+    assert(order()[2] < order()[1], 'mais antigos: Minecraft (2011) na frente');
+    gmXSort('');
+    assert(order()[0] < order()[1] && order()[1] < order()[2], 'padrão volta à ordem original');
+});
+
+test('Explorar: botões Filtros/Ordenar abrem painéis; badge e chips contam os filtros ativos', async () => {
+    mockFetch([['/api/games?', { count: 0, results: [] }]]);
+    const { gmExplore, gmXFilterToggle, gmXSortToggle, gmXFilterGenre, gmXFilterClear } = await import('../js/gamematch.js');
+    await gmExplore('top');
+    const fp = elById('gm-x-filter-panel'), sp = elById('gm-x-sort-panel');
+    fp.hidden = true; sp.hidden = true;
+    gmXFilterToggle();
+    assert(fp.hidden === false, 'painel de filtros abre');
+    assert(sp.hidden === true, 'painel de ordenar continua fechado');
+    gmXSortToggle();
+    assert(sp.hidden === false, 'painel de ordenar abre');
+    assert(fp.hidden === true, 'abrir um fecha o outro');
+    gmXSortToggle();
+    assert(sp.hidden === true, 'segundo clique fecha o painel');
+    assert(elById('gm-x-sort-panel').innerHTML.includes('gm-x-sort-btn'), 'opções de ordenação pintadas');
+    // filtro ativo: badge com a contagem, chip do gênero e botão de limpar
+    gmXFilterGenre('RPG');
+    const badge = elById('gm-filter-badge');
+    assert(badge.hidden === false && badge.textContent === '1', 'badge com 1 filtro ativo');
+    assert(elById('gm-filter-chips').innerHTML.includes('RPG'), 'chip do gênero ativo');
+    assert(elById('gm-filter-clear').hidden === false, 'botão de limpar visível');
+    gmXFilterClear();
+    assert(elById('gm-filter-badge').hidden === true, 'badge some ao limpar');
+    assert(!elById('gm-filter-chips').innerHTML.includes('RPG'), 'chip do gênero sai ao limpar');
+    gmXSort('');   // deixa o padrão para os próximos testes
+});
+
+test('Explorar: capa vertical já achada (página do jogo) faz a wishlist/backlog nascerem RETRATO', async () => {
+    const { gmExploreWish, gmExploreBacklog, exploreById } = await import('../js/gamematch.js');
+    exploreById.set(77, { rawgId: 77, title: 'Jogo Vertical Ja Achado', image: 'https://media.rawg.io/media/games/h/wide.jpg', _vcover: 'data:image/jpeg;base64,VERTICAL77', genres: ['RPG'], platforms: ['PC'], released: '2020-01-01', metacritic: 90, _match: 80 });
+    exploreById.set(78, { rawgId: 78, title: 'Outro Jogo Vertical', image: 'https://media.rawg.io/media/games/h/wide2.jpg', _vcover: 'data:image/jpeg;base64,VERTICAL78', genres: ['RPG'], platforms: ['PC'], released: '2019-01-01', metacritic: 88, _match: 75 });
+    gmExploreWish(77);
+    const wish = (appData.wishlist || []).find(w => w.title === 'Jogo Vertical Ja Achado');
+    assert(wish, 'jogo foi para a wishlist');
+    assertEq(wish.image, 'data:image/jpeg;base64,VERTICAL77', 'wishlist nasce com a capa vertical');
+    assertEq(wish.wideCover, false, 'marcada como retrato, sem arte horizontal de fallback');
+    gmExploreBacklog(78);
+    const bg = appData.games.find(g => g.title === 'Outro Jogo Vertical');
+    assert(bg, 'jogo foi para o backlog');
+    assertEq(bg.image, 'data:image/jpeg;base64,VERTICAL78', 'backlog nasce com a capa vertical');
+    assertEq(bg.wideCover, false, 'marcado como retrato');
 });

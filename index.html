@@ -169,19 +169,36 @@
                 <button type="button" class="gm-chip" data-dec="2000" onclick="gmClassicDecade('2000')">Anos 2000</button>
                 <button type="button" class="gm-chip" data-dec="2010" onclick="gmClassicDecade('2010')">Anos 2010</button>
             </div>
-            <div class="gm-explore-cats gm-explore-filters" id="gm-explore-filters">
-                <select class="gm-select" id="gm-x-genre" onchange="gmXFilterGenre(this.value)" aria-label="Filtrar por gênero">
-                    <option value="">Todos os gêneros</option>
-                </select>
-                <select class="gm-select" id="gm-x-plat" onchange="gmXFilterPlat(this.value)" aria-label="Filtrar por plataforma">
-                    <option value="">Todas as plataformas</option>
-                </select>
-                <div class="gm-co-wrap" id="gm-dev-filter">
-                    <input type="text" class="gm-co-input" placeholder="Desenvolvedora..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Filtrar por desenvolvedora">
+            <div class="gm-x-tools">
+                <button type="button" class="gm-tool-btn" id="gm-filter-btn" onclick="gmXFilterToggle()" aria-haspopup="true" aria-expanded="false" title="Filtros de gênero, plataforma e estúdio">
+                    <span data-icon="filter" data-size="1.05em"></span><span class="gm-tool-label">Filtros</span><span class="gm-tool-badge" id="gm-filter-badge" hidden></span>
+                </button>
+                <button type="button" class="gm-tool-btn" id="gm-sort-btn" onclick="gmXSortToggle()" aria-haspopup="true" aria-expanded="false" title="Ordenar os jogos desta categoria">
+                    <span data-icon="sort" data-size="1.05em"></span><span class="gm-tool-label" id="gm-sort-label">Ordenar</span>
+                </button>
+                <div class="gm-x-panel" id="gm-x-filter-panel" hidden>
+                    <div class="gm-explore-filters" id="gm-explore-filters">
+                        <div class="gm-x-f-row">
+                            <select class="gm-select" id="gm-x-genre" onchange="gmXFilterGenre(this.value)" aria-label="Filtrar por gênero">
+                                <option value="">Todos os gêneros</option>
+                            </select>
+                            <select class="gm-select" id="gm-x-plat" onchange="gmXFilterPlat(this.value)" aria-label="Filtrar por plataforma">
+                                <option value="">Todas as plataformas</option>
+                            </select>
+                        </div>
+                        <div class="gm-co-wrap" id="gm-dev-filter">
+                            <input type="text" class="gm-co-input" placeholder="Desenvolvedora..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Filtrar por desenvolvedora">
+                        </div>
+                        <div class="gm-co-wrap" id="gm-pub-filter">
+                            <input type="text" class="gm-co-input" placeholder="Publicadora..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Filtrar por publicadora">
+                        </div>
+                    </div>
+                    <div class="gm-x-panel-foot">
+                        <div class="gm-x-chips" id="gm-filter-chips"></div>
+                        <button type="button" class="gm-x-clear" id="gm-filter-clear" onclick="gmXFilterClear()" hidden>Limpar filtros</button>
+                    </div>
                 </div>
-                <div class="gm-co-wrap" id="gm-pub-filter">
-                    <input type="text" class="gm-co-input" placeholder="Publicadora..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Filtrar por publicadora">
-                </div>
+                <div class="gm-x-panel" id="gm-x-sort-panel" hidden></div>
             </div>
             <div class="gm-explore-grid" id="gm-explore-grid"><div class="gm-loading">Carregando...</div></div>
         </section>
@@ -875,24 +892,28 @@
         </div>
     </dialog>
 
-    <dialog id="modal-covers" class="covers-dialog">
-        <div class="modal-form cv-form">
-            <div class="cv-head">
-                <h3 style="margin: 0;"><span data-icon="image" data-size="1em"></span> Buscar capa</h3>
-                <button type="button" class="icon-btn" onclick="closeModal('modal-covers')" aria-label="Fechar"><span data-icon="x"></span></button>
+    <dialog id="modal-covers" class="covers-dialog covers-full" aria-label="Buscar imagens do jogo">
+        <div class="cv-top">
+            <div class="cv-top-info">
+                <h3><span data-icon="image" data-size="1.15em"></span> <span id="cv-mode-title">Buscar capa</span></h3>
+                <small id="cv-mode-sub"><span data-icon="gamepad" data-size="1em"></span> <span id="cv-game-name"></span></small>
             </div>
-            <div class="cv-search">
-                <input type="text" id="cv-title" placeholder="Nome do jogo (em inglês ajuda)" autocomplete="off" enterkeyhint="search">
-                <button type="button" class="cv-btn" onclick="coversSearch()" title="Buscar capas" aria-label="Buscar capas"><span data-icon="search" data-size="1em"></span>Buscar</button>
-            </div>
-            <label class="cv-hrow" for="cv-horizontal">
-                <input type="checkbox" id="cv-horizontal">
-                <span><strong>Usar a capa na horizontal</strong><small>Usa a imagem inteira, sem recorte — ideal para jogos antigos que só têm arte widescreen.</small></span>
-            </label>
-            <button type="button" class="cv-google" onclick="coversSearchGoogle()" title="Buscar capas no Google Imagens dentro do app"><span data-icon="search" data-size="1em"></span>Buscar no Google</button>
-            <div id="cv-status" class="rawg-msg"></div>
-            <div id="cv-grid" class="cv-grid"></div>
-            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-covers')">Fechar</button></div>
+            <button type="button" class="icon-btn xl" onclick="closeModal('modal-covers')" aria-label="Fechar"><span data-icon="x"></span></button>
+        </div>
+        <div class="cv-search">
+            <input type="text" id="cv-title" placeholder="Nome do jogo (em inglês ajuda)" autocomplete="off" enterkeyhint="search" aria-label="Nome do jogo para buscar">
+            <button type="button" class="cv-btn" onclick="coversSearch()" title="Buscar" aria-label="Buscar imagens"><span data-icon="search" data-size="1em"></span>Buscar</button>
+        </div>
+        <p class="cv-hint" id="cv-hint">A capa ideal é a <strong>vertical</strong> (caixa do jogo). Toque numa horizontal para recortar.</p>
+        <label class="cv-hrow" for="cv-horizontal" id="cv-hrow">
+            <input type="checkbox" id="cv-horizontal">
+            <span><strong>Usar a capa na horizontal</strong><small>Usa a imagem inteira, sem recorte — ideal para jogos antigos que só têm arte widescreen.</small></span>
+        </label>
+        <div id="cv-status" class="cv-status" aria-live="polite"></div>
+        <div id="cv-grid" class="cv-grid"></div>
+        <div class="cv-foot">
+            <button type="button" class="cv-google" onclick="coversSearchGoogle()" title="Buscar no Google Imagens dentro do app"><span data-icon="search" data-size="1em"></span>Buscar no Google</button>
+            <button type="button" class="btn-cancel" onclick="closeModal('modal-covers')">Fechar</button>
         </div>
     </dialog>
 

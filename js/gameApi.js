@@ -263,17 +263,21 @@ export async function blobToSmallJpeg(blob, maxSide = 420) {
     return canvas.toDataURL('image/jpeg', 0.82);
 }
 
-// Baixa uma imagem como Blob (direto; se o site bloquear, tenta por um proxy CORS). Retorna null se falhar.
+// Baixa uma imagem como Blob (direto; se o site bloquear, tenta por um proxy CORS).
+// Timeout curto: uma fonte pendurada não pode segurar a fila de capas verticais.
 export async function fetchImageBlob(url) {
     if (String(url).startsWith('data:')) { try { return await (await fetch(url)).blob(); } catch (e) { return null; } }
     const tries = [url, 'https://corsproxy.io/?url=' + encodeURIComponent(url)];
     for (const u of tries) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 9000);
         try {
-            const res = await fetch(u);
+            const res = await fetch(u, { signal: ctrl.signal });
+            clearTimeout(timer);
             if (!res.ok) continue;
             const blob = await res.blob();
             if (blob.size > 200 && (!blob.type || blob.type.startsWith('image/'))) return blob;
-        } catch (e) { /* tenta a próxima opção */ }
+        } catch (e) { clearTimeout(timer); /* tenta a próxima opção */ }
     }
     return null;
 }

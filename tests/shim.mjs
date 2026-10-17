@@ -51,7 +51,12 @@ function makeEl() {
     const el = {
         innerHTML: '', className: '', id: '', value: '', hidden: false, files: [], dataset: {}, isConnected: true, _cls: [], _shown: 0, _texts: [],
         style: (() => { const s = {}; s.setProperty = (k, v) => { s[k] = v; }; s.getPropertyValue = k => s[k] || ''; s.removeProperty = k => { delete s[k]; }; return s; })(),
-        classList: { add(...c) { el._cls.push(...c); }, remove() {}, toggle() {}, contains: () => false },
+        classList: {
+            add(...c) { el._cls.push(...c); },
+            remove(...c) { c.forEach(x => { const i = el._cls.indexOf(x); if (i > -1) el._cls.splice(i, 1); }); },
+            toggle(c, force) { const on = force === undefined ? !el._cls.includes(c) : !!force; if (on) el._cls.push(c); else { const i = el._cls.indexOf(c); if (i > -1) el._cls.splice(i, 1); } },
+            contains: c => el._cls.includes(c),
+        },
         appendChild(c) { return c; }, addEventListener() {}, removeEventListener() {}, remove() {},
         setAttribute(k, v) { el[k] = v; }, getAttribute() { return null; },
         querySelector: () => makeEl(), querySelectorAll: () => [], closest: () => makeEl(),
@@ -100,7 +105,11 @@ function installGlobals() {
 installGlobals();
 
 // ---------- mock de fetch (para testes herméticos, sem rede) ----------
-// mockFetch([['pedaço-da-url', objetoRetornado], ...]) — o primeiro que casar vence.
+// mockFetch([['pedaço-da-url', valor], ...]) — o primeiro que casar vence.
+// O valor pode ser:
+//   - o objeto retornado por json() (como sempre foi);
+//   - uma função async (url) => objeto — permite ATRASO (testar corrida de fontes);
+//   - { __res: {...} } — resposta crua: substitui ok/status/json/text/blob.
 // Qualquer URL fora do mapa vai para o fetch real (usado nos testes ao vivo).
 const realFetch = globalThis.fetch;
 let fetchMap = null;
@@ -111,10 +120,18 @@ globalThis.fetch = async (url, opts) => {
     if (fetchMap) {
         for (const [key, data] of fetchMap) {
             if (u.includes(key)) {
+                const d = typeof data === 'function' ? await data(u) : data;
+                if (d && d.__res) {
+                    return {
+                        ok: true, status: 200,
+                        json: async () => ({}), text: async () => '', blob: async () => new Blob([Buffer.alloc(300, 120)], { type: 'image/jpeg' }),
+                        ...d.__res,
+                    };
+                }
                 return {
                     ok: true, status: 200,
-                    json: async () => data,
-                    text: async () => JSON.stringify(data),
+                    json: async () => d,
+                    text: async () => JSON.stringify(d),
                     blob: async () => new Blob([Buffer.alloc(300, 120)], { type: 'image/jpeg' }),   // >200 bytes, tipo imagem
                 };
             }

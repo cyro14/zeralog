@@ -315,16 +315,18 @@ function pushLog(g, action) {
 function addToWishlist(g) {
     const t = normText(g.title);
     if ((appData.wishlist || []).some(x => normText(x.title) === t)) return false;
+    // capa vertical já achada (página do jogo)? o item nasce retrato na hora
+    const vertical = !!g._vcover;
     const item = {
         id: 'w' + Date.now(), title: g.title,
         platform: (g.platforms && g.platforms[0]) || '', rawgId: g.rawgId || undefined,
         genres: g.genres || [], released: g.released || '', tba: !!g.tba,
-        metacritic: g.metacritic || null, image: g.image || null, wideCover: true,
+        metacritic: g.metacritic || null, image: vertical ? g._vcover : (g.image || null), wideCover: !vertical,
         franchise: gmFranchiseOf(g.title),
         addedAt: Date.now(), notifyRelease: false, note: 'Descoberto no GameMatch'
     };
     appData.wishlist.push(item);
-    upgradeToPortrait(item, g);   // capa vira retrato assim que a fonte responder
+    if (!vertical) upgradeToPortrait(item, g);   // capa vira retrato assim que a fonte responder
     return true;
 }
 
@@ -360,16 +362,18 @@ function addToBacklog(g) {
     const t = normText(g.title);
     if (appData.games.some(x => normText(x.title) === t)) return false;
     const cat = gmBacklogCatId();
+    // capa vertical já achada (página do jogo)? o item nasce retrato na hora
+    const vertical = !!g._vcover;
     const item = {
         id: 'g' + Date.now(), catId: cat || '', title: g.title,
         platform: (g.platforms && g.platforms[0]) || '', rawgId: g.rawgId || undefined,
         genres: g.genres || [], released: g.released || '', meta: g.playtime ? `${g.playtime}h` : '',
-        metacritic: g.metacritic || null, image: g.image || null, wideCover: true,
+        metacritic: g.metacritic || null, image: vertical ? g._vcover : (g.image || null), wideCover: !vertical,
         franchise: gmFranchiseOf(g.title),
         state: null, userRating: null, dateFinished: null, is100: false, review: '', hoursPlayed: '', journalNotes: ''
     };
     appData.games.push(item);
-    upgradeToPortrait(item, g);
+    if (!vertical) upgradeToPortrait(item, g);
     return true;
 }
 
@@ -702,8 +706,144 @@ async function fetchExplorePage(cat, append) {
 }
 
 const xFilters = { genre: '', plat: '', devId: 0, devName: '', pubId: 0, pubName: '' };
-export function gmXFilterGenre(v) { xFilters.genre = v; gmExplore(exploreCat); }   // rebusca com o filtro no servidor
-export function gmXFilterPlat(v) { xFilters.plat = v; gmExplore(exploreCat); }
+let xSort = '';   // '' = ordem natural da categoria (a que veio da RAWG)
+export function gmXFilterGenre(v) { xFilters.genre = v; paintFilterState(); gmExplore(exploreCat); }   // rebusca com o filtro no servidor
+export function gmXFilterPlat(v) { xFilters.plat = v; paintFilterState(); gmExplore(exploreCat); }
+
+// ---------- Botões Filtros/Ordenar + painéis (Explorar) ----------
+export function gmXFilterToggle() {
+    const panel = document.getElementById('gm-x-filter-panel');
+    const sortPanel = document.getElementById('gm-x-sort-panel');
+    if (!panel) return;
+    const open = panel.hidden;
+    if (sortPanel) sortPanel.hidden = true;
+    if (document.getElementById('gm-sort-btn')) document.getElementById('gm-sort-btn').setAttribute('aria-expanded', 'false');
+    panel.hidden = !open;
+    const btn = document.getElementById('gm-filter-btn');
+    if (btn) btn.setAttribute('aria-expanded', String(open));
+}
+
+export function gmXSortToggle() {
+    const panel = document.getElementById('gm-x-sort-panel');
+    const filterPanel = document.getElementById('gm-x-filter-panel');
+    if (!panel) return;
+    const open = panel.hidden;
+    if (filterPanel) filterPanel.hidden = true;
+    if (document.getElementById('gm-filter-btn')) document.getElementById('gm-filter-btn').setAttribute('aria-expanded', 'false');
+    if (open) fillSortPanel();
+    panel.hidden = !open;
+    const btn = document.getElementById('gm-sort-btn');
+    if (btn) btn.setAttribute('aria-expanded', String(open));
+}
+
+// Fecha os painéis ao clicar fora deles (ou nos botões um do outro)
+document.addEventListener('click', e => {
+    const fp = document.getElementById('gm-x-filter-panel');
+    const sp = document.getElementById('gm-x-sort-panel');
+    if (!fp && !sp) return;
+    // a lista de sugestões de dev/pub (gm-co-list) é fixa no body: clicar nela
+    // não pode fechar o painel de filtros
+    const inside = e.target.closest && (e.target.closest('.gm-x-tools') || e.target.closest('.gm-co-list'));
+    if (inside) return;
+    if (fp && !fp.hidden) { fp.hidden = true; const b = document.getElementById('gm-filter-btn'); if (b) b.setAttribute('aria-expanded', 'false'); }
+    if (sp && !sp.hidden) { sp.hidden = true; const b = document.getElementById('gm-sort-btn'); if (b) b.setAttribute('aria-expanded', 'false'); }
+}, true);
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    let closed = false;
+    for (const pid of ['gm-x-filter-panel', 'gm-x-sort-panel']) {
+        const p = document.getElementById(pid);
+        if (p && !p.hidden) { p.hidden = true; closed = true; const b = document.getElementById(pid === 'gm-x-filter-panel' ? 'gm-filter-btn' : 'gm-sort-btn'); if (b) b.setAttribute('aria-expanded', 'false'); }
+    }
+    if (closed) e.stopPropagation();   // Esc fecha o painel sem fechar a tela de trás
+}, true);
+
+// Opções de ordenação (client-side, sobre os jogos já carregados na categoria)
+const X_SORTS = [
+    ['', 'Padrão', 'a ordem da categoria escolhida'],
+    ['az', 'A → Z', 'título em ordem alfabética'],
+    ['za', 'Z → A', 'título de trás para frente'],
+    ['mc', 'Melhor nota', 'Metacritic (vale a nota da RAWG)'],
+    ['added', 'Mais hypados', 'quantos têm o jogo na RAWG'],
+    ['new', 'Mais recentes', 'data de lançamento'],
+    ['old', 'Mais antigos', 'data de lançamento'],
+];
+
+function fillSortPanel() {
+    const panel = document.getElementById('gm-x-sort-panel');
+    if (!panel || panel.dataset.done) return;
+    panel.dataset.done = '1';
+    panel.innerHTML = `<div class="gm-x-sorts">${X_SORTS.map(([k, label, hint]) => `
+        <button type="button" class="gm-x-sort-btn${k === xSort ? ' on' : ''}" data-sort="${k}" onclick="gmXSort('${k}')">
+            <span>${esc(label)}</span><small>${esc(hint)}</small><span class="gm-sort-tick">${icon('check', { size: '1em' })}</span>
+        </button>`).join('')}</div>`;
+    if (DEPS.hydrateIcons) DEPS.hydrateIcons(panel);
+}
+
+export function gmXSort(kind) {
+    xSort = X_SORTS.some(s => s[0] === kind) ? kind : '';
+    const panel = document.getElementById('gm-x-sort-panel');
+    if (panel) {
+        panel.querySelectorAll('.gm-x-sort-btn').forEach(b => b.classList.toggle('on', b.dataset.sort === xSort));
+        panel.hidden = true;
+    }
+    const btn = document.getElementById('gm-sort-btn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+    const label = document.getElementById('gm-sort-label');
+    if (label) label.textContent = (X_SORTS.find(s => s[0] === xSort) || X_SORTS[0])[1] === 'Padrão' ? 'Ordenar' : (X_SORTS.find(s => s[0] === xSort) || X_SORTS[0])[1];
+    paintExplore(exploreCat);
+}
+
+const sortScore = g => (g.metacritic || 0) || Math.round((g.rating || 0) * 20);
+const sortReleased = g => (g.released ? new Date(g.released).getTime() : 0);
+
+function applyXSort(items) {
+    const arr = [...items];
+    if (xSort === 'az') return arr.sort((a, b) => String(a.title).localeCompare(String(b.title)));
+    if (xSort === 'za') return arr.sort((a, b) => String(b.title).localeCompare(String(a.title)));
+    if (xSort === 'mc') return arr.sort((a, b) => sortScore(b) - sortScore(a));
+    if (xSort === 'added') return arr.sort((a, b) => (b.added || 0) - (a.added || 0));
+    if (xSort === 'new') return arr.sort((a, b) => sortReleased(b) - sortReleased(a));
+    if (xSort === 'old') return arr.sort((a, b) => sortReleased(a) - sortReleased(b));
+    return arr;   // padrão: a ordem que veio da categoria (hype, match, data...)
+}
+
+// Chips dos filtros ativos + badge de contagem + botão limpar
+function paintFilterState() {
+    const chips = [];
+    if (xFilters.genre) chips.push(['genre', `Gênero: ${xFilters.genre}`]);
+    if (xFilters.plat) chips.push(['plat', `Plataforma: ${xFilters.plat}`]);
+    if (xFilters.devName) chips.push(['dev', `Dev: ${xFilters.devName}`]);
+    if (xFilters.pubName) chips.push(['pub', `Pub: ${xFilters.pubName}`]);
+    const wrap = document.getElementById('gm-filter-chips');
+    if (wrap) wrap.innerHTML = chips.map(([k, label]) => `<span class="gm-x-chip">${esc(label)}<button type="button" title="Remover" aria-label="Remover ${esc(label)}" onclick="gmXFilterRemove('${k}')">${icon('x', { size: '0.9em' })}</button></span>`).join('');
+    const badge = document.getElementById('gm-filter-badge');
+    if (badge) { badge.hidden = !chips.length; badge.textContent = chips.length || ''; }
+    const btn = document.getElementById('gm-filter-btn');
+    if (btn) btn.classList.toggle('on', chips.length > 0);
+    const clear = document.getElementById('gm-filter-clear');
+    if (clear) clear.hidden = !chips.length;
+    if (DEPS.hydrateIcons && wrap) DEPS.hydrateIcons(wrap);
+}
+
+export function gmXFilterRemove(kind) {
+    if (kind === 'genre') { xFilters.genre = ''; const el = document.getElementById('gm-x-genre'); if (el) el.value = ''; }
+    if (kind === 'plat') { xFilters.plat = ''; const el = document.getElementById('gm-x-plat'); if (el) el.value = ''; }
+    if (kind === 'dev') { xFilters.devId = 0; xFilters.devName = ''; const el = document.querySelector('#gm-dev-filter input'); if (el) el.value = ''; }
+    if (kind === 'pub') { xFilters.pubId = 0; xFilters.pubName = ''; const el = document.querySelector('#gm-pub-filter input'); if (el) el.value = ''; }
+    paintFilterState();
+    gmExplore(exploreCat);
+}
+
+export function gmXFilterClear() {
+    xFilters.genre = ''; xFilters.plat = ''; xFilters.devId = 0; xFilters.devName = ''; xFilters.pubId = 0; xFilters.pubName = '';
+    const gs = document.getElementById('gm-x-genre'); if (gs) gs.value = '';
+    const ps = document.getElementById('gm-x-plat'); if (ps) ps.value = '';
+    const di = document.querySelector('#gm-dev-filter input'); if (di) di.value = '';
+    const pi = document.querySelector('#gm-pub-filter input'); if (pi) pi.value = '';
+    paintFilterState();
+    gmExplore(exploreCat);
+}
 
 function fillExploreFilters() {
     const bar = document.getElementById('gm-explore-filters');
@@ -717,6 +857,7 @@ function fillExploreFilters() {
     if (ps) ps.innerHTML = '<option value="">Todas as plataformas</option>' + GM_PLATFORMS.map(p => `<option value="${p}">${p}</option>`).join('');
     setupCompanyFilter(document.getElementById('gm-dev-filter'), 'developers');
     setupCompanyFilter(document.getElementById('gm-pub-filter'), 'publishers');
+    paintFilterState();
 }
 
 // ---------- Filtro de desenvolvedora/publicadora com autocomplete ----------
@@ -800,7 +941,7 @@ function paintExplore(cat) {
             return np === normText(xFilters.plat) || np.includes(normText(xFilters.plat)) || kws.some(k => np.includes(k));
         });
     };
-    const shown = xFilters.plat ? iw.filter(platMatch) : iw;
+    const shown = applyXSort(xFilters.plat ? iw.filter(platMatch) : iw);
     const moreBtn = state.more ? `<div class="gm-x-more"><button type="button" class="gm-cta" onclick="gmXMore()">Carregar mais jogos</button></div>` : (state.items.length ? `<div class="gm-x-more gm-note">Chegamos ao fim por aqui — troque de categoria para descobrir mais.</div>` : '');
     if (!shown.length) { grid.innerHTML = `<div class="gm-empty"><p>Nenhum jogo com esses filtros${state.more ? ' — toque em "Carregar mais jogos" para ampliar' : ''}.</p></div>` + moreBtn; return; }
     grid.innerHTML = shown.map(exploreCardHtml).join('') + moreBtn;
@@ -907,13 +1048,23 @@ export async function gmXOpen(rawgId) {
     document.body.appendChild(el);
     if (window.zlNavPush) window.zlNavPush(() => { if (document.getElementById('gm-xpage')) { gmXClose(); return true; } return false; });
     requestAnimationFrame(() => el.classList.add('open'));
-    // Capa vertical em paralelo com a descrição — assim que chega, troca o hero
+    // Capa vertical em paralelo com a descrição. A primeira URL achada entra no
+    // hero NA HORA (o <img> baixa sozinho, sem CORS); o JPEG local (que fica
+    // salvo no jogo ao adicionar à wishlist) chega logo depois e substitui.
     if (rawgId > 0 && !g._vcover) {
-        autoVerticalCover(g.title, rawgId).then(cov => {
+        autoVerticalCover(g.title, rawgId, {
+            onCandidate: (url) => {
+                const hero = document.getElementById('gm-x-hero');
+                if (!hero || !el.contains(hero) || g._vcover) return;
+                const fallback = heroImg || '';
+                hero.onerror = () => { hero.onerror = null; if (fallback) hero.src = fallback; };   // capa da Steam não existe: volta à horizontal
+                hero.src = url;
+            }
+        }).then(cov => {
             if (cov && cov.data) {
                 g._vcover = cov.data;
                 const hero = document.getElementById('gm-x-hero');
-                if (hero && el.contains(hero)) hero.src = cov.data;   // ainda é a página deste jogo
+                if (hero && el.contains(hero)) { hero.onerror = null; hero.src = cov.data; }   // ainda é a página deste jogo
             }
         }).catch(() => {});
     }
