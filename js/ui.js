@@ -14,6 +14,7 @@ import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade,
 import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
 import { renderSteamSettings } from './steam.js';
+import { openShare } from './share.js';
 import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
 import { getIgdbClient, setIgdbClient, igdbConfigured, igdbSelfTest } from './igdb.js';
 
@@ -582,6 +583,7 @@ export function render() {
                     <button class="btn-icon" onclick="moveCategory('${cat.id}', -1)" title="Mover para Cima">${ICONS.up}</button>
                     <button class="btn-icon" onclick="moveCategory('${cat.id}', 1)" title="Mover para Baixo">${ICONS.down}</button>
                     <button class="btn-icon" onclick="openEditCatModal('${cat.id}')" title="Editar Categoria">${ICONS.edit}</button>
+                    <button class="btn-icon" onclick="openCategoryShare('${cat.id}')" title="Compartilhar categoria" aria-label="Compartilhar a categoria ${esc(cat.name)}">${ICONS.share}</button>
                     <button class="btn-icon btn-delete" onclick="askDeleteCategory('${cat.id}')" title="Excluir Categoria">${ICONS.trash}</button>
                     <button onclick="openGameModal('${cat.id}')">+ Jogo</button>
                 </div>
@@ -1730,6 +1732,28 @@ export function getTabGames(tab) {
     const cont = appData.games.filter(g => g.continuous && home(g)).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
     const cats = appData.categories.flatMap(c => getSortedGames(appData.games.filter(g => g.catId === c.id && g.state === null && !g.continuous && home(g)), null, false));
     return [...playing, ...cont, ...cats];
+}
+
+// Compartilhar UMA categoria como imagem de prateleira: leva TODOS os jogos dela
+// (jogando, fila, contínuos e zerados — cada um com o próprio selo na imagem).
+export function openCategoryShare(catId) {
+    const cat = appData.categories.find(c => c.id === catId);
+    if (!cat) return;
+    const all = appData.games.filter(g => g.catId === catId);
+    const playing = getSortedGames(all.filter(g => g.state === 'playing' && !g.continuous), null, false);
+    const queue = getSortedGames(all.filter(g => g.state === null && !g.continuous), null, false);
+    const cont = all.filter(g => g.continuous).sort((a, b) => hoursNum(b.hoursPlayed) - hoursNum(a.hoursPlayed));
+    const finished = getSortedGames(all.filter(g => g.state === 'finished'), appData.settings.finishedSort, true);
+    const items = [...playing, ...queue, ...cont, ...finished];
+    if (!items.length) { triggerToast('Esta categoria ainda não tem jogos para compartilhar.', false); return; }
+    const parts = [];
+    if (playing.length) parts.push(`${playing.length} jogando`);
+    if (queue.length + cont.length) parts.push(`${queue.length + cont.length} na fila`);
+    if (finished.length) parts.push(`${finished.length} zerado${finished.length === 1 ? '' : 's'}`);
+    openShare({
+        items, mode: 'home', title: cat.name, style: 'shelf',
+        subtitle: `${items.length} ${items.length === 1 ? 'jogo' : 'jogos'}${parts.length ? ' · ' + parts.join(' · ') : ''}`,
+    });
 }
 
 // Move o desejo para a biblioteca sem redigitar nada (capa, dados e franquia vão junto)

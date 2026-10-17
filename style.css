@@ -151,10 +151,13 @@ body {
     transition: all 0.3s;
 }
 .category-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; cursor: pointer; user-select: none; }
-.cat-title-area { display: flex; align-items: center; gap: 8px; flex-grow: 1; }
-.chevron { font-size: 0.8em; color: var(--text-muted); transition: transform 0.3s; }
+/* Nome da categoria em UMA linha, com reticências: nome comprido não empurra os
+   botões para baixo (a área do título encolhe; os botões nunca encolhem) */
+.cat-title-area { display: flex; align-items: center; gap: 8px; flex-grow: 1; flex-basis: 0; min-width: 0; }
+.cat-title-area h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chevron { font-size: 0.8em; color: var(--text-muted); transition: transform 0.3s; flex-shrink: 0; }
 .category h2 { margin: 0; font-size: 1.3em; color: var(--text-main); transition: color 0.2s;}
-.cat-actions { display: flex; align-items: center; gap: 8px; }
+.cat-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .game-list-wrapper { overflow: hidden; transition: max-height 0.3s ease-out; }
 .category.collapsed .game-list-wrapper { display: none; }
 .category.collapsed .chevron { transform: rotate(-90deg); }
@@ -1124,7 +1127,7 @@ body.session-on { padding-top: calc(20px + 42px + env(safe-area-inset-top, 0px))
 .gi-sub .plat-ico, .fr-info small .plat-ico { margin-right: 2px; }
 .ph-ico { display: inline-block; line-height: 1; }
 html.ph-offline .ph-ico { display: none; }
-.cat-ico { display: inline-flex; align-items: center; font-size: 1.35em; margin-right: 2px; color: var(--accent-playing); }
+.cat-ico { display: inline-flex; align-items: center; flex-shrink: 0; font-size: 1.35em; margin-right: 2px; color: var(--accent-playing); }
 .category.continuous .cat-ico { color: var(--accent-live); }
 .icon-field { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .icon-preview { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.7em; border: 1px dashed var(--border-color); border-radius: 10px; color: var(--accent-playing); }
@@ -1392,11 +1395,14 @@ body.shelf-plain .shelf-item.is100 .cart-label { box-shadow: 0 0 0 2px var(--sta
 .gm-x-cover { aspect-ratio: 16/9; background: var(--bg-color); }
 .gm-x-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gm-x-cover .gm-cover-empty { font-size: 1.6em; }
-.gm-x-body { padding: 10px 12px 6px; display: flex; flex-direction: column; gap: 3px; }
+/* Normalização: o corpo do card estica (flex: 1) e o selo de match + os botões colam
+   no FUNDO do card. Título de 1 ou 2 linhas não muda mais a altura dos ícones — todos
+   os cards da mesma linha da grade ficam com a "zona de baixo" alinhada. */
+.gm-x-body { flex: 1 1 auto; padding: 10px 12px 6px; display: flex; flex-direction: column; gap: 3px; }
 .gm-x-body strong { font-size: 0.92em; line-height: 1.25; }
 .gm-x-body small { color: var(--text-muted); font-size: 0.76em; }
-.gm-x-body .gm-match { align-self: flex-start; margin-top: 4px; font-size: 0.72em; padding: 2px 8px; }
-.gm-x-actions { display: flex; justify-content: flex-end; gap: 2px; padding: 2px 6px 8px; }
+.gm-x-body .gm-match { align-self: flex-start; margin-top: auto; font-size: 0.72em; padding: 2px 8px; }
+.gm-x-actions { display: flex; justify-content: flex-end; align-items: center; gap: 2px; padding: 2px 6px 8px; margin-top: auto; }
 
 /* Perfil gamer */
 .gm-p-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }

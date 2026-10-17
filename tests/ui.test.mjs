@@ -408,3 +408,45 @@ test('Zerados: na linha do tempo o botão de ordenar fica escondido (a ordem vem
     assertEq(document.getElementById('fin-sort-btn').hidden, false, 'e volta na prateleira');
 });
 
+// ---------- Categorias: header normalizado + botão de compartilhar ----------
+test('Categoria: o header ganha o botão de compartilhar com o id dela', async () => {
+    appData.categories = [{ id: 'c1', name: 'Coleção Com Um Nome Bem Comprido Mesmo' }];
+    appData.games.push({ id: 'cq1', title: 'Jogo da Categoria', state: null, platform: 'PC', catId: 'c1', genres: [] });
+    const { render } = await import('../js/ui.js');
+    try { render(); } catch (e) { /* DOM falso pode falhar em partes; o header é o que interessa */ }
+    const cat = created.find(c => c.id === 'c1');
+    assert(cat, 'a categoria foi pintada');
+    const h = cat.innerHTML;
+    assert(h.includes(`openCategoryShare('c1')`), 'botão de compartilhar com o id da categoria');
+    assert(h.includes('Compartilhar categoria'), 'com title acessível');
+    // o nome longo não muda o botão de lugar: o título da categoria é uma linha só
+    // no CSS (reticências) e os botões nunca encolhem — guardas no static.test.mjs
+});
+
+test('Categoria: compartilhar abre a prateleira com TODOS os jogos dela (e avisa se estiver vazia)', async () => {
+    appData.categories = [{ id: 'c1', name: 'Minha Coleção' }];
+    appData.games.push(
+        { id: 's1', title: 'Jogo na Fila', state: null, platform: 'PC', catId: 'c1', genres: [] },
+        { id: 's2', title: 'Jogo Jogando', state: 'playing', platform: 'PC', catId: 'c1', genres: [] },
+        { id: 's3', title: 'Jogo Zerado', state: 'finished', platform: 'PC', catId: 'c1', genres: [], dateFinished: '10/05/2025' },
+        { id: 's4', title: 'Jogo Contínuo', state: null, platform: 'PC', catId: 'c1', genres: [], continuous: true },
+        { id: 's5', title: 'Jogo de Outra', state: null, platform: 'PC', catId: 'c2', genres: [] }
+    );
+    const { openCategoryShare } = await import('../js/ui.js');
+    openCategoryShare('c1');
+    assertEq(elById('modal-share')._shown, 1, 'a janela de compartilhar abriu');
+    assertEq(elById('sh-title').value, 'Minha Coleção', 'o título da imagem é o nome da categoria');
+    await sleep(80);   // build() é assíncrono: espera a prateleira ser desenhada no canvas
+    const canvasTexts = () => { for (let i = created.length - 1; i >= 0; i--) if (created[i]._texts && created[i]._texts.length) return created[i]._texts; return []; };
+    const drawn = canvasTexts().join(' | ');
+    assert(drawn.includes('Minha Coleção'), 'nome da categoria no topo da imagem');
+    for (const t of ['Jogo na Fila', 'Jogo Jogando', 'Jogo Zerado', 'Jogo Contínuo'])
+        assert(drawn.includes(t), `"${t}" desenhado na prateleira`);
+    assert(!drawn.includes('Jogo de Outra'), 'jogos de outra categoria ficam de fora');
+    // categoria vazia: não abre a janela, só avisa
+    appData.categories.push({ id: 'c-vazia', name: 'Vazia' });
+    elById('modal-share')._shown = 0;
+    openCategoryShare('c-vazia');
+    assertEq(elById('modal-share')._shown, 0, 'categoria sem jogos não abre a janela de compartilhar');
+});
+
