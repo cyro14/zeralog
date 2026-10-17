@@ -350,3 +350,15 @@ test('Explorar: com a checkbox ligada, página só de cadastrados avisa em vez d
     assert(grid.innerHTML.includes('Todos os jogos daqui você já cadastrou'), 'a mensagem explica que não é um filtro sem resultados');
     assert(!grid.innerHTML.includes('Jogo Único Cadastrado'), 'o cadastrado continua escondido');
 });
+
+test('Explorar: o selo de match desceu para a linha dos ícones (mesma linha, alinhado embaixo)', async () => {
+    const mk = (id, name) => ({ id, name, released: '2022-04-04', background_image: `https://media.rawg.io/media/games/${id}/capa.jpg`, metacritic: 80, added: 10, genres: [{ name: 'RPG' }], platforms: [] });
+    mockFetch([['/api/games?', { count: 1, next: null, results: [mk(50, 'Jogo Do Selo')] }]]);
+    const { gmExplore } = await import('../js/gamematch.js');
+    await gmExplore('top');
+    const grid = elById('gm-explore-grid').innerHTML;
+    const bodyAt = grid.indexOf('gm-x-body'), actAt = grid.indexOf('gm-x-actions'), badgeAt = grid.indexOf('gm-match');
+    assert(bodyAt > -1 && actAt > bodyAt, 'o corpo vem antes da linha de ações');
+    assert(badgeAt > actAt, 'o selo mora depois da linha de ações abrir (dentro dela)');
+    assert(/<div class="gm-x-actions">\s*<span class="gm-match/.test(grid), 'e é o PRIMEIRO elemento dela: alinhado com os ícones de baixo');
+});

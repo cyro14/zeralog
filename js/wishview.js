@@ -261,9 +261,9 @@ function releaseCard(g) {
             <strong>${esc(g.title)}</strong>
             <small>${esc(sub)}</small>
             <span class="wish-rel-when" title="${esc(fmtDate(g.released, true))}">${icon('calendar', { size: '1em' })} ${esc(countdownText(g))}</span>
-            <span class="gm-match gm-match-${m >= 90 ? 'hi' : m >= 70 ? 'mid' : 'lo'}">${m}%</span>
         </div>
         <div class="gm-x-actions">
+            <span class="gm-match gm-match-${m >= 90 ? 'hi' : m >= 70 ? 'mid' : 'lo'}">${m}%</span>
             ${action}
             <button type="button" class="icon-btn xl" title="Comprar na Amazon" onclick="event.stopPropagation();gmBuy(${g.rawgId})">${icon('cart', { size: '1.1em' })}</button>
         </div>

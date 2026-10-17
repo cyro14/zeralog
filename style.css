@@ -1395,14 +1395,15 @@ body.shelf-plain .shelf-item.is100 .cart-label { box-shadow: 0 0 0 2px var(--sta
 .gm-x-cover { aspect-ratio: 16/9; background: var(--bg-color); }
 .gm-x-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gm-x-cover .gm-cover-empty { font-size: 1.6em; }
-/* Normalização: o corpo do card estica (flex: 1) e o selo de match + os botões colam
-   no FUNDO do card. Título de 1 ou 2 linhas não muda mais a altura dos ícones — todos
-   os cards da mesma linha da grade ficam com a "zona de baixo" alinhada. */
+/* Normalização: o corpo do card estica (flex: 1) e a linha de ações cola no FUNDO do
+   card — título de 1 ou 2 linhas não muda mais a altura dos ícones. O selo de match
+   mora nessa MESMA linha (primeiro filho): alinhado com os ícones de baixo, colado na
+   esquerda, com os botões empurrados para a direita (margin-right: auto). */
 .gm-x-body { flex: 1 1 auto; padding: 10px 12px 6px; display: flex; flex-direction: column; gap: 3px; }
 .gm-x-body strong { font-size: 0.92em; line-height: 1.25; }
 .gm-x-body small { color: var(--text-muted); font-size: 0.76em; }
-.gm-x-body .gm-match { align-self: flex-start; margin-top: auto; font-size: 0.72em; padding: 2px 8px; }
 .gm-x-actions { display: flex; justify-content: flex-end; align-items: center; gap: 2px; padding: 2px 6px 8px; margin-top: auto; }
+.gm-x-actions .gm-match { margin-right: auto; font-size: 0.72em; padding: 2px 8px; }
 
 /* Perfil gamer */
 .gm-p-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }

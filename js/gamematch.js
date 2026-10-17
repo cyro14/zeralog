@@ -710,9 +710,9 @@ function exploreCardHtml(g) {
         <div class="gm-x-body">
             <strong>${esc(g.title)}</strong>
             <small>${esc((g.genres || []).slice(0, 2).join(' · '))}${g.released ? ' · ' + String(g.released).slice(0, 4) : ''}</small>
-            <span class="gm-match gm-match-${m >= 90 ? 'hi' : m >= 70 ? 'mid' : 'lo'}">${m}%</span>
         </div>
         <div class="gm-x-actions">
+            <span class="gm-match gm-match-${m >= 90 ? 'hi' : m >= 70 ? 'mid' : 'lo'}">${m}%</span>
             <button type="button" class="icon-btn xl" title="Adicionar à wishlist" onclick="event.stopPropagation();gmExploreWish(${g.rawgId})"><span data-icon="bookmark" data-size="1.1em"></span></button>
             <button type="button" class="icon-btn xl" title="Comprar na Amazon" onclick="event.stopPropagation();gmBuy(${g.rawgId})"><span data-icon="cart" data-size="1.1em"></span></button>
         </div>

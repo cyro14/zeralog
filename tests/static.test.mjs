@@ -389,7 +389,14 @@ test('Cards e categorias: zona de baixo alinhada, título em uma linha e botão 
     assert(/^\.gm-x-body \{[^}]*flex: 1 1 auto/m.test(css), 'corpo do card estica (flex: 1 1 auto)');
     assert(/^\.gm-x-actions \{[^}]*margin-top: auto/m.test(css), 'ícones ancorados no fundo do card');
     assert(/^\.gm-x-actions \{[^}]*align-items: center/m.test(css), 'ícones centrados na linha de ações');
-    assert(/^\.gm-x-body \.gm-match \{[^}]*margin-top: auto/m.test(css), 'selo de match também cola no fundo do corpo');
+    // o selo de match desceu para a MESMA linha dos ícones: alinhado embaixo, colado
+    // na esquerda, com os botões empurrados para a direita
+    assert(/^\.gm-x-actions \.gm-match \{[^}]*margin-right: auto/m.test(css), 'selo de match na linha dos ícones, botões empurrados para a direita');
+    assert(!/\.gm-x-body \.gm-match/.test(css), 'selo de match saiu do corpo do card');
+    const gmsrc = read(join(JS, 'gamematch.js'));
+    const wvsrc = read(join(JS, 'wishview.js'));
+    assert(/<div class="gm-x-actions">\s*<span class="gm-match/.test(gmsrc), 'Explorar: o selo abre a linha de ações (alinhado com os ícones)');
+    assert(/<div class="gm-x-actions">\s*<span class="gm-match/.test(wvsrc), 'Lançamentos: o selo abre a linha de ações (alinhado com os ícones)');
     // categorias: o nome em UMA linha com reticências; os botões nunca caem pra baixo
     const title = /^\.cat-title-area h2 \{[^}]*\}/m.exec(css);
     assert(title && title[0].includes('white-space: nowrap') && title[0].includes('text-overflow: ellipsis'), 'título da categoria em uma linha (reticências)');
