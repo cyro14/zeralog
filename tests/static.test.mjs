@@ -211,3 +211,29 @@ test('Ícones: todo icons/... referenciado no código existe na pasta', () => {
     }
     assertEq([...new Set(missing)].join(', '), '', 'arquivos de ícone faltando');
 });
+
+// ---------- 11) GUARDA DO BUSCADOR DE CAPAS: dialog fechado não pode aparecer ----------
+// Regressão: o `.covers-full` ganhou `display: flex` — e o display do app vence o
+// `dialog:not([open]) { display: none }` do navegador. Resultado: a tela inteira do
+// buscador de capas ficava presa sobre o app, sem sentido, em qualquer página.
+test('Buscador de capas: fechado, o dialog some (display só com [open])', () => {
+    const css = read(join(ROOT, 'style.css'));
+    // 1) o guarda-chuva que devolve o esconderijo para TODO dialog fechado
+    assert(/dialog:not\(\[open\]\)\s*\{[^}]*display\s*:\s*none/.test(css), 'style.css esconde dialog:not([open])');
+    // 2) o display do buscador não pode viver na classe "solta" (vale com o dialog fechado)
+    assert(!/\.covers-full\s*\{[^}]*display\s*:/.test(css), '.covers-full não pode ter display sem [open]');
+    // 3) o layout de coluna continua existindo, agora preso ao [open]
+    const open = /\.covers-full\[open\]\s*\{([^}]*)\}/.exec(css);
+    assert(open, 'regra .covers-full[open] existe');
+    assert(open[1].includes('display: flex'), 'aberto: o buscador é flex');
+    assert(open[1].includes('flex-direction: column'), 'aberto: topo, busca, grade e rodapé empilhados');
+    // 4) aberto, ele ocupa a tela inteira (é isso que o usuário vê ao tocar em "Trocar capa")
+    const base = /\.covers-full\s*\{([^}]*)\}/.exec(css);
+    assert(base, 'regra .covers-full existe');
+    assert(base[1].includes('100vw') && base[1].includes('100dvh'), 'aberto: tela cheia (100vw x 100dvh)');
+    // 5) e o dialog do HTML não pode carregar display no style inline
+    const html = read(join(ROOT, 'index.html'));
+    const tag = /<dialog id="modal-covers"[^>]*>/.exec(html);
+    assert(tag, 'dialog#modal-covers existe no index.html');
+    assert(!/style\s*=\s*"[^"]*display/.test(tag[0]), 'sem display inline no dialog do buscador');
+});

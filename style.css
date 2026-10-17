@@ -432,6 +432,11 @@ button:hover { opacity: 0.8; }
 
 dialog { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; width: 90%; max-width: 450px; box-sizing: border-box; margin: auto; max-height: 90vh; max-height: 90dvh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
 dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
+/* <dialog> fechado não existe. Toda regra do app que dá display a um dialog (o
+   buscador de capas dava `display: flex`) vence o `dialog:not([open]) { display:
+   none }` do navegador — e a tela inteira ficava presa sobre o app. Esta regra,
+   mais específica que as classes do app, devolve o esconderijo para todo dialog. */
+dialog:not([open]) { display: none; }
 .modal-form { display: flex; flex-direction: column; gap: 15px; }
 .modal-form input, .modal-form select, .modal-form textarea { background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; outline: none; font-size: 1em; font-family: inherit; }
 .modal-form input:focus, .modal-form select:focus, .modal-form textarea:focus { border-color: var(--accent-playing); }
@@ -1006,7 +1011,10 @@ body.session-on { padding-top: calc(20px + 42px + env(safe-area-inset-top, 0px))
 
 /* ===== Buscador de capas (tela cheia) ===== */
 .covers-dialog { max-width: 560px; }
-.covers-full { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: none; border-radius: 0; padding: 0; background: var(--bg-color); overflow: hidden; display: flex; flex-direction: column; }
+.covers-full { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: none; border-radius: 0; padding: 0; background: var(--bg-color); overflow: hidden; }
+/* O layout de coluna (topo fixo, grade rolando, rodapé) só vale com o dialog
+   ABERTO: sem o [open] o display:flex fazia o buscador existir solto na página. */
+.covers-full[open] { display: flex; flex-direction: column; }
 .covers-full::backdrop { background: var(--bg-color); }
 .cv-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px 10px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); }
 .cv-top-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
