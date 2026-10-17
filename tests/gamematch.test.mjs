@@ -48,10 +48,17 @@ test('matchScore fica entre 5 e 99 e gênero do perfil pontua mais alto', () => 
     assert(rpg > corrida, `gênero do perfil pontua mais (${rpg} > ${corrida})`);
 });
 
-test('gmIsClean bloqueia conteúdo adulto (tags, ESRB e título)', () => {
+test('gmIsClean bloqueia adulto de verdade — mas GTA VI (tag "Nudity") passa', () => {
     assert(gmIsClean({ title: 'Jogo Normal', tags: ['singleplayer'] }), 'jogo comum passa');
     assert(!gmIsClean({ title: 'Jogo', tags: ['hentai'] }), 'tag adulto bloqueia');
     assert(!gmIsClean({ title: 'Jogo', tags: [], esrb: 'Adults Only' }), 'ESRB Adults Only bloqueia');
+    // GTA VI na RAWG vem com ESRB "Mature" e a tag "Nudity" — descritores de
+    // classificação, não conteúdo adulto. Sem isso ele sumia dos Lançamentos
+    // mesmo estando no topo do hype.
+    const gta6 = { title: 'Grand Theft Auto VI', esrb: 'Mature', tags: ['Singleplayer', 'Open World', 'Violent', 'Nudity', 'Crime'] };
+    assert(gmIsClean(gta6), 'GTA VI passa (era filtrado injustamente)');
+    const cp2077 = { title: 'Cyberpunk 2077', esrb: 'Mature', tags: ['Nudity', 'Sexual Content', 'Mature'] };
+    assert(gmIsClean(cp2077), 'Cyberpunk (tags de classificação M) passa');
 });
 
 test('farFuture: datas futuras só valem quando o perfil pede lançamentos', () => {

@@ -112,11 +112,13 @@ test('Módulos: todo import nomeado existe como export no módulo alvo', () => {
 // ---------- 4) GUARDA DE HTML: ids essenciais usados pelo JS existem no index.html ----------
 test('HTML: ids essenciais referenciados pelo JS existem no index.html', () => {
     const html = read(join(ROOT, 'index.html'));
-    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades', 'quick-match', 'qm-body', 'qm-count', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'modal-ach', 'ach-detail', 'sh-style-timeline'])
+    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades', 'quick-match', 'qm-body', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'modal-ach', 'ach-detail', 'sh-style-timeline'])
         assert(html.includes(`id="${id}"`), `index.html deveria ter #${id}`);
     // ids que FORAM REMOVIDOS não podem estar no HTML (senão o JS pode tentar usá-los de volta)
-    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips'])
+    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips', 'qm-count'])
         assert(!html.includes(`id="${gone}"`), `index.html NÃO deveria ter #${gone} (foi removido)`);
+    // o botão de sortear não tem mais números nem o "Sortear agora!" de cima
+    assert(!html.includes('Sortear agora!'), 'o botão de sortear em cima foi removido (o confirmar é no final do carrossel)');
     // o modo "cards" acabou: nenhum botão de compartilhar pode oferecer cards
     assert(!html.includes('>Cards</button>'), 'sem botão de estilo Cards no compartilhar');
     const share = read(join(JS, 'share.js'));

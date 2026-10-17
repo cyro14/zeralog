@@ -9,7 +9,7 @@ import { applyTheme, currentTheme } from './themes.js';
 import { iconSearch, iconWeightChange, iconMore, ensureForData } from './phosphor.js';
 import { initSession, startSession, openEndSession, sessionPreview, sessionFinish, openJournalEntry, saveJournalEntry, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission } from './session.js';
 import { openAchDetail } from './achievements.js';
-import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetDiff, qmToggleEmulated, qmSetPlatform, qmSetFranchise, qmSetScore } from './quickmatch.js';
+import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetDiff, qmToggleEmulated, qmSetPlatform, qmSetFranchise, qmSetScore, qmNext, qmPrev, qmConfirmSorteio } from './quickmatch.js';
 import { genreSetBase, genreSetYear } from './genres.js';
 import { coversSearch } from './covers.js';
 import { viewImage } from './gameApi.js';
@@ -130,7 +130,7 @@ window.wikiFindFandom = wikiFindFandom;
 window.wikiFindToggle = wikiFindToggle;
 window.wikiFindStep = wikiFindStep;
 window.wikiFindClose = () => wikiFindClose();
-Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, cropApply, cropCancel, cropReset, cropFit, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, iconSearch, iconWeightChange, iconMore, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, coversSearch, qmSetDiff, qmToggleEmulated, genreSetBase, genreSetYear, shelfDo, openShelfDetail, openGamePage, gpClose, gpDo, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetPlatform, qmSetFranchise, qmSetScore, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
+Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, cropApply, cropCancel, cropReset, cropFit, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, iconSearch, iconWeightChange, iconMore, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, coversSearch, qmSetDiff, qmToggleEmulated, qmNext, qmPrev, qmConfirmSorteio, genreSetBase, genreSetYear, shelfDo, openShelfDetail, openGamePage, gpClose, gpDo, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetPlatform, qmSetFranchise, qmSetScore, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, filterByFranchise });
 
 // Steam: login, sincronização e configurações
 Object.assign(window, { steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSyncUI: steamSync });

@@ -228,8 +228,11 @@ function reseedPool() {
 reseedPool();
 
 // ---------- Filtro de conteúdo adulto (bloqueado por padrão em todo o GameMatch) ----------
-// Cobre tags do catálogo, ESRB "Adults Only" e palavras explícitas no título.
-const ADULT_TAGS = ['nsfw', 'hentai', 'eroge', 'erotic', 'sexual-content', 'nudity', 'lewd', 'adult', 'porn', 'mature-content'];
+// Bloqueia pornografia/conteúdo adulto de verdade. NÃO bloqueia os descritores de
+// classificação M (nudity, sexual-content, mature-content): GTA VI, Cyberpunk e
+// The Witcher carregam essas tags na RAWG e são jogos normais — sem isso o GTA VI
+// sumia dos Lançamentos mesmo estando no topo do hype.
+const ADULT_TAGS = ['nsfw', 'hentai', 'eroge', 'erotic', 'lewd', 'porn', 'adult'];
 const ADULT_TITLE_RE = /\b(hentai|porn|porno|eroge|erotic|erotica|nude|nudity|nsfw|sexual|lewd|ecchi|oppai|18\+|xxx|sex)\b/i;
 // Jogos marcados pra daqui a 1+ ano (ex.: "2030") atrapalham a descoberta — só entram se o
 // perfil pedir "só lançamentos"

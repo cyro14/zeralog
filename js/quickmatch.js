@@ -1,6 +1,7 @@
 // Quick Match: filtros de humor para escolher o que jogar (e alimentar a roleta).
 import { appData } from './store.js';
 import { esc } from './gameApi.js';
+import { icon } from './icons.js';
 
 const F = { time: null, genre: null, portable: false, diff: null, emulated: false, platform: null, franchise: null, minScore: null };
 const DIFF = { easy: 'Fácil', normal: 'Normal', hard: 'Difícil', extreme: 'Extremo' };
@@ -76,57 +77,113 @@ function backlogEnum(field) {   // plataformas ou franquias presentes na fila
     return [...map.values()].sort((a, b) => a.localeCompare(b));
 }
 
+// ================= Carrossel: uma pergunta por vez =================
+// Ao clicar em "Sortear", abre um questionário estilo carrossel: cada tela traz
+// UMA pergunta com a opção padrão já marcada — o usuário troca ou avança, e o
+// botão de CONFIRMAR o sorteio só aparece no final. Nada de lista grande nem
+// botão "Sortear agora!" em cima.
+let qmStep = 0;
+const QM_STEPS = ['time', 'diff', 'style', 'genre', 'platform', 'franchise', 'score'];
+let qmWired = false;
+
+const qmChip = (label, on, fn) => `<button type="button" class="qm-chip ${on ? 'active' : ''}" onclick="${fn}">${esc(label)}</button>`;
+const qmQuote = v => String(v).replace(/'/g, "\\'");
+
+function qmQuestion(step) {
+    switch (step) {
+        case 'time': return {
+            q: 'Quanto tempo você tem?',
+            chips: qmChip('Qualquer duração', !F.time, 'qmSetTime(null)')
+                + Object.entries(TIME).map(([k, [label]]) => qmChip(label, F.time === k, `qmSetTime('${k}')`)).join('')
+        };
+        case 'diff': return {
+            q: 'Qual dificuldade?',
+            chips: qmChip('Qualquer dificuldade', !F.diff, 'qmSetDiff(null)')
+                + Object.entries(DIFF).map(([k, label]) => qmChip(label, F.diff === k, `qmSetDiff('${k}')`)).join('')
+        };
+        case 'style': return {
+            q: 'Algum estilo especial?',
+            hint: 'Pode marcar mais de um — ou nenhum.',
+            chips: qmChip('RPG', !!F.genre && norm(F.genre) === 'rpg', "qmSetGenre('RPG', true)")
+                + qmChip('Ideal para portátil', F.portable, 'qmTogglePortable()')
+                + qmChip('Emulado', F.emulated, 'qmToggleEmulated()')
+        };
+        case 'genre': return {
+            q: 'Qual gênero?',
+            chips: qmChip('Qualquer gênero', !F.genre, 'qmSetGenre(null)')
+                + backlogGenres().map(x => qmChip(x, !!F.genre && norm(F.genre) === norm(x), `qmSetGenre('${qmQuote(x)}', true)`)).join('')
+        };
+        case 'platform': return {
+            q: 'Onde você quer jogar?',
+            chips: qmChip('Qualquer plataforma', !F.platform, 'qmSetPlatform(null)')
+                + backlogEnum('platform').map(x => qmChip(x, !!F.platform && norm(F.platform) === norm(x), `qmSetPlatform('${qmQuote(x)}')`)).join('')
+        };
+        case 'franchise': return {
+            q: 'Alguma franquia em mente?',
+            chips: qmChip('Qualquer franquia', !F.franchise, 'qmSetFranchise(null)')
+                + backlogEnum('franchise').map(x => qmChip(x, !!F.franchise && norm(F.franchise) === norm(x), `qmSetFranchise('${qmQuote(x)}')`)).join('')
+        };
+        case 'score': return {
+            q: 'Nota mínima no Metacritic?',
+            chips: qmChip('Qualquer nota', !F.minScore, "qmSetScore('')")
+                + [60, 75, 85].map(n => qmChip(`${n} ou mais`, F.minScore === n, `qmSetScore(${n})`)).join('')
+        };
+    }
+}
+
+function qmConfirmHtml() {
+    const matches = getMatches();
+    const summary = describeFilters();
+    const backlog = appData.games.filter(g => g.state === null && !g.continuous);
+    const chips = summary
+        ? summary.split(' + ').map(p => `<span class="qm-chip active">${esc(p)}</span>`).join('')
+        : `<span class="qm-chip active">Sem filtros — a fila inteira entra no sorteio</span>`;
+    return `
+        <div class="qm-question">Tudo pronto pra sortear!</div>
+        <div class="qm-chips qm-summary">${chips}</div>
+        ${matches.length
+            ? `<div class="qm-ready">${matches.length} ${matches.length === 1 ? 'jogo combina' : 'jogos combinam'} — é só confirmar.</div>
+                <button type="button" class="pill-btn primary qm-roll" onclick="qmConfirmSorteio()">${icon('dice', { size: '1em' })} Confirmar sorteio</button>`
+            : `<div class="qm-empty">${backlog.length ? 'Nenhum jogo da fila combina com esses filtros — volte e ajuste.' : 'Sua fila está vazia. Adicione jogos pra sortear!'}</div>`}`;
+}
+
 export function renderQuickMatch() {
     const body = document.getElementById('qm-body');
     if (!body) return;
-    const backlog = appData.games.filter(g => g.state === null && !g.continuous);
-    const matches = getMatches();
-    const active = filtersActive();
-    document.getElementById('qm-count').textContent = active ? `${matches.length} combinam` : `${backlog.length} na fila`;
-
-    const chip = (label, on, fn) => `<button type="button" class="qm-chip ${on ? 'active' : ''}" onclick="${fn}">${label}</button>`;
-    const genres = backlogGenres();
-    if (F.genre && !genres.some(x => norm(x) === norm(F.genre))) genres.push(F.genre);
-
-    const noTime = backlog.filter(g => hoursOf(g.meta) === null).length;
-    const sorted = [...matches].sort((a, b) => (hoursOf(a.meta) ?? 1e9) - (hoursOf(b.meta) ?? 1e9));
-    const rows = sorted.slice(0, 6).map(g => `<li><span class="qm-title">${esc(g.title)}</span><span class="qm-meta">${esc(g.meta ? (String(g.meta).endsWith('m') ? String(g.meta).slice(0, -1) + ' min' : g.meta) : 'sem tempo')}</span><button type="button" class="pill-btn primary" onclick="toggleState('${g.id}', 'playing')">Jogar</button></li>`).join('');
-
+    // ao (re)abrir o painel, o carrossel volta pra primeira pergunta
+    const box = document.getElementById('quick-match');
+    if (box && !qmWired) {
+        qmWired = true;
+        box.addEventListener('toggle', () => { if (box.open) { qmStep = 0; renderQuickMatch(); } });
+    }
+    const last = qmStep >= QM_STEPS.length;
+    const dots = Array.from({ length: QM_STEPS.length + 1 }, (_, i) => `<i class="${i === qmStep ? 'on' : ''}"></i>`).join('');
+    let inner;
+    if (last) inner = qmConfirmHtml();
+    else {
+        const { q, hint, chips } = qmQuestion(QM_STEPS[qmStep]);
+        inner = `<div class="qm-question">${esc(q)}</div>${hint ? `<small class="qm-note">${hint}</small>` : ''}<div class="qm-chips">${chips}</div>`;
+    }
     body.innerHTML = `
-        <div class="qm-group"><span class="qm-label">Duração</span><div class="qm-chips">
-            ${Object.entries(TIME).map(([k, [label]]) => chip(label, F.time === k, `qmSetTime('${k}')`)).join('')}
-        </div></div>
-        <div class="qm-group"><span class="qm-label">Dificuldade</span><div class="qm-chips">
-            ${Object.entries(DIFF).map(([k, label]) => chip(label, F.diff === k, `qmSetDiff('${k}')`)).join('')}
-        </div></div>
-        <div class="qm-group"><span class="qm-label">Estilo</span><div class="qm-chips">
-            ${chip('RPG', F.genre && norm(F.genre) === 'rpg', "qmSetGenre('RPG', true)")}
-            ${chip('Ideal para portátil', F.portable, 'qmTogglePortable()')}
-            ${chip('Emulado', F.emulated, 'qmToggleEmulated()')}
-            <select class="qm-select" onchange="qmSetGenre(this.value)" aria-label="Gênero">
-                <option value="">Qualquer gênero</option>
-                ${genres.map(x => `<option value="${esc(x)}" ${F.genre && norm(F.genre) === norm(x) ? 'selected' : ''}>${esc(x)}</option>`).join('')}
-            </select>
-            ${active ? '<button type="button" class="pill-btn" onclick="qmReset()">Limpar</button>' : ''}
-        </div></div>
-        <div class="qm-group"><span class="qm-label">Onde jogar</span><div class="qm-chips">
-            <select class="qm-select" onchange="qmSetPlatform(this.value)" aria-label="Plataforma">
-                <option value="">Qualquer plataforma</option>
-                ${backlogEnum('platform').map(x => `<option value="${esc(x)}" ${F.platform && norm(F.platform) === norm(x) ? 'selected' : ''}>${esc(x)}</option>`).join('')}
-            </select>
-            <select class="qm-select" onchange="qmSetFranchise(this.value)" aria-label="Franquia">
-                <option value="">Qualquer franquia</option>
-                ${backlogEnum('franchise').map(x => `<option value="${esc(x)}" ${F.franchise && norm(F.franchise) === norm(x) ? 'selected' : ''}>${esc(x)}</option>`).join('')}
-            </select>
-            <select class="qm-select" onchange="qmSetScore(this.value)" aria-label="Nota mínima">
-                <option value="">Qualquer nota</option>
-                ${[60, 75, 85].map(n => `<option value="${n}" ${F.minScore === n ? 'selected' : ''}>Metacritic ${n}+</option>`).join('')}
-            </select>
-        </div></div>
-        ${matches.length ? `<ul class="qm-list">${rows}</ul>${matches.length > 6 ? `<small class="qm-note">+${matches.length - 6} outros</small>` : ''}
-            <button type="button" class="pill-btn primary qm-roll" onclick="spinRoulette()">Sortear entre ${matches.length === 1 ? 'esse jogo' : `os ${matches.length}`}</button>`
-            : `<div class="qm-empty">${backlog.length ? 'Nenhum jogo da fila combina com esses filtros.' : 'Sua fila está vazia.'}</div>`}
-        ${F.time && noTime ? `<small class="qm-note">${noTime} ${noTime === 1 ? 'jogo' : 'jogos'} sem tempo estimado ficam de fora dos filtros de duração.</small>` : ''}`;
+        <div class="qm-dots" aria-hidden="true">${dots}</div>
+        <small class="qm-step-num">${last ? 'Confirmar' : `Pergunta ${qmStep + 1} de ${QM_STEPS.length}`}</small>
+        ${inner}
+        <div class="qm-nav">
+            ${qmStep > 0 ? `<button type="button" class="pill-btn" onclick="qmPrev()">‹ Voltar</button>` : ''}
+            ${last && summaryActive() ? `<button type="button" class="pill-btn" onclick="qmReset()">Limpar filtros</button>` : ''}
+            ${!last ? `<button type="button" class="pill-btn primary" onclick="qmNext()">Avançar ›</button>` : ''}
+        </div>`;
+}
+const summaryActive = () => filtersActive();
+
+export function qmNext() { qmStep = Math.min(QM_STEPS.length, qmStep + 1); renderQuickMatch(); }
+export function qmPrev() { qmStep = Math.max(0, qmStep - 1); renderQuickMatch(); }
+
+// Confirma no final do carrossel: fecha o painel e roda a roleta (modal do sorteio)
+export function qmConfirmSorteio() {
+    const box = document.getElementById('quick-match');
+    if (box) box.open = false;
+    if (typeof window.spinRoulette === 'function') window.spinRoulette();
 }
 
 export function qmSetTime(k) { F.time = F.time === k ? null : k; renderQuickMatch(); }
