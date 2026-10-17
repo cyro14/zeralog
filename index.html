@@ -127,7 +127,16 @@
         </div>
 
         <div id="app-container"></div>
-        <button class="btn-add-cat" onclick="openCatModal()">+ Adicionar Categoria</button>
+
+        <!-- Atalho de cadastro: FAB circular "+" com as duas portas de entrada -->
+        <div class="fab-backdrop" id="fab-add-backdrop" hidden onclick="closeAddMenu()"></div>
+        <div class="fab-add-wrap" id="fab-add-wrap">
+            <div class="fab-add-menu" id="fab-add-menu" role="menu" aria-label="O que você quer adicionar?" hidden>
+                <button type="button" class="fab-add-item" role="menuitem" onclick="fabAddGame()"><span data-icon="gamepad" data-size="1.15em"></span>Adicionar jogo</button>
+                <button type="button" class="fab-add-item" role="menuitem" onclick="fabAddCategory()"><span data-icon="shapes" data-size="1.15em"></span>Adicionar Categoria</button>
+            </div>
+            <button type="button" class="fab-add" id="fab-add" onclick="toggleAddMenu()" aria-haspopup="true" aria-expanded="false" aria-label="Adicionar jogo ou categoria" title="Adicionar jogo ou categoria"><span data-icon="plus" data-size="1.5em"></span></button>
+        </div>
     </div>
 
     <!-- GAMEMATCH TAB: o "Tinder de jogos" -->

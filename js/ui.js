@@ -930,6 +930,38 @@ export function openGameModal(catId) {
     document.getElementById('modal-game').showModal();
 }
 
+// ===== FAB "+" da aba Fila: atalho de cadastro com as duas opções =====
+// O botão flutuante abre um mini-menu (jogo ou categoria) sobre um fundo que
+// fecha ao toque. As funções ficam no window porque o index.html chama por onclick.
+export function toggleAddMenu() {
+    const menu = document.getElementById('fab-add-menu');
+    if (!menu) return;
+    const open = !!menu.hidden;   // fechado agora? então abre
+    menu.hidden = !open;
+    const backdrop = document.getElementById('fab-add-backdrop');
+    if (backdrop) backdrop.hidden = !open;
+    const fab = document.getElementById('fab-add');
+    if (fab) { fab.classList.toggle('open', open); fab.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+}
+
+export function closeAddMenu() {
+    const menu = document.getElementById('fab-add-menu');
+    if (menu && !menu.hidden) toggleAddMenu();
+}
+
+// "Adicionar jogo": abre o cadastro já na primeira categoria (o seletor do modal troca).
+export function fabAddGame() {
+    closeAddMenu();
+    const catId = (appData.categories[0] || {}).id;
+    if (!catId) { triggerToast('Crie uma categoria antes de adicionar jogos.', false); return; }
+    openGameModal(catId);
+}
+
+export function fabAddCategory() {
+    closeAddMenu();
+    openCatModal();
+}
+
 export function openEditWishModal(id) { openEditGameModal(id, true); }
 
 export function openEditGameModal(gameId, isWish = false) {

@@ -226,3 +226,55 @@ test('Zerados (linha do tempo): cada mês vira uma PRATELEIRA, sem cards', async
     assertEq(carts.length, 2, 'um cartucho por jogo zerado');
     assert(carts.every(c => c.innerHTML.includes('cart')), 'cartuchos desenhados na tábua');
 });
+
+// ---------- FAB "+" da aba Fila: atalho de cadastro com duas opções ----------
+test('FAB "+": abre as duas opções de cadastro e fecha ao toque', async () => {
+    const { toggleAddMenu, closeAddMenu } = await import('../js/ui.js');
+    const menu = document.getElementById('fab-add-menu');
+    const fab = document.getElementById('fab-add');
+    menu.hidden = true;   // estado do HTML estático (atributo hidden)
+    toggleAddMenu();
+    assertEq(menu.hidden, false, 'o + abre o menu com jogo e categoria');
+    assertEq(elById('fab-add-backdrop').hidden, false, 'fundo para fechar ao toque fora');
+    assert(fab._cls.includes('open'), 'o + gira para X quando o menu abre');
+    closeAddMenu();
+    assertEq(menu.hidden, true, 'fechar esconde o menu');
+    assertEq(elById('fab-add-backdrop').hidden, true, 'e o fundo some');
+    assert(!fab._cls.includes('open'), 'o + volta ao normal');
+});
+
+test('FAB "+" → Adicionar jogo: abre o cadastro já na primeira categoria', async () => {
+    const { fabAddGame } = await import('../js/ui.js');
+    document.getElementById('fab-add-menu').hidden = false;
+    fabAddGame();
+    assertEq(elById('modal-game')._shown, 1, 'o modal de cadastro de jogo abriu');
+    assertEq(elById('game-cat-id').value, appData.categories[0].id, 'já vem na primeira categoria');
+    assertEq(elById('fab-add-menu').hidden, true, 'e o menu fecha ao escolher');
+});
+
+test('FAB "+" → Adicionar Categoria: abre o cadastro de categoria', async () => {
+    const { fabAddCategory } = await import('../js/ui.js');
+    document.getElementById('fab-add-menu').hidden = false;
+    fabAddCategory();
+    assertEq(elById('modal-cat')._shown, 1, 'o modal de categoria abriu');
+    assertEq(elById('cat-modal-title').innerText, 'Nova Categoria', 'título de categoria nova');
+    assertEq(elById('fab-add-menu').hidden, true, 'e o menu fecha ao escolher');
+});
+
+test('FAB "+": HTML dentro da aba Fila, círculo no CSS e menu com as duas opções', () => {
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+    const html = readFileSync(join(root, 'index.html'), 'utf8');
+    const home = html.slice(html.indexOf('id="tab-home"'), html.indexOf('id="tab-gamematch"'));
+    assert(home.includes('id="fab-add"'), 'botão flutuante dentro da aba Fila');
+    assert(home.includes('onclick="toggleAddMenu()"'), 'o + chama toggleAddMenu');
+    assert(home.includes('onclick="fabAddGame()"') && home.includes('Adicionar jogo'), 'opção Adicionar jogo');
+    assert(home.includes('onclick="fabAddCategory()"') && home.includes('Adicionar Categoria'), 'opção Adicionar Categoria');
+    assert(!html.includes('class="btn-add-cat"'), 'o botão antigo de categoria saiu (o atalho é o FAB)');
+    const css = readFileSync(join(root, 'style.css'), 'utf8');
+    const rule = sel => { const at = css.indexOf(sel + ' {'); assert(at > -1, `regra ${sel} existe`); return css.slice(at, css.indexOf('}', at)); };
+    assert(rule('.fab-add').includes('border-radius: 50%'), 'FAB circular');
+    assert(rule('.fab-add').includes('var(--accent-playing)'), 'FAB na cor principal do tema');
+    assert(css.includes('.fab-add-menu[hidden] { display: none; }'), 'menu fechado não aparece (display não vence o hidden)');
+    assert(!css.includes('.btn-add-cat'), 'CSS do botão antigo removido junto');
+});
+
