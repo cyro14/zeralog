@@ -1,6 +1,6 @@
 // Imagens para compartilhar: cartão de um jogo, prateleira de cartuchos ou a
-// linha do tempo dos zerados (prateleiras agrupadas por ano — ou por mês, se a
-// tela estiver no modo "Por mês").
+// linha do tempo dos zerados (uma linha horizontal de anos, com as capas de cada
+// jogo empilhadas em cima do seu ano).
 // Desenhadas direto num canvas, com as cores do tema e as logos do app.
 import { appData } from './store.js';
 import { fmtDate, daysUntil, countdownText } from './releases.js';
@@ -122,49 +122,49 @@ async function metaLine(ctx, x, y, item, o) {
     return total;
 }
 
-function backdrop(ctx, H, p, img) {
+function backdrop(ctx, H, p, img, width = W) {
     if (img) {
         ctx.save();
         try { ctx.filter = 'blur(38px) brightness(0.55) saturate(1.2)'; } catch (e) {}
-        const s = Math.max(W / img.width, H / img.height) * 1.25;
-        ctx.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s);
+        const s = Math.max(width / img.width, H / img.height) * 1.25;
+        ctx.drawImage(img, (width - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s);
         ctx.restore();
         const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(0,0,0,0.35)'); g.addColorStop(1, 'rgba(0,0,0,0.78)');
-        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = g; ctx.fillRect(0, 0, width, H);
         return;
     }
     const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, p.bg); g.addColorStop(1, rgba(p.card, 1));
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    const r = ctx.createRadialGradient(W * 0.2, 0, 0, W * 0.2, 0, W * 0.9); r.addColorStop(0, rgba(p.play, 0.22)); r.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = r; ctx.fillRect(0, 0, W, H);
-    const r2 = ctx.createRadialGradient(W, H, 0, W, H, W * 0.8); r2.addColorStop(0, rgba(p.fin, 0.16)); r2.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = r2; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, width, H);
+    const r = ctx.createRadialGradient(width * 0.2, 0, 0, width * 0.2, 0, width * 0.9); r.addColorStop(0, rgba(p.play, 0.22)); r.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = r; ctx.fillRect(0, 0, width, H);
+    const r2 = ctx.createRadialGradient(width, H, 0, width, H, width * 0.8); r2.addColorStop(0, rgba(p.fin, 0.16)); r2.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = r2; ctx.fillRect(0, 0, width, H);
 }
-function footer(ctx, y, p, light) {
+function footer(ctx, y, p, light, width = W) {
     const fg = light ? '#ffffff' : p.text;
     ctx.font = `800 34px ${FONT}`; ctx.textBaseline = 'middle';
     const a = 'ZeraLog ', b = 'x Anywhere Gamer';
     const wa = ctx.measureText(a).width; ctx.font = `800 34px ${FONT}`; const wb = ctx.measureText(b).width;
-    const total = 54 + 14 + wa + wb, x = (W - total) / 2;
+    const total = 54 + 14 + wa + wb, x = (width - total) / 2;
     drawLogo(ctx, x, y - 27, 54, p);
     ctx.textAlign = 'left'; ctx.fillStyle = fg; ctx.fillText(a, x + 68, y + 2);
     ctx.fillStyle = p.play; ctx.fillText(b, x + 68 + wa, y + 2);
     // Link do app: presente em TODAS as imagens compartilháveis
     ctx.font = `600 22px ${FONT}`; ctx.textAlign = 'center';
     ctx.fillStyle = light ? 'rgba(255,255,255,0.72)' : p.muted;
-    ctx.fillText(BLOG_URL, W / 2, y + 34);
+    ctx.fillText(BLOG_URL, width / 2, y + 34);
 }
-function header(ctx, p, title, subtitle, light) {
+function header(ctx, p, title, subtitle, light, width = W) {
     const fg = light ? '#fff' : p.text, mu = light ? 'rgba(255,255,255,0.75)' : p.muted;
     drawLogo(ctx, 56, 52, 64, p);
     ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = `800 44px ${FONT}`; ctx.fillStyle = fg; ctx.fillText('ZeraLog', 134, 86);
     ctx.font = `800 62px ${FONT}`; ctx.fillStyle = fg;
-    const lines = wrap(ctx, title, W - 112, 2);
+    const lines = wrap(ctx, title, width - 112, 2);
     lines.forEach((l, i) => ctx.fillText(l, 56, 190 + i * 70));
     let y = 190 + lines.length * 70 + 4;
     if (subtitle) {
         ctx.font = `500 27px ${FONT}`; ctx.fillStyle = mu;
-        const sl = wrap(ctx, subtitle, W - 112, 2);
+        const sl = wrap(ctx, subtitle, width - 112, 2);
         sl.forEach((l, i) => ctx.fillText(l, 56, y + 18 + i * 36));
         y += sl.length * 36 + 14;
     }
@@ -350,9 +350,10 @@ export async function renderShelf(items, o) {
     return c;
 }
 
-// ---------- 3) linha do tempo (prateleira por ano/mês de conclusão) ----------
-// A mesma ordem (e o mesmo agrupamento) da aba Zerados: grupos por ANO, que a opção
-// "Por mês" da tela separa em meses — a imagem segue o que está escolhido no app.
+// ---------- 3) linha do tempo (horizontal: capas em cima do ano) ----------
+// A mesma divisão da aba Zerados (ano ou mês de conclusão), mas desenhada como uma
+// linha do tempo: os anos correm da esquerda para a direita e as capas verticais de
+// cada jogo ficam empilhadas em cima do seu ano.
 function parseFinishedDate(str) {
     if (!str) return null;
     const s = String(str).trim();
@@ -384,76 +385,120 @@ function timelineGroups(items) {
     });
     return groups;
 }
-// Plaquinha do período (ano ou mês) dentro da grade: identifica o "capítulo" sem
-// gastar uma página inteira para cada ano.
-function drawTimelineTile(ctx, p, x, y, w, h, grp) {
-    const r = Math.max(12, w * 0.1);
-    ctx.save();
-    const g = ctx.createLinearGradient(x, y, x + w, y + h);
-    g.addColorStop(0, rgba(p.play, 0.24)); g.addColorStop(1, rgba(p.fin, 0.2));
-    rr(ctx, x, y, w, h, r); ctx.fillStyle = g; ctx.fill();
-    rr(ctx, x, y, w, h, r); ctx.lineWidth = 2; ctx.strokeStyle = rgba(p.fin, 0.5); ctx.stroke();
-    ctx.restore();
-    const bw = Math.round(w * 0.34), bh = 5;
-    rr(ctx, x + (w - bw) / 2, y + h * 0.14, bw, bh, bh / 2); ctx.fillStyle = p.fin; ctx.fill();
-    const long = grp.label.length > 6;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = `800 ${Math.round(w * (long ? 0.17 : 0.3))}px ${FONT}`;
-    const lines = wrap(ctx, grp.label, w - 16, 2);
-    ctx.fillStyle = p.text;
-    const startY = y + h * (long ? 0.37 : 0.42);
-    lines.forEach((l, i) => ctx.fillText(l, x + w / 2, startY + i * Math.round(w * 0.19)));
-    const rated = grp.items.map(it => parseFloat(it.userRating)).filter(n => !isNaN(n));
-    const avg = rated.length ? (rated.reduce((a, b) => a + b, 0) / rated.length).toFixed(1) : null;
-    ctx.font = `600 ${Math.round(w * 0.115)}px ${FONT}`; ctx.fillStyle = p.muted;
-    ctx.fillText(`${grp.items.length} ${grp.items.length === 1 ? 'jogo' : 'jogos'}`, x + w / 2, y + h * 0.71);
-    if (avg) { ctx.font = `600 ${Math.round(w * 0.105)}px ${FONT}`; ctx.fillStyle = rgba(p.star, 0.92); ctx.fillText(`nota média ${avg}`, x + w / 2, y + h * 0.83); }
-}
-
 export async function renderTimelineImg(items, o) {
     const p = pal();
+    // Linha do tempo HORIZONTAL: os anos correm da esquerda para a direita e as
+    // caixinhas verticais de cada jogo ficam empilhadas em cima do seu ano.
     const groups = timelineGroups(items);
-    // Grade cronológica compacta: cada ano (ou mês) vira uma PLAQUINHA dentro da
-    // própria grade e as capas seguem na sequência. Assim o tamanho da imagem cresce
-    // com o número de jogos — não com o número de anos do histórico.
-    const COLS = 7, pad = 56, gap = 14;
-    const cartW = (W - pad * 2 - gap * (COLS - 1)) / COLS, cartH = cartW * 1.5;
+    const dated = groups.filter(g => g.key !== 'none').sort((a, b) => a.key.localeCompare(b.key));
+    const ordered = [...dated, ...groups.filter(g => g.key === 'none')];
+    ordered.forEach(g => g.items.sort((a, b) => {
+        const da = parseFinishedDate(a.dateFinished), db = parseFinishedDate(b.dateFinished);
+        return da && db ? da - db : 0;
+    }));
+
     const showTitles = !!o.titles;
-    const cellH = cartH + (showTitles ? 34 : 12);
+    const pad = 56, gap = 12, gapX = 30, rowsMax = 5;
+    const titleH = showTitles ? 22 : 0;
+    const colsOf = g => Math.ceil(g.items.length / rowsMax);
+    const rowsOf = g => Math.ceil(g.items.length / colsOf(g));   // colunas equilibradas (6 jogos = 3 + 3)
+    const totalCols = ordered.reduce((a, g) => a + colsOf(g), 0);
+    const gapsX = Math.max(0, ordered.length - 1) * gapX;
+    const innerGaps = Math.max(0, totalCols - ordered.length) * gap;
+    // A imagem cresce na horizontal até um limite; passando disso as capas encolhem.
+    const MAXW = 2800;
+    let coverW = 104;
+    const innerW = cw => totalCols * cw + innerGaps + gapsX;
+    if (2 * pad + innerW(coverW) > MAXW) coverW = Math.max(64, (MAXW - 2 * pad - innerGaps - gapsX) / totalCols);
+    const coverH = coverW * 1.5, rowH = coverH + titleH + gap;
+    const maxRows = ordered.reduce((a, g) => Math.max(a, rowsOf(g)), 0);
+    const stackH = Math.max(0, maxRows * rowH - gap);
+    const contentW = innerW(coverW);
+    const width = Math.max(1080, Math.round(2 * pad + contentW));
+    const x0 = (width - contentW) / 2;
 
-    // Monta as células e distribui na grade; a plaquinha nunca fica sozinha no fim
-    // da fileira (pelo menos uma capa do ano abre junto com ela).
-    const cells = [];
-    groups.forEach(grp => { cells.push({ kind: 'label', grp }); grp.items.forEach(g => cells.push({ kind: 'game', g })); });
-    let col = 0, row = 0;
-    const placed = cells.map(cell => {
-        if (cell.kind === 'label' && col > COLS - 2) { row++; col = 0; }
-        const at = { ...cell, row, col };
-        col++; if (col >= COLS) { col = 0; row++; }
-        return at;
-    });
-    const rows = row + (col > 0 ? 1 : 0);
-
+    // alturas: cabeçalho -> pilhas de capas -> eixo -> ano/contagem/média -> rodapé
     const tmp = document.createElement('canvas').getContext('2d'); tmp.font = `800 62px ${FONT}`;
-    const titleLines = wrap(tmp, o.title, W - 112, 2).length;
-    const subLines = o.subtitle ? wrap(tmp, o.subtitle, W - 112, 2).length : 0;
+    const titleLines = wrap(tmp, o.title, width - 112, 2).length;
+    const subLines = o.subtitle ? wrap(tmp, o.subtitle, width - 112, 2).length : 0;
     const headerEnd = 190 + titleLines * 70 + 4 + (subLines ? subLines * 36 + 14 : 0) + 30;
-    const H = Math.round(headerEnd + 16 + rows * cellH + 140);
-    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const y0 = headerEnd + 26;
+    const axisY = y0 + stackH + 18;
+
+    // cada ano tem a largura que precisa: 1 coluna a cada 5 capas
+    const slots = [];
+    let sx = x0;
+    for (const grp of ordered) {
+        const cols = colsOf(grp), slotW = cols * coverW + (cols - 1) * gap;
+        slots.push({ grp, cols, slotW, x: sx });
+        sx += slotW + gapX;
+    }
+    const labelInfo = (grp, slotW) => {
+        const long = grp.label.length > 6;
+        const font = long ? 20 : 32, lineH = long ? 24 : 32;
+        tmp.font = `800 ${font}px ${FONT}`;
+        return { font, lineH, lines: wrap(tmp, grp.label, Math.max(76, slotW), 2) };
+    };
+    let maxLabelH = 0;
+    slots.forEach(s => { maxLabelH = Math.max(maxLabelH, labelInfo(s.grp, s.slotW).lines.length * labelInfo(s.grp, s.slotW).lineH); });
+    const hasAvg = ordered.some(g => g.items.some(it => !isNaN(parseFloat(it.userRating))));
+    const H = Math.round(axisY + 36 + maxLabelH + (hasAvg ? 30 : 0) + 140);
+
+    const c = document.createElement('canvas'); c.width = width; c.height = H;
     const ctx = c.getContext('2d');
-    backdrop(ctx, H, p, null);
-    const y0 = header(ctx, p, o.title, o.subtitle, false) + 16;
-    for (const t of placed) {
-        const x = pad + t.col * (cartW + gap), y = y0 + t.row * cellH;
-        if (t.kind === 'label') { drawTimelineTile(ctx, p, x, y, cartW, cartH, t.grp); continue; }
-        await drawCart(ctx, t.g, x, y, cartW, cartH, p, true, false, o.plain);
-        if (showTitles) {
-            ctx.font = `600 15px ${FONT}`; ctx.fillStyle = rgba(p.text, 0.9);
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(ellipsis(ctx, t.g.title, cartW + gap - 10), x + cartW / 2, y + cartH + 18);
+    backdrop(ctx, H, p, null, width);
+    header(ctx, p, o.title, o.subtitle, false, width);
+    // imagens largas ganham o período do histórico no canto direito
+    if (width > 1300) {
+        const years = items.map(it => parseFinishedDate(it.dateFinished)).filter(Boolean).map(d => d.getFullYear());
+        if (years.length) {
+            const minY = Math.min(...years), maxY = Math.max(...years), span = maxY - minY + 1;
+            ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+            ctx.font = `800 40px ${FONT}`; ctx.fillStyle = p.text;
+            ctx.fillText(minY === maxY ? String(minY) : `${minY} — ${maxY}`, width - 56, 84);
+            ctx.font = `600 20px ${FONT}`; ctx.fillStyle = p.muted;
+            ctx.fillText(span > 1 ? `${span} anos de zerados` : 'um ano de zerados', width - 56, 120);
         }
     }
-    footer(ctx, H - 70, p, false);
+
+    // eixo do tempo (com um mínimo de largura para não virar um traço perdido)
+    const axisPad = Math.max(14, (360 - contentW) / 2);
+    ctx.strokeStyle = rgba(p.muted, 0.4); ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x0 - axisPad, axisY); ctx.lineTo(x0 + contentW + axisPad, axisY); ctx.stroke();
+
+    for (const s of slots) {
+        const { grp } = s, cx = s.x + s.slotW / 2;
+        const rows = rowsOf(grp);
+        // pino do ano no eixo
+        ctx.beginPath(); ctx.arc(cx, axisY, 11, 0, Math.PI * 2); ctx.fillStyle = rgba(p.fin, 0.22); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, axisY, 6, 0, Math.PI * 2); ctx.fillStyle = p.fin; ctx.fill();
+        // capas: colunas dentro do ano, com o pé da pilha apoiado no eixo
+        for (let i = 0; i < grp.items.length; i++) {
+            const col = Math.floor(i / rows), r = i % rows;
+            const colCount = Math.min(rows, grp.items.length - col * rows);
+            const base = axisY - 20 - (coverH + titleH) - (colCount - 1) * rowH;
+            const it = grp.items[i];
+            const x = s.x + col * (coverW + gap), y = base + r * rowH;
+            await drawCart(ctx, it, x, y, coverW, coverH, p, true, false, o.plain);
+            if (showTitles) {
+                ctx.font = `600 ${Math.max(11, Math.round(coverW * 0.13))}px ${FONT}`; ctx.fillStyle = rgba(p.text, 0.9);
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(ellipsis(ctx, it.title, coverW + gap - 8), x + coverW / 2, y + coverH + 13);
+            }
+        }
+        // ano (ou mês), contagem e nota média embaixo do eixo
+        const li = labelInfo(grp, s.slotW);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = `800 ${li.font}px ${FONT}`; ctx.fillStyle = p.text;
+        li.lines.forEach((l, i) => ctx.fillText(l, cx, axisY + 36 + i * li.lineH));
+        const labelBottom = axisY + 36 + li.lines.length * li.lineH;
+        ctx.font = `600 16px ${FONT}`; ctx.fillStyle = p.muted;
+        ctx.fillText(`${grp.items.length} ${grp.items.length === 1 ? 'jogo' : 'jogos'}`, cx, labelBottom + 4);
+        const rated = grp.items.map(it => parseFloat(it.userRating)).filter(n => !isNaN(n));
+        const avg = rated.length ? (rated.reduce((a, b) => a + b, 0) / rated.length).toFixed(1) : null;
+        if (avg) { ctx.font = `600 13px ${FONT}`; ctx.fillStyle = rgba(p.star, 0.9); ctx.fillText(`nota média ${avg}`, cx, labelBottom + 26); }
+    }
+    footer(ctx, H - 70, p, false, width);
     return c;
 }
 

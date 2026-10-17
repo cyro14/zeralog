@@ -213,7 +213,7 @@ Toda tela de jogos (**Fila, Zerados e Desejos**) tem o botão **Filtros**. Escol
 O botão **Compartilhar** de cada tela (e o botão de compartilhar de um jogo zerado) gera uma imagem pronta para postar, com as cores do seu tema e as logos **ZeraLog x Anywhere Gamer**:
 
 - **Prateleira:** cartuchos sobre tábuas de madeira, selo dourado nos 100%, nota em cada capa e, se quiser, os nomes dos jogos.
-- **Linha do tempo dos zerados:** uma **grade cronológica compacta** — cada ano (ou mês, como estiver na tela) vira uma plaquinha com a contagem e a nota média do período, e as capas vêm na sequência, em ordem. O tamanho da imagem cresce com o número de jogos, **não com o número de anos**, então um histórico longo continua virando um post e não uma tira gigante. Selo dourado nos 100% e nota em cada capa.
+- **Linha do tempo dos zerados:** **linha do tempo horizontal** — os anos correm da esquerda para a direita (mais antigo → mais recente) e as capas verticais de cada jogo ficam **empilhadas em cima do seu ano**, com a contagem e a nota média do período embaixo do eixo. A imagem cresce para os lados conforme o histórico (com limite) e nunca vira uma tira vertical gigante. Selo dourado nos 100% e nota em cada capa.
 - **Cartão de um jogo:** capa grande sobre fundo desfocado com a cor da capa, nota, selo 100%, plataforma, selos e um trecho da sua review.
 - A imagem respeita os **filtros ativos** (o subtítulo lista os filtros) e a ordem da tela. Mais de 40 jogos na prateleira (ou 30 na linha do tempo) viram partes numeradas.
 - **Baixar imagem** salva um PNG; **Compartilhar** usa o menu do celular quando o navegador permite enviar arquivos.
