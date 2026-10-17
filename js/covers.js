@@ -3,9 +3,14 @@
 //     e HLTB — em STREAMING: a primeira vertical válida vence, sem esperar as
 //     fontes lentas (o HLTB tenta 5 proxies com 12s de timeout cada: uma
 //     barreira "allSettled" segurava a capa por ~25s);
-//  2) manual: o buscador (openCoverPicker) mostra as candidatas em tela cheia —
+//  2) automática (fundo): autoBanner() acha a melhor arte HORIZONTAL do jogo
+//     (Steam hero 16:9, arte extra da RAWG, screenshots, header) e devolve só a
+//     URL — que fica guardada nos dados do jogo (campo `banner`) e vira o topo
+//     "capa de Facebook" da página. Sem download: <img> não passa por CORS;
+//  3) manual: o buscador (openCoverPicker) mostra as candidatas em tela cheia —
 //     modo "cover" (capa vertical, horizontais abrem o recorte) ou "banner"
 //     (arte horizontal para o fundo da página do jogo).
+// Fundo do jogo = userBanner (escolha do usuário) || banner (busca automática).
 // Fontes: IGDB (chave opcional), Wikipédia, Steam, HowLongToBeat, RAWG.
 import { searchGames, getGameStores, getGameScreenshots, getGameDetails, fetchImageBlob, blobToSmallJpeg, imageSize, isVerticalSize, esc, scrapeUrl, fetchHLTBData } from './gameApi.js';
 import { fetchIGDBCovers, hasValidToken } from './igdb.js';
@@ -77,8 +82,10 @@ async function steam(title, rawgId) {
     }
     appIds.forEach(app => {
         list.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${app}/library_600x900.jpg`, source: 'Steam', label: 'Capa vertical 600×900', vertical: true });
-        headers.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${app}/header.jpg`, source: 'Steam', label: 'Header da loja', vertical: false });
-        headers.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${app}/capsule_616x353.jpg`, source: 'Steam', label: 'Capsule 616×353', vertical: false });
+        // library_hero é a arte-chave em 16:9: a melhor candidata a FUNDO da página
+        headers.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${app}/library_hero.jpg`, source: 'Steam', label: 'Arte hero 16:9', vertical: false, rank: 0 });
+        headers.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${app}/header.jpg`, source: 'Steam', label: 'Header da loja', vertical: false, rank: 3 });
+        headers.push({ url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${app}/capsule_616x353.jpg`, source: 'Steam', label: 'Capsule 616×353', vertical: false, rank: 5 });
     });
     return { id, list, headers };
 }
@@ -152,6 +159,95 @@ export function autoVerticalCover(title, rawgId, { onCandidate } = {}) {
         // todas as fontes responderam e a fila drenou sem achar: devolve null
         Promise.all(jobs).then(() => chain.then(() => { if (!settled) finish(null); })).catch(() => finish(null));
     });
+}
+
+// ---------- automático: FUNDO (arte horizontal, estilo "capa de Facebook") ----------
+// O fundo precisa ser HORIZONTAL. Guardamos só a URL: um <img> mostra a imagem sem
+// passar por CORS (converter para base64 só quando o usuário escolhe na mão), então a
+// busca automática não baixa nada nem ocupa espaço no banco.
+export const bannerUrlOf = g => (g && (g.userBanner || g.banner)) || '';
+
+// A imagem abre no navegador? O <img> não passa por CORS, então serve de teste barato
+// (e é o mesmo caminho que a tela usa para mostrar o fundo).
+export function probeImage(url, timeout = 4000) {
+    if (!url || typeof url !== 'string') return Promise.resolve(false);
+    return new Promise(resolve => {
+        let done = false;
+        const fin = v => { if (!done) { done = true; resolve(v); } };
+        const timer = setTimeout(() => fin(false), timeout);
+        try {
+            const img = new Image();
+            img.onload = () => {
+                clearTimeout(timer);
+                const w = img.naturalWidth || img.width || 0;
+                const h = img.naturalHeight || img.height || 0;
+                fin(!w || !h || w >= h);   // vertical não serve de fundo
+            };
+            img.onerror = () => { clearTimeout(timer); fin(false); };
+            img.referrerPolicy = 'no-referrer';
+            img.src = url;
+        } catch (e) { clearTimeout(timer); fin(false); }
+    });
+}
+
+// Artes horizontais da RAWG no endpoint de detalhes: a "arte extra" primeiro.
+async function rawgBannerArt(title, rawgId) {
+    const id = await findRawgId(title, rawgId);
+    if (!id) return [];
+    const d = await getGameDetails(id);
+    return [
+        d.imageExtra && { url: d.imageExtra, source: 'RAWG', rank: 1 },
+        d.image && { url: d.image, source: 'RAWG', rank: 4 }
+    ].filter(Boolean);
+}
+
+// Screenshots da RAWG (1920x1080): ótimas como fundo quando não há arte-chave
+async function rawgBannerShots(rawgId) {
+    if (!(rawgId > 0)) return [];
+    try {
+        const shots = await getGameScreenshots(rawgId, 4);
+        return shots.map(u => ({ url: u, source: 'RAWG', rank: 2 }));
+    } catch (e) { return []; }
+}
+
+// Busca a melhor arte de fundo do jogo: { url, source } ou null.
+// `seed`: URLs que quem chamou já tem em mãos (arte extra da RAWG, screenshots) — são
+// confiáveis (nem checam se abrem) e entram na frente, sem nenhuma chamada extra.
+// As fontes respondem em paralelo; esperamos até `waitMs` e ficamos com a melhor que
+// chegou (arte hero da Steam > arte extra da RAWG > screenshots > header/capsule).
+export async function autoBanner(title, rawgId, { seed = [], waitMs = 2500, probe = true, maxProbeMs = 6000 } = {}) {
+    if (!title && !rawgId) return null;
+    const pool = [];
+    const add = list => (list || []).forEach(c => {
+        if (c && c.url && !pool.some(p => p.url === c.url)) pool.push(c);
+    });
+    (seed || []).forEach((s, i) => {
+        if (!s) return;
+        const c = typeof s === 'string' ? { url: s } : s;
+        if (!c || !c.url) return;
+        add([{ source: 'RAWG', ...c, rank: 1 + i * 0.1, trusted: true }]);
+    });
+    const jobs = [
+        rawgBannerArt(title, rawgId),
+        rawgBannerShots(rawgId),
+        steam(title, rawgId).then(r => (r && r.headers) || []),
+        wikipedia(title).then(l => l.filter(c => !c.vertical).map(c => ({ url: c.url, source: c.source, rank: 6 })))
+    ];
+    jobs.forEach(p => Promise.resolve(p).then(add).catch(() => {}));
+    await Promise.race([
+        Promise.all(jobs.map(p => Promise.resolve(p).catch(() => null))),
+        new Promise(r => setTimeout(r, waitMs))   // fonte pendurada não segura o fundo
+    ]);
+    const cands = pool.slice().sort((a, b) => a.rank - b.rank);
+    if (!cands.length) return null;
+    if (!probe) return { url: cands[0].url, source: cands[0].source };
+    const t0 = Date.now();
+    for (const c of cands.slice(0, 6)) {
+        if (c.trusted) return { url: c.url, source: c.source };
+        if (Date.now() - t0 > maxProbeMs) break;
+        if (await probeImage(c.url)) return { url: c.url, source: c.source };
+    }
+    return null;   // nenhuma arte abriu: melhor ficar sem fundo do que com um quebrado
 }
 
 // ---------- em lote: biblioteca inteira ----------
@@ -302,14 +398,24 @@ export async function coversPick(i) { return pick(i); }
 async function pick(i) {
     const c = state.cands[i];
     if (!c || !state.onPick) return;
-    $('cv-status').textContent = 'Baixando a imagem...';
-    const blob = await fetchImageBlob(c.url);
-    if (!blob) { $('cv-status').textContent = 'Essa imagem foi bloqueada pelo site. Tente outra.'; return; }
     const onPick = state.onPick;
     const mode = state.mode;
     const horizontal = $('cv-horizontal') && $('cv-horizontal').checked;
+    $('cv-status').textContent = 'Baixando a imagem...';
+    const blob = await fetchImageBlob(c.url);
+    // FUNDO: a arte é só EXIBIDA — um <img> mostra a imagem sem passar por CORS. Se o
+    // download falhar (media.rawg.io barrou o fetch), guarda o LINK: o fundo aparece
+    // igual e a escolha do usuário não se perde. Era aqui que o seletor desistia com
+    // "essa imagem foi bloqueada pelo site" e o fundo automático não saía do lugar.
+    if (mode === 'banner') {
+        let src = c.url;
+        if (blob) { try { src = await blobToSmallJpeg(blob, 1280); } catch (e) { src = c.url; } }
+        $('modal-covers').close();
+        onPick(src, true);
+        return;
+    }
+    if (!blob) { $('cv-status').textContent = 'Essa imagem foi bloqueada pelo site. Tente outra.'; return; }
     $('modal-covers').close();
-    if (mode === 'banner') { onPick(await blobToSmallJpeg(blob, 1280), true); return; }   // fundo: entra inteira, sem recorte
     if (horizontal) { onPick(await blobToSmallJpeg(blob, 640), true); return; }   // sem recorte: a opção veio do próprio seletor
     const size = await imageSize(blob);
     if (isVerticalSize(size)) onPick(await blobToSmallJpeg(blob));

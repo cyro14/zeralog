@@ -263,18 +263,50 @@ export async function blobToSmallJpeg(blob, maxSide = 420) {
     return canvas.toDataURL('image/jpeg', 0.82);
 }
 
-// Baixa uma imagem como Blob (direto; se o site bloquear, tenta por um proxy CORS).
-// Timeout curto: uma fonte pendurada não pode segurar a fila de capas verticais.
-export async function fetchImageBlob(url) {
+// Proxies de IMAGEM (binário): devolvem os bytes crus do arquivo com CORS liberado.
+// O corsproxy.io passou a exigir chave (401 nas chamadas sem token) — ele continua na
+// lista, mas no fim: quem responde primeiro resolve (allorigins e codetabs).
+export const IMAGE_PROXIES = [
+    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    u => `https://api.cors.lol/?url=${encodeURIComponent(u)}`,
+    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`
+];
+
+// URLs que valem uma tentativa, em ordem de preferência:
+//  1) direta;
+//  2) direta com "cache-buster" — o navegador pode ter guardado a resposta de um <img>
+//     SEM "Access-Control-Allow-Origin" e então barra o fetch com "bloqueado pela
+//     política de CORS"; trocar a URL força a ida ao servidor (era o bug das
+//     screenshots da RAWG que "não existiam" para o app);
+//  3) cada proxy público, nas duas versões.
+export function imageAttempts(url) {
+    const bust = `${url}${url.includes('?') ? '&' : '?'}zl=${Date.now()}`;
+    const out = [url, bust];
+    IMAGE_PROXIES.forEach(mk => out.push(mk(url)));
+    IMAGE_PROXIES.forEach(mk => out.push(mk(bust)));
+    return out;
+}
+
+// Baixa uma imagem como Blob (direto; se o site bloquear, tenta os proxies CORS).
+// Timeout curto por tentativa e um teto total: uma fonte pendurada não pode segurar
+// a fila de capas verticais nem o seletor de fundos.
+export async function fetchImageBlob(url, { timeout = 7000, deadline = 15000 } = {}) {
     if (String(url).startsWith('data:')) { try { return await (await fetch(url)).blob(); } catch (e) { return null; } }
-    const tries = [url, 'https://corsproxy.io/?url=' + encodeURIComponent(url)];
-    for (const u of tries) {
+    const started = Date.now();
+    for (const u of imageAttempts(url)) {
+        if (Date.now() - started > deadline) break;
         const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 9000);
+        const timer = setTimeout(() => ctrl.abort(), timeout);
         try {
-            const res = await fetch(u, { signal: ctrl.signal });
+            const res = await fetch(u, { signal: ctrl.signal, cache: 'no-store' });
             clearTimeout(timer);
+            // 404/410 = a imagem não existe mais: nenhum proxy vai inventar o arquivo
+            if (res.status === 404 || res.status === 410) return null;
             if (!res.ok) continue;
+            // um proxy pode devolver a página de erro em HTML dizendo "ok"
+            const type = (res.headers && res.headers.get('content-type')) || '';
+            if (type && !/^image\//i.test(type)) continue;
             const blob = await res.blob();
             if (blob.size > 200 && (!blob.type || blob.type.startsWith('image/'))) return blob;
         } catch (e) { clearTimeout(timer); /* tenta a próxima opção */ }

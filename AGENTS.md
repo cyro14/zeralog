@@ -65,15 +65,23 @@ pegariam os dois hoje.
 ## Mapa do app (o que testar quando mexer em cada parte)
 
 - `js/gameApi.js` — toda a RAWG: busca, detalhes (dev/pub/arte extra),
-  screenshots, estúdios, redimensionamento de imagens, `viewImage`.
+  screenshots, estúdios, redimensionamento de imagens, `viewImage`, e o download
+  de imagens com CORS (`fetchImageBlob` → `imageAttempts`: link direto, link com
+  cache-buster e os proxies de `IMAGE_PROXIES`; 404 encerra na hora).
   Testes: `tests/gameapi.test.mjs`.
 - `js/store.js` — formato do banco, `migrateData`, padrões (ex.: "Prateleira
   limpa" ligada por padrão). Testes: `tests/store.test.mjs`.
 - `js/gamematch.js` — perfil, match, filtros do Explorar (todo gênero novo
   precisa de slug em `GENRE_RAWG` — o teste de integridade exige), bloqueio
   adulto. Testes: `tests/gamematch.test.mjs`.
-- `js/ui.js` — página do jogo (banner "capa de Facebook", screenshots do
-  usuário, atalhos de capa/fundo). Testes: `tests/ui.test.mjs`.
+- `js/covers.js` — capas e fundos: `autoVerticalCover` (capa vertical em
+  streaming), `autoBanner` (fundo horizontal automático — devolve só a URL, que
+  fica no campo `banner` do jogo), `bannerUrlOf` (userBanner > banner) e o
+  buscador manual. Testes: `tests/covers.test.mjs`.
+- `js/ui.js` — página do jogo (banner "capa de Facebook" a partir de `banner`/
+  `userBanner`, screenshots do usuário, atalhos de capa/fundo; a busca
+  automática salva o fundo em `saveGame` e na primeira abertura).
+  Testes: `tests/ui.test.mjs`.
 - `js/steam.js` — persona/avatar (sempre `avatarfull`), chave, logout.
   Testes: `tests/steam.test.mjs`.
 - `js/achievements.js` — gamificação: toda conquista tem `xp` único e positivo

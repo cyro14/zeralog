@@ -155,6 +155,8 @@ export async function enrichStoreGames(newGames) {
                         if (cov && cov.data) { g.image = cov.data; g.wideCover = false; }
                     }
                 }
+                // Arte de FUNDO da página do jogo (só a URL): a horizontal da RAWG
+                if (!g.banner && d) g.banner = d.imageExtra || d.image || null;
                 done++;
                 syncShow(`${storeName}: buscando dados e capas`, done, newGames.length);
                 if (done % 3 === 0) saveData(() => hooks.render());

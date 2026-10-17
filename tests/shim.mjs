@@ -67,6 +67,14 @@ function makeEl() {
         toBlob(cb) { setTimeout(() => cb(new Blob(['x'], { type: 'image/png' })), 0); },
         toDataURL() { return 'data:image/png;base64,TESTE'; },
     };
+    // como no DOM, textContent é sempre TEXTO (o app chega a gravar números, ex.: o
+    // contador do badge de filtros, e os testes comparam com string)
+    let text = '';
+    Object.defineProperty(el, 'textContent', {
+        get: () => text,
+        set: v => { text = v === null || v === undefined ? '' : String(v); },
+        enumerable: true
+    });
     return el;
 }
 
@@ -87,6 +95,12 @@ function installGlobals() {
         body: makeEl(), head: makeEl(), documentElement: makeEl(),
     };
     globalThis.window = globalThis;
+    // window.addEventListener existe no navegador: o app usa para fechar listas de
+    // sugestão no scroll/resize. Sem isso, uma tela inteira lançava e não pintava nada.
+    if (!globalThis.addEventListener) globalThis.addEventListener = () => {};
+    if (!globalThis.removeEventListener) globalThis.removeEventListener = () => {};
+    if (globalThis.innerWidth === undefined) globalThis.innerWidth = 1024;
+    if (globalThis.innerHeight === undefined) globalThis.innerHeight = 768;
     globalThis.requestAnimationFrame = fn => fn();
     globalThis.location = globalThis.location || { protocol: 'https:' };
     globalThis.history = globalThis.history || { pushState() {}, go() {}, back() {} };

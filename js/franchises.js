@@ -260,6 +260,7 @@ function onAction(t, ev) {
                 id: 'w' + Date.now(), title: it.title, platform: (it.platforms && it.platforms[0]) || '',
                 rawgId: it.rawgId, genres: it.genres || [], released: it.released || '', tba: !!it.tba,
                 metacritic: it.metacritic || null, image: resizeUrl(it.image, 640) || null, wideCover: true,
+                banner: it.imageExtra || it.image || null,   // arte de fundo já disponível na sugestão
                 catId, franchise: f.name, note: `Sugestão da franquia ${f.name}`, addedAt: Date.now(), notifyRelease: false
             };
             appData.wishlist.push(item);

@@ -10,7 +10,7 @@ import { phHtml, openIconPicker, anyIconHtml } from './phosphor.js';
 import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
 import { searchGames, getGameDetails, getGameScreenshots, shotsGalleryHtml, viewImage, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
-import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade } from './covers.js';
+import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade, autoBanner, bannerUrlOf } from './covers.js';
 import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
 import { renderSteamSettings } from './steam.js';
@@ -78,6 +78,7 @@ export function switchTab(tabId) {
 // ================= BUSCA AUTOMÁTICA (RAWG) =================
 let pendingCover = null;   // capa baixada, aguardando o "Salvar"
 let pendingWideCover = false;   // capa veio marcada como horizontal no seletor
+let pendingBanner = null;   // fundo (arte horizontal) achado pela busca automática: { url, source }
 let pendingRawgId = null;  // id da RAWG do jogo escolhido na busca automática
 let pendingTba = false;     // RAWG informou lançamento "a confirmar"
 let lastResults = [];
@@ -95,6 +96,7 @@ function updateCoverPreview(src) {
 function resetAutoFill() {
     pendingCover = null;
     pendingWideCover = false;
+    pendingBanner = null;
     pendingRawgId = null;
     pendingTba = false;
     { const r = document.getElementById('game-wish-released'); r.value = ''; delete r.dataset.manual; }
@@ -181,7 +183,21 @@ export async function applyRawgGame(base) {
         updateCoverPreview(pendingCover);
         coverNote = ' Só achei arte horizontal: toque em <strong>Recortar</strong> para ajustar à capa vertical.';
     }
-    box.innerHTML = `<div class="rawg-msg rawg-ok">${icon('check')} Dados de <strong>${esc(g.title)}</strong> preenchidos.${coverNote} Revise e salve.</div>`;
+    // Arte de FUNDO (horizontal, o topo "capa de Facebook"): entra no jogo junto com o
+    // resto dos dados. A própria RAWG já manda a arte extra na maioria dos casos — aí
+    // não há nenhuma rede extra; sem ela, a busca continua em segundo plano enquanto o
+    // usuário revisa o formulário (o que chegar primeiro fica em `pendingBanner`).
+    const bgSeeds = [g.imageExtra, g.image, ...(g.screenshots || [])].filter(Boolean);
+    const bannerFor = g.rawgId || null;
+    pendingBanner = bgSeeds.length ? { url: bgSeeds[0], source: 'RAWG' } : null;
+    const bgNote = pendingBanner ? 'Fundo: arte da RAWG.' : '';
+    box.innerHTML = `<div class="rawg-msg rawg-ok">${icon('check')} Dados de <strong>${esc(g.title)}</strong> preenchidos.${coverNote} <span class="rawg-ban">${bgNote}</span> Revise e salve.</div>`;
+    autoBanner(g.title, bannerFor, { seed: bgSeeds }).then(b => {
+        if (!b || !b.url || pendingRawgId !== bannerFor) return;   // trocou de jogo antes da resposta
+        pendingBanner = b;
+        const note = box.querySelector('.rawg-ban');
+        if (note) note.textContent = `Fundo: ${b.source}.`;
+    }).catch(() => {});
     autoFillExternal(g.title);
 }
 
@@ -998,9 +1014,11 @@ export function saveGame() {
     }
     saveStateForUndo();
     const idPatch = pendingRawgId ? { rawgId: pendingRawgId } : {};
+    // Fundo achado na busca automática entra nos dados do jogo (só a URL)
+    const bannerPatch = pendingBanner && pendingBanner.url ? { banner: pendingBanner.url } : {};
 
     if (wish) {
-        const extra = { ...base, ...idPatch, catId: val('game-wish-cat') || (appData.categories[0] && appData.categories[0].id) || '', note: val('game-wish-note').trim() };
+        const extra = { ...base, ...idPatch, ...bannerPatch, catId: val('game-wish-cat') || (appData.categories[0] && appData.categories[0].id) || '', note: val('game-wish-note').trim() };
         const wd = val('game-wish-released') || '';
         // data alterada à mão fica marcada e o "Atualizar datas" não mexe mais nela
         const wrel = document.getElementById('game-wish-released');
@@ -1017,7 +1035,7 @@ export function saveGame() {
             appData.wishlist.push({ id: 'w' + Date.now(), title, ...extra, image: pendingCover || null, wideCover: pendingCover ? pendingWideCover : false, addedAt: Date.now() });
         }
     } else {
-        const extra = { ...base, ...idPatch, hoursPlayed: val('game-hours-played'), journalNotes: val('game-journal-notes') };
+        const extra = { ...base, ...idPatch, ...bannerPatch, hoursPlayed: val('game-hours-played'), journalNotes: val('game-journal-notes') };
         const existing = gameId ? appData.games.find(g => g.id === gameId) : null;
         // Jogos contínuos vivem em "continuous"; ao desmarcar, voltam para a categoria de origem
         let cat = existing ? existing.catId : catId;
@@ -1053,6 +1071,7 @@ export function saveGame() {
     }
     pendingCover = null;
     pendingWideCover = false;
+    pendingBanner = null;
     pendingRawgId = null;
     closeModal('modal-game'); saveData(() => render());
     triggerToast(gameId ? 'Informações atualizadas.' : (wish ? 'Adicionado à wishlist.' : 'Jogo adicionado com sucesso!'));
@@ -1111,6 +1130,10 @@ export function createShelfItem(g, kind = 'game') {
 }
 
 // ================= TELA DO JOGO (tela cheia) =================
+// <img> do fundo ("capa de Facebook"): se o link morrer, o bloco some e a página
+// volta ao layout sem banner (o fundo é decorativo — nunca pode quebrar a tela).
+const bannerImgHtml = src => `<img src="${esc(resizeUrl(src, 1280))}" alt="" onerror="var p=this.closest('.gp-page'); if(p) p.classList.remove('with-banner'); this.remove()">`;
+
 // Aberta ao clicar em qualquer jogo: hero com capa, todos os dados e ações,
 // seções colapsáveis (Sobre, Diário), navegável com Esc/voltar.
 export function openGamePage(id, isWish = false) {
@@ -1170,12 +1193,13 @@ export function openGamePage(id, isWish = false) {
     const el = document.createElement('div');
     el.id = 'gp-page';
     el.className = 'gp-page';
-    if (g.userBanner) el.classList.add('with-banner');   // fundo enviado pelo usuário já abre no lugar
+    const bannerSrc = bannerUrlOf(g);   // fundo do usuário > fundo achado automaticamente
+    if (bannerSrc) el.classList.add('with-banner');   // fundo já salvo no jogo abre no lugar
     el.innerHTML = `
         ${g.image ? `<div class="gp-bg"><img src="${esc(g.image)}" alt=""></div>` : ''}
         <div class="gp-scroll">
             <button type="button" class="gp-back" onclick="gpClose()">${icon('back', { size: '1em' })} Voltar</button>
-            <div class="gp-banner" id="gp-banner">${g.userBanner ? `<img src="${esc(g.userBanner)}" alt="">` : ''}</div>
+            <div class="gp-banner" id="gp-banner">${bannerSrc ? bannerImgHtml(bannerSrc) : ''}</div>
             <input type="file" id="gp-bg-file" accept="image/*" hidden>
             <div class="gp-hero">
                 ${g.image ? `<img class="gp-cover${g.wideCover ? ' wide' : ''}" src="${esc(g.image)}" alt="Capa de ${esc(g.title)}" onclick="gpDo('openImageModal', '${g.id}')" title="Trocar capa">` : `<div class="gp-cover gp-cover-empty" onclick="gpDo('openImageModal', '${g.id}')" title="Trocar capa">${esc((g.title.trim()[0] || '?').toUpperCase())}</div>`}
@@ -1304,7 +1328,9 @@ function paintMineShots(g, isWish) {
 
 // Enche a seção "Sobre o jogo" com os créditos e screenshots da RAWG, sem tocar no jogo salvo:
 // busca na hora (o jogo pode ter sido importado antes de existir esses campos).
-// O fundo (capa de Facebook) só puxa da RAWG quando o usuário não enviou um próprio.
+// O fundo (capa de Facebook) usa o que já está salvo no jogo; só quando não há nada
+// (usuário nem arte automática) é que a busca automática roda — e o resultado FICA
+// salvo em `banner` para a próxima abertura ser instantânea.
 async function hydrateGameExtras(g, page) {
     const rawgId = g.rawgId;
     if (!(rawgId > 0)) return;
@@ -1315,23 +1341,29 @@ async function hydrateGameExtras(g, page) {
         ]);
         const el = document.getElementById('gp-extra');
         if (!el || !page.isConnected || !page.contains(el)) return;   // usuário fechou/trocou de jogo antes da resposta
-        // Capa horizontal (estilo "capa de Facebook") no topo: arte adicional da RAWG, caindo para a principal
-        if (!g.userBanner) {
-            const bEl = document.getElementById('gp-banner');
-            if (bEl && page.contains(bEl)) {
-                const src = d && (d.imageExtra || d.image);
-                if (src) {
-                    bEl.innerHTML = `<img src="${esc(resizeUrl(src, 1280))}" alt="">`;
-                    page.classList.add('with-banner');
-                }
-            }
-        }
         const creds = [];
         if (d && (d.developers || []).length) creds.push(`<strong>Desenvolvedora:</strong> ${esc(d.developers.join(', '))}`);
         if (d && (d.publishers || []).length) creds.push(`<strong>Publicadora:</strong> ${esc(d.publishers.join(', '))}`);
         let html = creds.length ? `<div class="gp-cred">${creds.join(' · ')}</div>` : '';
         if ((shots || []).length) html += shotsGalleryHtml(shots);
         if (html) el.innerHTML = html;
+        // Fundo: pinta JÁ o que veio da RAWG (arte extra, caindo para a principal) e só
+        // depois melhora/guarda — a página nunca fica esperando a busca automática.
+        if (!bannerUrlOf(g)) {
+            const seed = [d && d.imageExtra, d && d.image, ...(shots || [])].filter(Boolean);
+            const bEl = document.getElementById('gp-banner');
+            if (seed.length && bEl && page.contains(bEl)) {
+                bEl.innerHTML = bannerImgHtml(seed[0]);
+                page.classList.add('with-banner');
+            }
+            const found = await autoBanner(g.title, rawgId, { seed });
+            if (found && found.url && !bannerUrlOf(g) && bEl && page.isConnected && page.contains(bEl)) {
+                g.banner = found.url;
+                saveData(null);
+                bEl.innerHTML = bannerImgHtml(found.url);
+                page.classList.add('with-banner');
+            }
+        }
     } catch (e) { /* sem internet ou jogo fora do catálogo: fica como está */ }
 }
 

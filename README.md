@@ -110,6 +110,7 @@ Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 - **Capa vertical sempre que possível.** Ao usar a busca automática (🌐 Auto), o app procura sozinho a **capa vertical**: na **SteamGridDB** (com sua chave gratuita opcional), na **Steam** (600×900, achada pelo link da loja que a RAWG informa), no **HowLongToBeat** e na **Wikipédia**. Só se não achar nenhuma é que usa a arte horizontal da RAWG, e então avisa para você recortar.
 - **Recortar a capa.** O botão **Recortar** (no cadastro, e em **Recortar a capa** ao tocar na capa de um jogo) abre um recorte 2:3: arraste para posicionar, use o controle (ou a pinça/roda do mouse) para ampliar, **Preencher** para cobrir tudo ou **Imagem inteira** para encaixar a arte horizontal toda sobre um fundo desfocado.
 - **Trocar capa.** O buscador mostra as candidatas (Wikipédia, Steam e artes da RAWG) e você escolhe; as horizontais abrem direto o recorte. Fotos enviadas por você também podem ser recortadas.
+- **Fundo automático (capa de Facebook).** Junto com os dados, o app escolhe uma **arte horizontal** para o topo da página do jogo — a arte hero 16:9 da Steam, a arte extra da RAWG ou uma screenshot — e guarda só o **link** no jogo (sem baixar nada, então não pesa no banco nem esbarra em CORS). Tocando no fundo você vê em tela cheia, busca outras artes online, envia a sua ou volta para a arte do jogo.
 - **Capas da biblioteca inteira.** Em Configurações → **Capas verticais**, o botão **Buscar capas verticais da biblioteca** troca as capas horizontais ou ausentes por verticais, jogo a jogo, com progresso, opção de parar e **Desfazer**.
 - **Campos do jogo:** plataforma, tempo estimado (horas ou minutos), franquia, horas jogadas, diário de bordo, "Ideal para portáteis".
 - **Editar também os zerados.** Jogos concluídos têm o botão **ⓘ Dados do jogo** (editar e buscar automaticamente) e o botão de **editar conclusão** (nota, data, 100%, review).
@@ -386,6 +387,8 @@ Resumo do que é salvo (o objeto completo vai no backup `.json`):
     "state": null,                       // null (fila) | "playing" | "finished"
     "meta": "30h", "hoursPlayed": "12.5", "journalNotes": "[03/10/2026] …",
     "image": "data:image/jpeg;base64,…", "genres": ["Ação"], "released": "2017-02-24",
+    "banner": "https://media.rawg.io/media/…",   // arte de FUNDO (horizontal): achada automaticamente
+    "userBanner": "data:image/jpeg;base64,…",    // fundo escolhido/enviado pelo usuário (vence a busca)
     "metacritic": 90, "description": "…", "franchise": "Hollow Knight",
     "isPortable": true, "emulated": false, "originalConsole": "", "difficulty": "hard",
     "continuous": false,                 // true: seção própria, sem Zerado/100%

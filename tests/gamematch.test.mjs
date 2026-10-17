@@ -203,7 +203,7 @@ test('Explorar: gmXSort ordena a grade no cliente (A-Z, nota, hype, data)', asyn
 
 test('Explorar: botões Filtros/Ordenar abrem painéis; badge e chips contam os filtros ativos', async () => {
     mockFetch([['/api/games?', { count: 0, results: [] }]]);
-    const { gmExplore, gmXFilterToggle, gmXSortToggle, gmXFilterGenre, gmXFilterClear } = await import('../js/gamematch.js');
+    const { gmExplore, gmXFilterToggle, gmXSortToggle, gmXFilterGenre, gmXFilterClear, gmXSort } = await import('../js/gamematch.js');
     await gmExplore('top');
     const fp = elById('gm-x-filter-panel'), sp = elById('gm-x-sort-panel');
     fp.hidden = true; sp.hidden = true;

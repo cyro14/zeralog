@@ -152,6 +152,58 @@ test('wishlist: sem botão de diário (diário é só dos jogos da biblioteca)',
     assert(!lastPage().innerHTML.includes('gp-sec-foot'), 'sem rodapé de diário na wishlist');
 });
 
+// ---------- Fundo automático nos dados do jogo (campo `banner`) ----------
+// A busca automática escolhe uma arte HORIZONTAL e guarda só a URL no jogo: a página
+// abre com o fundo no lugar, sem depender de fetch (o <img> não passa por CORS — era
+// o que quebrava com as screenshots da RAWG).
+test('fundo automático guardado nos dados abre a página como "capa de Facebook"', async () => {
+    addGame('g10', { rawgId: undefined, banner: 'https://media.rawg.io/media/games/abc/fundo.jpg' });
+    await openGamePage('g10', false);
+    const page = lastPage();
+    assert(page._cls.includes('with-banner'), 'a página já abre com o fundo no lugar');
+    assert(page.innerHTML.includes('/media/resize/1280/-/games/'), 'fundo servido em alta resolução');
+    assert(page.innerHTML.includes('fundo.jpg'), 'usa a arte que está nos dados do jogo');
+});
+
+test('primeira abertura: a busca automática GUARDA o fundo no jogo', async () => {
+    mockFetch([
+        ['/games/3328/stores', { results: [] }],
+        ['store.steampowered.com', {}],
+        ['wikipedia.org', { query: { pages: [] } }],
+        ['/games/3328/screenshots', SHOTS],
+        ['/games/3328?', DETAILS],
+    ]);
+    const g = addGame('g11');
+    await openGamePage('g11', false);
+    assert(!g.banner, 'ainda não havia fundo nos dados');
+    await sleep(120);
+    assertEq(g.banner, DETAILS.background_image_additional, 'arte extra da RAWG guardada no jogo');
+    assert(elById('gp-banner').innerHTML.includes('arte-extra.jpg'), 'e já aparece no topo da página');
+});
+
+test('busca automática do cadastro: o fundo entra no jogo ao salvar', async () => {
+    mockFetch([
+        ['/api/games?', { count: 1, results: [{ id: 3328, name: 'The Witcher 3', background_image: DETAILS.background_image }] }],
+        ['/api/games/3328/stores', { results: [{ url: 'https://store.steampowered.com/app/292030/' }] }],
+        ['steamstatic.com', null],
+        ['store.steampowered.com', {}],
+        ['wikipedia.org', { query: { pages: [] } }],
+        ['howlongtobeat.com', {}],
+        ['/api/games/3328/screenshots', SHOTS],
+        ['/api/games/3328?', DETAILS],
+    ]);
+    const { applyRawgGame, saveGame } = await import('../js/ui.js');
+    document.getElementById('game-cat-id').value = 'c1';
+    document.getElementById('game-mode').value = 'game';
+    await applyRawgGame({ rawgId: 3328, title: 'The Witcher 3', image: DETAILS.background_image });
+    assert(!appData.games.some(g => g.rawgId === 3328), 'o cadastro ainda não foi salvo');
+    try { saveGame(); } catch (e) { /* o render do shim pode falhar; o dado é o que interessa */ }
+    const saved = appData.games.find(g => g.rawgId === 3328);
+    assert(saved, 'jogo salvo pelo formulário');
+    assertEq(saved.title, DETAILS.name, 'título completo vindo da RAWG');
+    assertEq(saved.banner, DETAILS.background_image_additional, 'fundo automático foi para os dados do jogo');
+});
+
 test('Zerados (linha do tempo): cada mês vira uma PRATELEIRA, sem cards', async () => {
     appData.settings.finishedView = 'timeline';
     appData.games.push(

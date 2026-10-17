@@ -322,6 +322,8 @@ function addToWishlist(g) {
         platform: (g.platforms && g.platforms[0]) || '', rawgId: g.rawgId || undefined,
         genres: g.genres || [], released: g.released || '', tba: !!g.tba,
         metacritic: g.metacritic || null, image: vertical ? g._vcover : (g.image || null), wideCover: !vertical,
+        // Arte de FUNDO da página do jogo: a horizontal que já veio da RAWG
+        banner: g.imageExtra || g.image || null,
         franchise: gmFranchiseOf(g.title),
         addedAt: Date.now(), notifyRelease: false, note: 'Descoberto no GameMatch'
     };
@@ -369,6 +371,8 @@ function addToBacklog(g) {
         platform: (g.platforms && g.platforms[0]) || '', rawgId: g.rawgId || undefined,
         genres: g.genres || [], released: g.released || '', meta: g.playtime ? `${g.playtime}h` : '',
         metacritic: g.metacritic || null, image: vertical ? g._vcover : (g.image || null), wideCover: !vertical,
+        // Arte de FUNDO da página do jogo: a horizontal que já veio da RAWG
+        banner: g.imageExtra || g.image || null,
         franchise: gmFranchiseOf(g.title),
         state: null, userRating: null, dateFinished: null, is100: false, review: '', hoursPlayed: '', journalNotes: ''
     };
@@ -858,6 +862,12 @@ function fillExploreFilters() {
     setupCompanyFilter(document.getElementById('gm-dev-filter'), 'developers');
     setupCompanyFilter(document.getElementById('gm-pub-filter'), 'publishers');
     paintFilterState();
+    // Os painéis de Filtros e Ordenar moram no HTML: na primeira pintura garantimos
+    // que eles existem e nascem fechados (abrir um fecha o outro).
+    for (const pid of ['gm-x-filter-panel', 'gm-x-sort-panel']) {
+        const panel = document.getElementById(pid);
+        if (panel && !panel.dataset.ready) { panel.dataset.ready = '1'; panel.hidden = true; }
+    }
 }
 
 // ---------- Filtro de desenvolvedora/publicadora com autocomplete ----------

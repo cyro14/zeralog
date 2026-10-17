@@ -1,8 +1,9 @@
 // Testes da camada da RAWG (js/gameApi.js): helpers puros + chamadas ao vivo.
-import { test, assert, assertEq, live } from './shim.mjs';
+import { test, assert, assertEq, live, mockFetch } from './shim.mjs';
 import {
     resizeUrl, esc, shotsGalleryHtml, normText, guessFranchise, describeError,
-    searchCompanies, listGames, getGameDetails, getGameScreenshots
+    searchCompanies, listGames, getGameDetails, getGameScreenshots,
+    fetchImageBlob, imageAttempts, IMAGE_PROXIES
 } from '../js/gameApi.js';
 
 // ---------- puros (rodam sempre) ----------
@@ -42,6 +43,41 @@ test('guessFranchise deduz a franquia a partir do título', () => {
 test('describeError explica erros de rede/chave/limite para o usuário', () => {
     assert(describeError({ kind: 'http', status: 429 }).includes('Limite'), '429 = limite');
     assert(describeError({ kind: 'network' }).includes('RAWG'), 'sem rede menciona a RAWG');
+});
+
+// ---------- download de imagens (CORS): a ordem das tentativas e o 401 do corsproxy ----------
+// Bug real: as screenshots da RAWG eram barradas por CORS e o app só tentava UM proxy
+// (o corsproxy.io, que passou a responder 401). O fundo do jogo "nunca" era baixado.
+test('imageAttempts: direta, direta com cache-buster e depois os proxies', () => {
+    const url = 'https://media.rawg.io/media/screenshots/202/abc.jpg';
+    const tries = imageAttempts(url);
+    assertEq(tries[0], url, 'a primeira tentativa é sempre o link direto');
+    assert(tries[1].startsWith(url + '?'), 'a segunda é a mesma URL com cache-buster');
+    assert(tries[1] !== url, 'o cache-buster muda a URL (fura cache sem CORS)');
+    assert(tries.some(u => u.includes('allorigins.win/raw')), 'allorigins na lista');
+    assert(tries.some(u => u.includes('api.codetabs.com')), 'codetabs na lista');
+    assert(tries.length >= 2 + IMAGE_PROXIES.length * 2, 'as duas versões de cada proxy entram na fila');
+});
+
+test('fetchImageBlob: 401 de um proxy não mata a fila — o próximo proxy salva o download', async () => {
+    // direto e cache-buster: bloqueados por CORS (erro de rede); corsproxy.io: 401;
+    // allorigins: responde a imagem. Antes disso o app desistia na primeira falha.
+    mockFetch([
+        ['allorigins.win/raw', null],   // resposta "ok" com bytes de imagem
+        ['corsproxy.io', () => ({ __res: { ok: false, status: 401 } })],
+        ['media.rawg.io', () => { throw new Error('blocked by CORS'); }],
+    ]);
+    const blob = await fetchImageBlob('https://media.rawg.io/media/screenshots/202/abc.jpg');
+    assert(blob && blob.size > 0, 'baixou a imagem por um proxy que funciona');
+    assertEq(blob.type, 'image/jpeg', 'é mesmo uma imagem');
+});
+
+test('fetchImageBlob: 404 encerra na hora (imagem não existe mais — proxy nenhum resolve)', async () => {
+    mockFetch([['media.rawg.io', () => ({ __res: { ok: false, status: 404 } })]]);
+    const t0 = Date.now();
+    const blob = await fetchImageBlob('https://media.rawg.io/media/screenshots/404/sumiu.jpg');
+    assert(blob === null, 'sem imagem');
+    assert(Date.now() - t0 < 500, 'não perde tempo tentando 8 proxies para um 404');
 });
 
 // ---------- ao vivo (pulam se a RAWG estiver fora do ar ou no limite) ----------
