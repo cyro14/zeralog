@@ -839,6 +839,8 @@ body.compact-mode .gi-chips, body.compact-mode .gi-progress, body.compact-mode .
 .view-toggle button.active { background: var(--accent-finished); color: var(--on-accent); }
 .tl-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
 .tl-summary { font-size: 0.85em; color: var(--text-muted); }
+.tl-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tl-views { margin-bottom: 0; }   /* o seletor "Por ano / Por mês" fica na mesma linha do resumo */
 .tl-month-title { margin: 18px 0 12px; font-size: 1em; color: var(--accent-finished); display: flex; align-items: baseline; gap: 8px; }
 .tl-month-title small { color: var(--text-muted); font-weight: 600; }
 

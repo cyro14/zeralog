@@ -204,27 +204,57 @@ test('busca automática do cadastro: o fundo entra no jogo ao salvar', async () 
     assertEq(saved.banner, DETAILS.background_image_additional, 'fundo automático foi para os dados do jogo');
 });
 
-test('Zerados (linha do tempo): cada mês vira uma PRATELEIRA, sem cards', async () => {
+test('Zerados (linha do tempo): agrupa por ANO por padrão — cada ano vira uma PRATELEIRA', async () => {
     appData.settings.finishedView = 'timeline';
+    appData.settings.timelineGroup = 'year';
     appData.games.push(
         { id: 'tl1', title: 'Jogo Zerado Um', state: 'finished', platform: 'PC', dateFinished: '15/03/2025', image: 'data:image/jpeg;base64,CAPATL', catId: 'c1' },
-        { id: 'tl2', title: 'Jogo Zerado Dois', state: 'finished', platform: 'PC', dateFinished: '20/04/2025', catId: 'c1' }
+        { id: 'tl2', title: 'Jogo Zerado Dois', state: 'finished', platform: 'PC', dateFinished: '20/04/2025', catId: 'c1' },
+        { id: 'tl3', title: 'Jogo Zerado Três', state: 'finished', platform: 'PC', dateFinished: '10/11/2024', catId: 'c1' }
     );
     const { renderFinishedTab } = await import('../js/ui.js');
     renderFinishedTab();
-    const wrap = created.find(c => c.id === 'finished-timeline');
+    const wrap = created.filter(c => c.id === 'finished-timeline').pop();
     assert(wrap, 'a linha do tempo foi montada');
     assert(wrap.innerHTML.includes('tl-top'), 'resumo no topo');
+    // a opção de separar por mês fica na própria tela, ao lado do resumo
+    assert(wrap.innerHTML.includes("setTimelineGroup('month')"), 'botão "Por mês" na tela');
+    assert(wrap.innerHTML.includes("setTimelineGroup('year')"), 'e o botão de voltar para "Por ano"');
+    assert(/id="tl-group-year"[^>]*class="active"/.test(wrap.innerHTML), '"Por ano" é o padrão marcado');
+    const years = created.filter(c => String(c.className) === 'tl-month');
+    assertEq(years.length, 2, 'um bloco por ano (março e abril de 2025 caem no mesmo 2025)');
+    assert(years[0].innerHTML.includes('2025') && years[0].innerHTML.includes('2 jogos'), '2025 com os dois jogos dele');
+    assert(years[1].innerHTML.includes('2024') && years[1].innerHTML.includes('1 jogo'), '2024 separado, com 1 jogo');
+    assert(!years.some(y => y.innerHTML.includes('Março')), 'nada separado por mês no padrão');
+    assert(!years.some(y => y.innerHTML.includes('tl-card')), 'sem cards na linha do tempo (foi substituída pela prateleira)');
+    const shelves = created.filter(c => String(c.className) === 'game-list shelf');
+    assertEq(shelves.length, 2, 'cada ano vira uma prateleira');
+    const carts = created.filter(c => String(c.className).includes('shelf-item'));
+    assertEq(carts.length, 3, 'um cartucho por jogo zerado');
+    assert(carts.every(c => c.innerHTML.includes('cart')), 'cartuchos desenhados na tábua');
+});
+
+test('Zerados (linha do tempo): a opção "Por mês" separa cada mês e fica salva', async () => {
+    appData.settings.finishedView = 'timeline';
+    appData.games.push(
+        { id: 'tl1', title: 'Jogo Zerado Um', state: 'finished', platform: 'PC', dateFinished: '15/03/2025', catId: 'c1' },
+        { id: 'tl2', title: 'Jogo Zerado Dois', state: 'finished', platform: 'PC', dateFinished: '20/04/2025', catId: 'c1' },
+        { id: 'tl3', title: 'Jogo Zerado Três', state: 'finished', platform: 'PC', dateFinished: '10/11/2024', catId: 'c1' }
+    );
+    const { renderFinishedTab, setTimelineGroup } = await import('../js/ui.js');
+    try { setTimelineGroup('month'); } catch (e) { /* o render do shim pode falhar; a escolha é o que interessa */ }
+    assertEq(appData.settings.timelineGroup, 'month', 'a escolha "Por mês" vai para as configurações');
+    created.length = 0;
+    renderFinishedTab();
+    const wrap = created.filter(c => c.id === 'finished-timeline').pop();
+    assert(/id="tl-group-month"[^>]*class="active"/.test(wrap.innerHTML), 'o botão "Por mês" fica marcado');
     const months = created.filter(c => String(c.className) === 'tl-month');
-    assertEq(months.length, 2, 'um bloco por mês');
+    assertEq(months.length, 3, 'um bloco por mês');
     assert(months.some(m => m.innerHTML.includes('Março de 2025')), 'grupo de março');
     assert(months.some(m => m.innerHTML.includes('Abril de 2025')), 'grupo de abril separado');
-    assert(!months.some(m => m.innerHTML.includes('tl-card')), 'sem cards na linha do tempo (foi substituída pela prateleira)');
-    const shelves = created.filter(c => String(c.className) === 'game-list shelf');
-    assertEq(shelves.length, 2, 'cada mês vira uma prateleira');
-    const carts = created.filter(c => String(c.className).includes('shelf-item'));
-    assertEq(carts.length, 2, 'um cartucho por jogo zerado');
-    assert(carts.every(c => c.innerHTML.includes('cart')), 'cartuchos desenhados na tábua');
+    assert(months.some(m => m.innerHTML.includes('Novembro de 2024')), 'grupo de novembro de 2024');
+    try { setTimelineGroup('year'); } catch (e) { /* idem */ }
+    assertEq(appData.settings.timelineGroup, 'year', 'e dá para voltar ao agrupamento por ano');
 });
 
 // ---------- FAB "+" da aba Fila: atalho de cadastro com duas opções ----------

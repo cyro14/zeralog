@@ -51,3 +51,10 @@ test('migrateData: o modo "cards" foi removido — quem tinha "list" volta para 
     const d2 = migrateData({ settings: { homeView: 'shelf', finishedView: 'timeline', vShelfDefault: 1 } });
     assertEq(d2.settings.finishedView, 'timeline', 'timeline preservado');
 });
+
+test('migrateData: a linha do tempo agrupa por ANO por padrão (valor inválido cai em year)', () => {
+    for (const d of [migrateData({}), migrateData({ settings: {} }), migrateData({ settings: { timelineGroup: 'dia' } })])
+        assertEq(d.settings.timelineGroup, 'year', 'padrão por ano');
+    // quem escolheu "Por mês" continua no mês
+    assertEq(migrateData({ settings: { timelineGroup: 'month' } }).settings.timelineGroup, 'month', 'escolha preservada');
+});

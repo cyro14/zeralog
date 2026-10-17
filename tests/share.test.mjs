@@ -104,8 +104,9 @@ test('prateleira normal continua paginando (contraste com minúsculas)', async (
     assert((elById('sh-page-label').textContent || '').includes('parte') || (elById('sh-page-label').textContent || '').includes('Parte'), 'label de páginas presente');
 });
 
-test('zerados: estilo LINHA DO TEMPO desenha os meses + prateleira (e dá pra trocar)', async () => {
+test('zerados: estilo LINHA DO TEMPO agrupa por ANO (e por mês quando a tela pede)', async () => {
     gamingData();
+    appData.settings.timelineGroup = 'year';
     const items = [
         { id: 'z1', title: 'Celeste', platform: 'PC', state: 'finished', dateFinished: '10/03/2025', image: null },
         { id: 'z2', title: 'Hades', platform: 'PC', state: 'finished', dateFinished: '22/03/2025', image: null },
@@ -115,11 +116,19 @@ test('zerados: estilo LINHA DO TEMPO desenha os meses + prateleira (e dá pra tr
     assert(elById('sh-style-timeline').style.display !== 'none', 'botão Linha do tempo visível');
     await sleep(80);
     const t = canvasTexts().join(' | ');
-    assert(t.includes('Março de 2025'), 'mês de conclusão agrupado no rótulo');
-    assert(t.includes('2 jogos'), 'contagem do mês');
+    assert(t.includes('2025'), 'ano de conclusão agrupado no rótulo (padrão da tela)');
+    assert(!t.includes('Março de 2025'), 'sem separar por mês no padrão');
+    assert(t.includes('2 jogos'), 'contagem do ano');
     assert(t.includes(BLOG), 'link do blog na linha do tempo');
-    // trocar para prateleira na própria janela continua funcionando
+    // a opção "Por mês" da tela dos zerados vale também para a imagem
+    appData.settings.timelineGroup = 'month';
     const { shareSetStyle } = await import('../js/share.js');
+    shareSetStyle('timeline');
+    await sleep(80);
+    const tMes = canvasTexts().join(' | ');
+    assert(tMes.includes('Março de 2025'), 'no modo "Por mês" o mês aparece no rótulo');
+    assert(tMes.includes(BLOG), 'link do blog na versão por mês');
+    // trocar para prateleira na própria janela continua funcionando
     shareSetStyle('shelf');
     await sleep(80);
     const t2 = canvasTexts().join(' | ');

@@ -1,5 +1,6 @@
 // Imagens para compartilhar: cartão de um jogo, prateleira de cartuchos ou a
-// linha do tempo dos zerados (prateleiras agrupadas por mês de conclusão).
+// linha do tempo dos zerados (prateleiras agrupadas por ano — ou por mês, se a
+// tela estiver no modo "Por mês").
 // Desenhadas direto num canvas, com as cores do tema e as logos do app.
 import { appData } from './store.js';
 import { fmtDate, daysUntil, countdownText } from './releases.js';
@@ -349,8 +350,9 @@ export async function renderShelf(items, o) {
     return c;
 }
 
-// ---------- 3) linha do tempo (prateleira por mês de conclusão) ----------
-// A mesma ordem da aba Zerados: grupos de mês/ano, cada um numa tábua.
+// ---------- 3) linha do tempo (prateleira por ano/mês de conclusão) ----------
+// A mesma ordem (e o mesmo agrupamento) da aba Zerados: grupos por ANO, que a opção
+// "Por mês" da tela separa em meses — a imagem segue o que está escolhido no app.
 function parseFinishedDate(str) {
     if (!str) return null;
     const s = String(str).trim();
@@ -362,16 +364,22 @@ function parseFinishedDate(str) {
     return date.getMonth() === mo - 1 && date.getDate() === d ? date : null;
 }
 function timelineGroups(items) {
+    const byMonth = appData.settings.timelineGroup === 'month';
     const groups = [];
     items.forEach(g => {
         const d = parseFinishedDate(g.dateFinished);
-        const key = d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` : 'none';
-        let grp = groups.find(x => x.key === key);
-        if (!grp) {
-            const label = d ? d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : 'Sem data';
-            grp = { key, label: label.charAt(0).toUpperCase() + label.slice(1), items: [] };
-            groups.push(grp);
+        let key = 'none', label = 'Sem data';
+        if (d) {
+            if (byMonth) {
+                key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const txt = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                label = txt.charAt(0).toUpperCase() + txt.slice(1);
+            } else {
+                key = String(d.getFullYear()); label = String(d.getFullYear());
+            }
         }
+        let grp = groups.find(x => x.key === key);
+        if (!grp) { grp = { key, label, items: [] }; groups.push(grp); }
         grp.items.push(g);
     });
     return groups;
@@ -497,7 +505,7 @@ export async function renderGamerId() {
 // ---------- janela de compartilhamento ----------
 const $ = id => document.getElementById(id);
 // Estilos de imagem: prateleira (qualquer lista) e linha do tempo (zerados, que
-// têm data de conclusão para agrupar por mês). O modo "cards" não existe mais.
+// têm data de conclusão para agrupar por ano — ou por mês). O modo "cards" não existe mais.
 const PER_PAGE = { shelf: 40, timeline: 30 };
 let S = null, timer = null, urls = [];
 let hooks = { toast() {} };

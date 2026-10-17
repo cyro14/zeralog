@@ -1725,6 +1725,8 @@ export function askDeleteWish(id) {
 // ================= LINHA DO TEMPO (ZERADOS) =================
 export function setFinishedView(view) { appData.settings.finishedView = view === 'timeline' ? 'timeline' : 'shelf'; saveData(() => render()); }   // prateleira ou linha do tempo (o modo "cards" foi removido)
 export function setTimelineDir() { appData.settings.timelineDir = appData.settings.timelineDir === 'asc' ? 'desc' : 'asc'; saveData(() => render()); }
+// Padrão: um bloco por ANO de conclusão. "Por mês" separa cada mês (a opção fica no topo da tela).
+export function setTimelineGroup(group) { appData.settings.timelineGroup = group === 'month' ? 'month' : 'year'; saveData(() => render()); }
 
 function parseFinishedDate(str) {
     if (!str) return null;
@@ -1739,6 +1741,7 @@ function parseFinishedDate(str) {
 
 function renderTimeline(container, finishedGames) {
     const dir = appData.settings.timelineDir === 'asc' ? 1 : -1;
+    const byMonth = appData.settings.timelineGroup === 'month';   // padrão: por ANO; a opção "Por mês" separa cada mês
     const items = finishedGames.map((g, i) => ({ g, i, d: parseFinishedDate(g.dateFinished) }));
     items.sort((a, b) => {
         if (!a.d && !b.d) return a.i - b.i;
@@ -1752,13 +1755,19 @@ function renderTimeline(container, finishedGames) {
 
     const groups = [];
     items.forEach(it => {
-        const key = it.d ? `${it.d.getFullYear()}-${String(it.d.getMonth() + 1).padStart(2, '0')}` : 'none';
-        let grp = groups.find(g => g.key === key);
-        if (!grp) {
-            const label = it.d ? it.d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : 'Sem data';
-            grp = { key, label: label.charAt(0).toUpperCase() + label.slice(1), items: [] };
-            groups.push(grp);
+        let key = 'none', label = 'Sem data';
+        if (it.d) {
+            const y = it.d.getFullYear();
+            if (byMonth) {
+                key = `${y}-${String(it.d.getMonth() + 1).padStart(2, '0')}`;
+                const txt = it.d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                label = txt.charAt(0).toUpperCase() + txt.slice(1);
+            } else {
+                key = String(y); label = String(y);
+            }
         }
+        let grp = groups.find(g => g.key === key);
+        if (!grp) { grp = { key, label, items: [] }; groups.push(grp); }
         grp.items.push(it);
     });
 
@@ -1768,7 +1777,7 @@ function renderTimeline(container, finishedGames) {
     const summary = [`${finishedGames.length} ${finishedGames.length === 1 ? 'jogo' : 'jogos'}`, n100 ? `${n100} com 100%` : '', avg ? `nota média ${avg}` : ''].filter(Boolean).join(' · ');
 
     // Exibição em PRATELEIRA (cartuchos na tábua de madeira), igual ao resto do app:
-    // o card antigo da linha do tempo foi aposentado. Cada mês ganha a sua estante;
+    // o card antigo da linha do tempo foi aposentado. Cada grupo ganha a sua estante;
     // clicar num cartucho abre o detalhe do jogo, como na prateleira normal.
     const wrap = document.createElement('div');
     wrap.className = 'category';
@@ -1776,7 +1785,13 @@ function renderTimeline(container, finishedGames) {
     wrap.innerHTML = `
         <div class="tl-top">
             <span class="tl-summary">${esc(summary)}</span>
-            <button type="button" class="wiki-tool" onclick="setTimelineDir()">${dir === -1 ? 'Mais recentes primeiro' : 'Mais antigos primeiro'}</button>
+            <div class="tl-controls">
+                <div class="view-toggle tl-views" role="group" aria-label="Separar a linha do tempo">
+                    <button type="button" id="tl-group-year" class="${byMonth ? '' : 'active'}" aria-pressed="${byMonth ? 'false' : 'true'}" onclick="setTimelineGroup('year')">Por ano</button>
+                    <button type="button" id="tl-group-month" class="${byMonth ? 'active' : ''}" aria-pressed="${byMonth ? 'true' : 'false'}" onclick="setTimelineGroup('month')">Por mês</button>
+                </div>
+                <button type="button" class="wiki-tool" onclick="setTimelineDir()">${dir === -1 ? 'Mais recentes primeiro' : 'Mais antigos primeiro'}</button>
+            </div>
         </div>`;
     container.appendChild(wrap);
     groups.forEach(grp => {
@@ -2163,7 +2178,7 @@ export function openSettings() {
     document.getElementById('modal-settings').showModal();
 }
 export function openFactoryReset() { document.getElementById('reset-confirm-input').value = ''; document.getElementById('modal-factory-reset').showModal(); }
-export function confirmFactoryReset() { if (document.getElementById('reset-confirm-input').value === 'APAGAR') { saveStateForUndo(); setAppData({ settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc' }, collapsedCats:[], categories:[], platforms: defaultData.platforms, games:[], wikis:[], wishlist:[], counters: { sessions: 0, sessionMinutes: 0, wishMoved: 0 }, achSeeded: true, unlockedAchievements:[] }); saveData(() => render()); closeModal('modal-factory-reset'); closeModal('modal-settings'); localStorage.removeItem('zeralog_welcomed'); triggerToast('Apagado.'); setTimeout(checkWelcome, 500); } else { alert('Digite APAGAR'); } }
+export function confirmFactoryReset() { if (document.getElementById('reset-confirm-input').value === 'APAGAR') { saveStateForUndo(); setAppData({ settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'list', timelineDir: 'desc', timelineGroup: 'year' }, collapsedCats:[], categories:[], platforms: defaultData.platforms, games:[], wikis:[], wishlist:[], counters: { sessions: 0, sessionMinutes: 0, wishMoved: 0 }, achSeeded: true, unlockedAchievements:[] }); saveData(() => render()); closeModal('modal-factory-reset'); closeModal('modal-settings'); localStorage.removeItem('zeralog_welcomed'); triggerToast('Apagado.'); setTimeout(checkWelcome, 500); } else { alert('Digite APAGAR'); } }
 
 // ================= PLATAFORMAS =================
 export function renderPlatformAdmin() {

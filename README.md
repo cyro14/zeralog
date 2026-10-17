@@ -125,7 +125,7 @@ Versão desktop: ![Desktop](docs/screenshots/13-desktop.jpg)
 
 - **Concluir um jogo** pede uma nota (até 10) e permite marcar **100%** e escrever uma review.
 - **Três modos de exibição:** **Lista** (agrupada por ano), **Linha do tempo** e **Prateleira**.
-- **Linha do tempo.** Feed vertical em ordem cronológica, agrupado por mês, com capa, nota, selo 100% (destacado em dourado), review resumida e botão para inverter a ordem. Jogos sem data vão para "Sem data".
+- **Linha do tempo.** Prateleiras de cartuchos em ordem cronológica, **agrupadas por ano** (um bloco por ano de conclusão, com contagem e resumo no topo). O botão **Por mês** separa cada mês em vez do ano, e o outro botão inverte a ordem. Jogos sem data vão para "Sem data". A imagem de compartilhar segue o mesmo agrupamento escolhido.
 - **Ordenação (lista e prateleira):** Data, Nota, Tempo e Portátil.
 - **Cartão de compartilhamento.** Gera uma imagem do jogo concluído (capa, plataforma, nota, data e o selo **"Anywhere Gamer: Ideal para Portáteis"**) para salvar e postar.
 
