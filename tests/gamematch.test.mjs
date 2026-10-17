@@ -134,3 +134,16 @@ test('perfil: os círculos do topo (desktop e mobile) recebem a mesma foto', () 
     try { renderGmProfile(); } finally { document.querySelectorAll = orig; }
     assert(circles[0].innerHTML.includes('<svg'), 'sem foto o círculo mostra a coroa');
 });
+
+test('perfil: a foto aparece no círculo do topo mesmo sem perfil do GameMatch', () => {
+    // sem .profile montado — o renderGmProfile faz early return, mas os círculos
+    // do topo têm que receber a foto mesmo assim
+    appData.gamematch = { likes: [], favorites: [], rejects: [], backlogAdds: [], genreBoost: {}, franchiseBoost: {} };
+    appData.settings.userPhoto = 'data:image/jpeg;base64,SEMPERFIL';
+    const circles = [{ innerHTML: '' }, { innerHTML: '' }];
+    const orig = document.querySelectorAll;
+    document.querySelectorAll = sel => (sel === '.dtb-avatar-wrap' ? circles : []);
+    try { renderGmProfile(); } finally { document.querySelectorAll = orig; }
+    assert(circles[0].innerHTML.includes('SEMPERFIL'), 'círculo do desktop pintado sem perfil montado');
+    assert(circles[1].innerHTML.includes('SEMPERFIL'), 'círculo do mobile pintado sem perfil montado');
+});

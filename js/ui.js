@@ -70,6 +70,8 @@ export function switchTab(tabId) {
     if(tabId === 'stats') updateStatsAndCharts();
     else filterGames();
     document.body.classList.toggle('gm-tab', tabId === 'gamematch');
+    // Perfil não usa a busca nem os filtros de plataforma do topo
+    document.body.classList.toggle('profile-tab', tabId === 'profile');
     document.dispatchEvent(new CustomEvent('zeralog:tab-changed', { detail: { tab: tabId } }));
 }
 

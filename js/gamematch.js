@@ -952,9 +952,20 @@ function genreAffinity() {
         .sort((a, b) => b[1] - a[1]).slice(0, 7);
 }
 
+// Círculos do perfil no topo (topbar do desktop + header do mobile): a FOTO
+// preenche o círculo inteiro; sem foto nenhuma mostra a coroa.
+export function paintTopAvatars() {
+    const steam = appData.settings.steam || {};
+    const photo = appData.settings.userPhoto || steam.avatar || '';
+    document.querySelectorAll('.dtb-avatar-wrap').forEach(el => { el.innerHTML = photo ? `<img src="${esc(photo)}" alt="Perfil">` : icon('crown', { size: '1.2em' }); });
+}
+
 export function renderGmProfile() {
     const el = document.getElementById('gm-profile');
     if (!el) return;
+    // o topo pinta ANTES de qualquer early return: a foto aparece mesmo
+    // para quem ainda não montou o perfil do GameMatch
+    paintTopAvatars();
     const d = gm(), p = d.profile;
     if (!p) { el.innerHTML = `<div class="gm-empty"><p>Você ainda não montou seu perfil gamer.</p><button type="button" class="gm-cta" onclick="gmOnboardOpen(true)">Criar perfil</button></div>`; return; }
     const matches = d.likes.length + d.favorites.length;
@@ -964,9 +975,6 @@ export function renderGmProfile() {
     const steam = appData.settings.steam || {};
     const photo = appData.settings.userPhoto || steam.avatar || '';
     const name = p.name || steam.persona || 'Seu Gamer';
-    // Atualiza TODOS os círculos do perfil no topo: o do topbar (desktop) e o do
-    // header (mobile) — ambos usam a classe .dtb-avatar-wrap
-    document.querySelectorAll('.dtb-avatar-wrap').forEach(el => { el.innerHTML = photo ? `<img src="${esc(photo)}" alt="Perfil">` : icon('crown', { size: '1.2em' }); });
     // Nível/XP: somados das conquistas desbloqueadas
     const xp = gamerXp(), lvl = levelFromXp(xp), rank = rankOf(lvl.level);
     const unlocked = new Set(appData.unlockedAchievements || []);

@@ -99,20 +99,25 @@ body {
 
 /* Topo e Botões Superiores */
 .header-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; margin-top: 10px; }
-/* os dois grupos laterais flex: 1 => a marca fica centrada de verdade,
-   com quantos botões estiverem à direita (salvar, settings e perfil) */
-.header-container .header-actions { flex: 1; min-width: 0; }
-.header-container .header-actions:last-child { justify-content: flex-end; }
-.app-brand { display: flex; align-items: center; gap: 12px; margin: 0 auto; }
+/* logo no canto superior esquerdo; as ações (salvar, settings, perfil) empurram pra direita */
+.header-container .header-actions { flex: 1; min-width: 0; justify-content: flex-end; }
+.app-brand { display: flex; align-items: center; gap: 12px; margin: 0; flex-shrink: 0; }
 .app-logo { width: 42px; height: 42px; filter: drop-shadow(0 4px 6px rgba(33, 150, 243, 0.4)); }
 .app-brand h1 { margin: 0; font-size: 2.2em; font-weight: 800; background: linear-gradient(45deg, var(--accent-playing), var(--accent-finished)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px; }
 .header-actions { display: flex; gap: 10px; }
 .btn-top { font-size: 1.5em; background: transparent; border: none; cursor: pointer; color: var(--text-main); transition: transform 0.2s; }
 .btn-top:hover { transform: scale(1.1); }
-/* Perfil no topo (mobile): o mesmo círculo com foto do desktop, ao lado das configurações */
-.btn-top-profile { padding: 0; width: 36px; height: 36px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent-playing) 50%, transparent); overflow: hidden; flex-shrink: 0; }
+/* Perfil no topo (mobile): a FOTO preenche o círculo inteiro — o anel fica POR FORA
+   (box-shadow), sem borda comendo a foto. Sem foto nenhuma mostra a coroa. */
+.btn-top-profile { padding: 0; width: 36px; height: 36px; border-radius: 50%; overflow: hidden; flex-shrink: 0; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-playing) 50%, transparent); }
 .btn-top-profile .dtb-avatar-wrap { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .btn-top-profile .dtb-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* telas muito estreitas: marca menor para caber ao lado dos 3 botões */
+@media (max-width: 380px) {
+    .app-logo { width: 34px; height: 34px; }
+    .app-brand { gap: 8px; }
+    .app-brand h1 { font-size: 1.7em; }
+}
 
 /* Barra de Pesquisa & Abas */
 .search-container { display: flex; align-items: center; background: color-mix(in srgb, var(--card-bg) 62%, transparent); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 8px; padding: 12px 15px; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent); }
@@ -344,7 +349,6 @@ body {
     .dtb-profile {
         width: 46px;
         height: 46px;
-        border: 2px solid color-mix(in srgb, var(--accent-playing) 50%, transparent);
         border-radius: 50%;
         background: color-mix(in srgb, var(--card-bg) 68%, transparent);
         backdrop-filter: blur(16px);
@@ -352,9 +356,11 @@ body {
         cursor: pointer;
         padding: 0;
         overflow: hidden;
-        transition: transform 0.15s, border-color 0.15s;
+        transition: transform 0.15s, box-shadow 0.15s;
+        /* anel POR FORA (box-shadow): a foto preenche o círculo inteiro */
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-playing) 50%, transparent);
     }
-    .dtb-profile:hover { transform: scale(1.08); border-color: var(--accent-playing); }
+    .dtb-profile:hover { transform: scale(1.08); box-shadow: 0 0 0 2px var(--accent-playing); }
     .dtb-avatar-wrap {
         width: 100%;
         height: 100%;
@@ -1355,7 +1361,9 @@ body.shelf-plain .shelf-item.is100 .cart-label { box-shadow: 0 0 0 2px var(--sta
 }
 
 /* A aba GameMatch ocupa a tela: esconde busca e chips de plataforma globais */
-body.gm-tab .search-container, body.gm-tab #platform-chips-container { display: none; }
+/* GameMatch e Perfil não usam a busca nem os filtros de plataforma do topo */
+body.gm-tab .search-container, body.gm-tab #platform-chips-container,
+body.profile-tab .search-container, body.profile-tab #platform-chips-container { display: none; }
 
 /* Botão de pesquisa no Google dentro do card do GameMatch */
 .gm-info-btn { position: absolute; right: 14px; bottom: 14px; z-index: 2; pointer-events: auto; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); color: #fff; border: 1px solid rgba(255,255,255,0.35); backdrop-filter: blur(4px); cursor: pointer; transition: transform 0.15s, background 0.15s; }
@@ -1396,7 +1404,9 @@ body.gm-tab .search-container, body.gm-tab #platform-chips-container { display: 
 .sort-menu[hidden] { display: none !important; }
 
 /* ==================== Tela do jogo (tela cheia) ==================== */
-.gp-page { position: fixed; inset: 0; z-index: 800; background: var(--bg-color); overflow: hidden; opacity: 0; transition: opacity 0.24s ease; display: flex; }
+/* O fundo segue o TEMA: brilhos suaves da cor principal (como o resto do app) —
+   vale inclusive para jogos sem capa */
+.gp-page { position: fixed; inset: 0; z-index: 800; overflow: hidden; opacity: 0; transition: opacity 0.24s ease; display: flex; background: radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--accent-playing) 14%, var(--bg-color)) 0%, transparent 55%), radial-gradient(ellipse at 85% 90%, color-mix(in srgb, var(--accent-finished) 12%, var(--bg-color)) 0%, transparent 55%), var(--bg-color); }
 .gp-page.open { opacity: 1; }
 .gp-bg { position: absolute; inset: -30px; overflow: hidden; }
 .gp-bg img { width: 110%; height: 110%; object-fit: cover; filter: blur(28px) brightness(0.5) saturate(1.2); transform: scale(1.1); }
@@ -1534,9 +1544,18 @@ body.gp-open { overflow: hidden; }
 select.sort-time { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-muted); padding: 5px 10px; border-radius: 6px; font-size: 0.8em; cursor: pointer; appearance: auto; }
 select.sort-time.active { border-color: var(--accent-playing); color: var(--accent-playing); font-weight: bold; }
 
-/* Tela do jogo: fundo mais escuro de verdade */
+/* Tela do jogo: a capa borrada fica ATRÁS de um véu com as cores do tema — a cor
+   de fundo escurece (tema escuro) ou clareia (tema claro) + brilhos da cor principal */
 .gp-bg img { filter: blur(30px) brightness(0.32) saturate(1.15); }
-.gp-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.55)); }
+.gp-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--accent-playing) 16%, transparent) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 90%, color-mix(in srgb, var(--accent-finished) 14%, transparent) 0%, transparent 55%),
+        linear-gradient(180deg, color-mix(in srgb, var(--bg-color) 55%, transparent), color-mix(in srgb, var(--bg-color) 85%, transparent));
+}
 
 /* Barra de sincronização (capas/dados das lojas) fixa embaixo */
 #syncbar { position: fixed; left: 50%; bottom: -80px; transform: translateX(-50%); z-index: 950; display: flex; align-items: center; gap: 10px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 999px; padding: 9px 16px; box-shadow: 0 8px 22px rgba(0,0,0,0.45); transition: bottom 0.25s ease; font-size: 0.85em; max-width: 92vw; }
@@ -1579,7 +1598,7 @@ select.sort-time.active { border-color: var(--accent-playing); color: var(--acce
 .gm-x-card:focus-visible { outline: 2px solid var(--accent-playing); }
 .gm-x-more { grid-column: 1 / -1; display: flex; justify-content: center; padding: 6px 0 20px; }
 .gm-x-more.gm-note { color: var(--text-muted); font-size: 0.85em; text-align: center; }
-.gm-xpage { position: fixed; inset: 0; z-index: 850; background: var(--bg-color); overflow-y: auto; opacity: 0; transition: opacity 0.22s ease; }
+.gm-xpage { position: fixed; inset: 0; z-index: 850; overflow-y: auto; opacity: 0; transition: opacity 0.22s ease; background: radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--accent-playing) 14%, var(--bg-color)) 0%, transparent 55%), radial-gradient(ellipse at 85% 90%, color-mix(in srgb, var(--accent-finished) 12%, var(--bg-color)) 0%, transparent 55%), var(--bg-color); }
 .gm-xpage.open { opacity: 1; }
 .gm-xpage .gp-actions { margin: 6px 0 14px; }
 

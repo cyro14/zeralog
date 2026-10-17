@@ -149,7 +149,51 @@ test('Scroll: esconder filtros ao rolar (zl-rail) só existe no desktop', () => 
     assert(!/max-width[^{}]*\{[^}]*zl-rail/.test(css), 'style.css não deve ter zl-rail em bloco mobile');
 });
 
-// ---------- 7) GUARDA DE ÍCONES: todo arquivo icons/... citado no código existe ----------
+// ---------- 7) GUARDA DO PERFIL NO TOPO: círculo preenchido + aba sem filtros ----------
+test('Perfil no topo: círculo preenchido pela foto; aba Perfil sem busca nem filtros', () => {
+    const css = read(join(ROOT, 'style.css'));
+    const rule = sel => { const at = css.indexOf(sel + ' {'); assert(at > -1, `regra ${sel} existe`); return css.slice(at, css.indexOf('}', at)); };
+    // anel POR FORA (box-shadow), sem borda comendo a foto — círculo do desktop e do mobile
+    for (const sel of ['.btn-top-profile', '.dtb-profile']) {
+        const r = rule(sel);
+        assert(r.includes('box-shadow'), `${sel} com anel via box-shadow (fora do círculo)`);
+        assert(!r.includes('border:'), `${sel} não pode ter border (a foto preenche o círculo inteiro)`);
+    }
+    assert(rule('.dtb-avatar-wrap img').includes('object-fit: cover'), 'foto cobre o círculo inteiro (object-fit: cover)');
+    // aba Perfil esconde a busca e os filtros de plataforma (igual ao GameMatch)
+    const ui = read(join(JS, 'ui.js'));
+    assert(ui.includes("classList.toggle('profile-tab'"), 'switchTab liga a classe profile-tab');
+    assert(css.includes('body.profile-tab .search-container'), 'busca escondida na aba Perfil');
+    assert(css.includes('body.profile-tab #platform-chips-container'), 'filtros de plataforma escondidos na aba Perfil');
+});
+
+// ---------- 8) GUARDA DO HEADER: logo no canto superior esquerdo ----------
+test('Header (mobile): a logo fica no canto superior esquerdo', () => {
+    const html = read(join(ROOT, 'index.html'));
+    const head = html.slice(html.indexOf('class="header-container"'), html.indexOf('id="btn-tab-home"'));
+    const brandAt = head.indexOf('app-brand');
+    const actionsAt = head.indexOf('class="header-actions"');
+    assert(brandAt > -1 && actionsAt > -1, 'header com marca e ações');
+    assert(brandAt < actionsAt, 'a marca vem primeiro (canto esquerdo), botões empurrados pra direita');
+    assert(!head.includes('width: 32px;'), 'o espaçador antigo da esquerda foi removido');
+});
+
+// ---------- 9) GUARDA DA TELA DO JOGO: fundo na cor do tema ----------
+test('Tela do jogo: o fundo segue a cor do tema (nada de gradiente preto fixo)', () => {
+    const css = read(join(ROOT, 'style.css'));
+    const rule = sel => { const at = css.indexOf(sel + ' {'); assert(at > -1, `regra ${sel} existe`); return css.slice(at, css.indexOf('}', at)); };
+    for (const sel of ['.gp-page', '.gm-xpage']) {
+        const r = rule(sel);
+        assert(r.includes('var(--accent-playing)'), `${sel} com a cor principal do tema no fundo`);
+        assert(r.includes('var(--bg-color)'), `${sel} com a cor de fundo do tema`);
+    }
+    const veil = rule('.gp-bg::after');
+    assert(veil.includes('var(--accent-playing)') && veil.includes('var(--accent-finished)'), 'véu por cima da capa com as cores do tema');
+    assert(veil.includes('var(--bg-color)'), 'véu usa o fundo do tema (escuro escurece, claro clareia)');
+    assert(!veil.includes('rgba(0,0,0'), 'véu sem preto fixo (quebrava os temas claros)');
+});
+
+// ---------- 10) GUARDA DE ÍCONES: todo arquivo icons/... citado no código existe ----------
 // Um logo renomeado ou excluído quebraria o hub, plataformas e categorias.
 test('Ícones: todo icons/... referenciado no código existe na pasta', () => {
     const missing = [];
