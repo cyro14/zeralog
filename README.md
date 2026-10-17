@@ -140,8 +140,10 @@ Alterne **Cards ↔ Prateleira** na Fila e **Lista ↔ Linha do tempo ↔ Pratel
 
 ### 6. Wishlist (Desejos): lançamentos e avisos
 
-- Aba própria para os jogos que você quer comprar ou baixar, com o mesmo cadastro (inclusive a busca automática), **observação** (preço, loja, link) e **categoria de destino**.
-- **Data de lançamento.** O app puxa a data pela RAWG e mostra **data completa e contagem regressiva** ("Lança em 12 dias", "Lançado há 3 meses", "Data a confirmar"). A lista se organiza em **Em breve** (do lançamento mais próximo), **Já lançados** e **Sem data**, com ordenação por Lançamento, Adicionado, A-Z ou Nota e modo **Cards ou Prateleira**. Um resumo no topo mostra os lançamentos futuros e o próximo.
+- Aba própria com **duas telas** trocadas por um botão no topo: **Wish list** (a sua lista) e **Lançamentos** (os jogos mais esperados do catálogo, a mesma vitrine da categoria Lançamentos do Explorar). A tela escolhida fica salva.
+- **Wish list.** O mesmo cadastro dos jogos (inclusive a busca automática), com **observação** (preço, loja, link) e **categoria de destino**. No topo, um resumo em painel mostra quantos jogos estão na lista, quantos ainda vão lançar (e quantos têm aviso ligado) e qual é o próximo.
+- **Data de lançamento.** O app puxa a data pela RAWG e mostra **data completa e contagem regressiva** ("Lança em 12 dias", "Lançado há 3 meses", "Data a confirmar"). A lista se organiza em **Em breve** (do lançamento mais próximo), **Já lançados** e **Sem data**, com ordenação por Lançamento, Adicionado, A-Z ou Nota e modo **Cards ou Prateleira**.
+- **Lançamentos.** Vitrine do que ainda vai sair (de hoje até 3 anos à frente), do maior hype para o menor, com data em destaque, % de combinação com o seu perfil e botões de **+ wish list** e comprar. Quem entra por ali já vai para a lista **com o aviso de lançamento ligado**, e o cartão passa a mostrar **Na wish list**. Tem **Carregar mais lançamentos** para continuar navegando.
 - **Avisar quando lançar.** Se a data for futura, aparece a caixinha **Avisar quando lançar** (no cadastro e em cada card). No dia do lançamento o app avisa com uma notificação e um aviso na tela.
   - O app confere ao abrir, ao voltar para ele e a cada hora com ele aberto.
   - No Android com o app instalado, o service worker também confere **em segundo plano** (Periodic Background Sync, sem rede, só comparando as datas salvas). O horário é decidido pelo navegador, então pode atrasar; sem um servidor de notificações push não há garantia de hora exata.
@@ -340,6 +342,7 @@ zeralog/
     ├── storage-ui.js   # Configurações → Banco de dados (espaço, pontos de restauração)
     ├── plan.js         # plano Free/Premium (organização da interface; ver docs/PREMIUM.md)
     ├── ui.js           # renderização, modais, fila, zerados, wishlist, timeline, prateleira, estatísticas
+    ├── wishview.js     # aba Desejos: as duas telas (Wish list e Lançamentos) e a vitrine paginada
     ├── gameApi.js      # busca automática (RAWG), capas, tratamento de erros
     ├── wiki.js         # leitor de wikis (MediaWiki), vínculo automático, Fandom, localizar no texto
     ├── session.js      # Timer de Sessão e entradas de diário

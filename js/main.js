@@ -4,6 +4,7 @@ import { openShare, openCardGenerator, initShare, shareSetStyle, sharePage, shar
 import { initFilters, openFilters, filtersClear, filtersSaveCurrent, filterSummary } from './filters.js';
 import { checkReleases, refreshReleaseDates, registerPeriodicCheck, fmtDate } from './releases.js';
 import { getTabGames, setWishSort, toggleWishNotify, refreshDatesUI, paintWishNotify } from './ui.js';
+import { initWishView, wishSubShow, wishReleasesLoad, wishReleasesMore, wishReleasesAdd } from './wishview.js';
 import { hydrateIcons } from './icons.js';
 import { applyTheme, currentTheme } from './themes.js';
 import { iconSearch, iconWeightChange, iconMore, ensureForData } from './phosphor.js';
@@ -40,6 +41,7 @@ window.openAchDetail = openAchDetail;   // detalhe da conquista (como desbloquea
 Object.assign(window, {
     openFilters, filtersClear, filtersSaveCurrent, shareSetStyle, sharePage, shareTitleChanged, shareTitlesChanged, shareDownload, shareShare,
     setWishSort, toggleWishNotify, refreshDatesUI, paintWishNotify,
+    wishSubShow, wishReleasesLoad, wishReleasesMore, wishReleasesAdd,
     openShare: tab => {
         const items = getTabGames(tab);
         if (!items.length) { triggerToast('Não há jogos para compartilhar nesta tela (confira os filtros).', false); return; }
@@ -179,6 +181,7 @@ async function start() {
     initSteam({ render, toast: (msg, undo) => triggerToast(msg, undo === true), undo: saveStateForUndo, openSteamSettings: () => { openSettings(); openSettingsSection('steam'); } });
     initShare({ toast: msg => triggerToast(msg, false) });
     initGameMatch({ toast: msg => triggerToast(msg, false), hydrateIcons, render });
+    initWishView({ toast: msg => triggerToast(msg, false) });   // aba Desejos: lista + lançamentos
     initStores({ render, toast: (msg, undo) => triggerToast(msg, undo === true), undo: saveStateForUndo });
     // Retomada de capas: se o app foi interrompido no meio da sincronização (ou jogos ficaram
     // sem capa por qualquer motivo), retoma em segundo plano — no máximo 1x a cada 18h.

@@ -222,27 +222,37 @@
         <div id="gm-profile"></div>
     </div>
 
-    <!-- WISHLIST TAB -->
+    <!-- WISHLIST TAB: duas telas — a lista de desejos e os lançamentos do Explorar -->
     <div id="tab-wish" class="tab-content">
-        <div class="wish-bar">
-            <p class="wish-hint">Jogos que você ainda quer comprar ou baixar. Veja as datas de lançamento, ligue o aviso e, quando decidir começar, mova com um clique.</p>
-            <button type="button" onclick="openGameModal('wishlist')">+ Desejo</button>
+        <div class="subnav wish-subnav" id="wish-subnav" role="tablist" aria-label="Telas da lista de desejos">
+            <button type="button" role="tab" id="wish-sub-list" class="active" aria-selected="true" onclick="wishSubShow('list')"><span data-icon="bookmark" data-size="1em"></span>Wish list</button>
+            <button type="button" role="tab" id="wish-sub-releases" aria-selected="false" onclick="wishSubShow('releases')"><span data-icon="flame" data-size="1em"></span>Lançamentos</button>
         </div>
-        <div id="wish-summary"></div>
-        <div class="tab-tools" data-tab="wish">
-            <button type="button" class="tool-btn" onclick="openFilters('wish')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-wish" style="display:none"></span></button>
-            <button type="button" class="tool-btn" onclick="openShare('wish')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
-            <button type="button" class="tool-btn" id="wish-refresh-btn" onclick="refreshDatesUI()"><span data-icon="refresh" data-size="1em"></span>Atualizar datas</button>
-        </div>
-        <div class="filter-chips" id="fc-wish" style="display:none"></div>
-        <small id="wish-refresh-status" class="wish-refresh-status"></small>
-        <div class="sort-bar" id="wish-sort-bar">
-            <div class="sort-chip" id="sort-wish-release" onclick="setWishSort('release')">Lançamento</div>
-            <div class="sort-chip" id="sort-wish-added" onclick="setWishSort('added')">Adicionado</div>
-            <div class="sort-chip" id="sort-wish-az" onclick="setWishSort('az')">A-Z</div>
-            <div class="sort-chip" id="sort-wish-meta" onclick="setWishSort('meta')">Nota</div>
-        </div>
-        <div id="wish-list-container"></div>
+
+        <!-- Tela 1: a lista em si (o resumo no topo é gerado pela tela, não é texto fixo) -->
+        <section class="wish-pane active" id="wish-pane-list">
+            <div id="wish-summary"></div>
+            <div class="tab-tools" data-tab="wish">
+                <button type="button" class="tool-btn wish-add" onclick="openGameModal('wishlist')"><span data-icon="plus" data-size="1em"></span>Desejo</button>
+                <button type="button" class="tool-btn" onclick="openFilters('wish')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-wish" style="display:none"></span></button>
+                <button type="button" class="tool-btn" onclick="openShare('wish')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
+                <button type="button" class="tool-btn" id="wish-refresh-btn" onclick="refreshDatesUI()"><span data-icon="refresh" data-size="1em"></span>Atualizar datas</button>
+            </div>
+            <div class="filter-chips" id="fc-wish" style="display:none"></div>
+            <small id="wish-refresh-status" class="wish-refresh-status"></small>
+            <div class="sort-bar" id="wish-sort-bar">
+                <div class="sort-chip" id="sort-wish-release" onclick="setWishSort('release')">Lançamento</div>
+                <div class="sort-chip" id="sort-wish-added" onclick="setWishSort('added')">Adicionado</div>
+                <div class="sort-chip" id="sort-wish-az" onclick="setWishSort('az')">A-Z</div>
+                <div class="sort-chip" id="sort-wish-meta" onclick="setWishSort('meta')">Nota</div>
+            </div>
+            <div id="wish-list-container"></div>
+        </section>
+
+        <!-- Tela 2: os lançamentos (a mesma vitrine da categoria "Lançamentos" do Explorar) -->
+        <section class="wish-pane" id="wish-pane-releases">
+            <div class="gm-explore-grid" id="wish-releases-grid"></div>
+        </section>
     </div>
 
     <!-- FINISHED TAB -->

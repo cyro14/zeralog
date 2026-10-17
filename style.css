@@ -790,8 +790,27 @@ body.compact-mode .gi-chips, body.compact-mode .gi-progress, body.compact-mode .
 
 
 /* ===== Wishlist ===== */
-.wish-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-.wish-hint { margin: 0; font-size: 0.85em; color: var(--text-muted); }
+/* Duas telas na mesma aba: "Wish list" (a lista) e "Lançamentos" (vitrine do Explorar).
+   O submenu troca de tela sem sair da aba; cada tela é um .wish-pane. */
+.wish-pane { display: none; }
+.wish-pane.active { display: block; animation: fadeIn 0.3s; }
+/* "+ Desejo" é a ação principal da tela: usa a cor de adicionar do tema */
+.tool-btn.wish-add { background: var(--accent-add); border-color: var(--accent-add); color: var(--on-accent); }
+.tool-btn.wish-add:hover { color: var(--on-accent); border-color: var(--accent-add); opacity: 0.9; }
+/* Resumo da lista (números + próximo lançamento): painel, não texto solto */
+.wish-sum { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; }
+.wish-sum-stats { display: flex; flex-wrap: wrap; gap: 6px 24px; }
+.wish-stat { display: inline-flex; align-items: baseline; gap: 6px; }
+.wish-stat strong { font-size: 1.3em; color: var(--accent-playing); line-height: 1.1; }
+.wish-stat span { font-size: 0.78em; color: var(--text-muted); font-weight: 600; }
+.wish-next { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); font-size: 0.85em; color: var(--text-muted); }
+.wish-next > svg { flex-shrink: 0; }
+.wish-next strong { color: var(--text-main); }
+.wish-next .wr-count.soon { color: var(--accent-playing); border-color: var(--accent-playing); font-weight: 700; }
+/* Cartões da tela Lançamentos: data em destaque e selo de "já está na lista" */
+.wish-rel-when { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-playing); font-size: 0.76em; font-weight: 700; }
+.wish-rel-card .gm-x-actions { justify-content: space-between; align-items: center; }
+.wish-rel-in { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-finished); font-size: 0.72em; font-weight: 700; padding-left: 4px; }
 .pill-btn { font-size: 0.78em; font-weight: 600; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border-color); background: transparent; color: var(--text-muted); cursor: pointer; }
 .pill-btn:hover { color: var(--text-main); background: rgba(128,128,128,0.12); }
 .pill-btn.primary { background: var(--accent-playing); border-color: var(--accent-playing); color: var(--on-accent); }
@@ -825,7 +844,7 @@ body.compact-mode .gi-chips, body.compact-mode .gi-progress, body.compact-mode .
 
 /* ===== Retrato (celular) ===== */
 @media (max-width: 600px) {
-    .wish-bar { flex-direction: column; align-items: stretch; }
+    .wish-sum-stats { gap: 4px 16px; }
 }
 .tab-btn { white-space: nowrap; min-width: 0; }
 
@@ -1406,7 +1425,8 @@ body.shelf-plain .shelf-item.is100 .cart-label { box-shadow: 0 0 0 2px var(--sta
 /* A aba GameMatch ocupa a tela: esconde busca e chips de plataforma globais */
 /* GameMatch e Perfil não usam a busca nem os filtros de plataforma do topo */
 body.gm-tab .search-container, body.gm-tab #platform-chips-container,
-body.profile-tab .search-container, body.profile-tab #platform-chips-container { display: none; }
+body.profile-tab .search-container, body.profile-tab #platform-chips-container,
+body.wish-rel-tab .search-container, body.wish-rel-tab #platform-chips-container { display: none; }
 
 /* Botão de pesquisa no Google dentro do card do GameMatch */
 .gm-info-btn { position: absolute; right: 14px; bottom: 14px; z-index: 2; pointer-events: auto; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); color: #fff; border: 1px solid rgba(255,255,255,0.35); backdrop-filter: blur(4px); cursor: pointer; transition: transform 0.15s, background 0.15s; }

@@ -312,7 +312,8 @@ function pushLog(g, action) {
     d.totalSwipes++;
 }
 
-function addToWishlist(g) {
+// opts: { notifyRelease, note } — a tela de Lançamentos entra com o aviso ligado e nota própria
+function addToWishlist(g, opts = {}) {
     const t = normText(g.title);
     if ((appData.wishlist || []).some(x => normText(x.title) === t)) return false;
     // capa vertical já achada (página do jogo)? o item nasce retrato na hora
@@ -325,7 +326,7 @@ function addToWishlist(g) {
         // Arte de FUNDO da página do jogo: a horizontal que já veio da RAWG
         banner: g.imageExtra || g.image || null,
         franchise: gmFranchiseOf(g.title),
-        addedAt: Date.now(), notifyRelease: false, note: 'Descoberto no GameMatch'
+        addedAt: Date.now(), notifyRelease: !!opts.notifyRelease, note: opts.note || 'Descoberto no GameMatch'
     };
     appData.wishlist.push(item);
     if (!vertical) upgradeToPortrait(item, g);   // capa vira retrato assim que a fonte responder
@@ -1007,11 +1008,13 @@ export async function gmXMore() {
     paintExplore(exploreCat);
 }
 
-export function gmExploreWish(rawgId) {
+// opts repassado para addToWishlist (a aba Desejos > Lançamentos liga o aviso de lançamento)
+export function gmExploreWish(rawgId, opts = {}) {
     const g = exploreById.get(rawgId);
-    if (!g) return;
-    const ok = addToWishlist(g); saveData(); renderApp();
+    if (!g) return false;
+    const ok = addToWishlist(g, opts); saveData(); renderApp();
     toast(ok ? `${g.title} foi para a sua Wishlist!` : `${g.title} já estava na Wishlist.`);
+    return ok;
 }
 
 export function gmBuy(rawgId) {

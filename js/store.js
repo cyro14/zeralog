@@ -9,7 +9,7 @@ export const homeSortLabels = { 'manual': 'Manual', 'az': 'A-Z', 'time': 'Tempo 
 export const sortLabels = { 'date': 'Data', 'rating': 'Nota', 'time': 'Tempo', 'played': 'Horas Jogadas', 'portable': 'Portátil' };
 
 export const defaultData = {
-    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', homeView: 'shelf', wishView: 'shelf', platformDisplay: 'icon', shelfPlain: true, autoCoverPref: 'vertical', steam: {} },
+    settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', homeView: 'shelf', wishView: 'shelf', wishSub: 'list', platformDisplay: 'icon', shelfPlain: true, autoCoverPref: 'vertical', steam: {} },
     collapsedCats: [], 
     categories: [ { id: 'c1', name: 'Cartas e Estratégia' }, { id: 'c2', name: 'Plataforma 3D' } ],
     platforms: [
@@ -45,7 +45,9 @@ export function migrateData(data) {
     if (!isObj(data)) data = clone(defaultData);
     ['categories', 'games', 'wikis', 'wishlist', 'collapsedCats', 'unlockedAchievements', 'savedFilters'].forEach(k => { if (!Array.isArray(data[k])) data[k] = []; });
     if (!Array.isArray(data.platforms)) data.platforms = clone(defaultData.platforms);
-    data.settings = { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', wishSort: 'release', wishView: 'shelf', homeView: 'shelf', platformDisplay: 'icon', shelfPlain: true, autoCoverPref: 'vertical', ...(isObj(data.settings) ? data.settings : {}) };   // shelfPlain/autoCoverPref: padrões ligados (quem mudou fica como está)
+    data.settings = { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', wishSort: 'release', wishView: 'shelf', wishSub: 'list', homeView: 'shelf', platformDisplay: 'icon', shelfPlain: true, autoCoverPref: 'vertical', ...(isObj(data.settings) ? data.settings : {}) };   // shelfPlain/autoCoverPref: padrões ligados (quem mudou fica como está)
+    // A aba Desejos tem duas telas (a lista e os lançamentos): só esses dois valores valem
+    if (data.settings.wishSub !== 'releases') data.settings.wishSub = 'list';
     // O modo "cards" (lista) foi removido: quem tinha 'list' em qualquer aba volta para 'shelf'
     if (data.settings.homeView === 'list') data.settings.homeView = 'shelf';
     if (data.settings.wishView === 'list') data.settings.wishView = 'shelf';

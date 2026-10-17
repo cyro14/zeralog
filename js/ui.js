@@ -1575,15 +1575,24 @@ export function wishSections(items) {
     return [{ key: 'soon', title: 'Em breve', list: upcoming }, { key: 'out', title: 'Já lançados', list: released }].filter(s => s.list.length);
 }
 
+// Resumo no topo da Wish list: números do jogador e o próximo lançamento.
+// (É um painel de verdade — antes eram duas linhas de texto solto no topo da tela.)
 function renderWishSummary(all) {
     const el = document.getElementById('wish-summary');
+    if (!el) return;
     const up = all.filter(w => ['future', 'today'].includes(releaseState(w))).sort((a, b) => a.released.localeCompare(b.released));
     const watching = all.filter(w => w.notifyRelease && !w.releaseNotified && w.released).length;
     if (!all.length) { el.innerHTML = ''; return; }
     const next = up[0];
     el.innerHTML = `<div class="wish-sum">
-        <div><strong>${up.length}</strong> ${up.length === 1 ? 'lançamento futuro' : 'lançamentos futuros'}${watching ? ` · <strong>${watching}</strong> com aviso` : ''}</div>
-        ${next ? `<div class="wish-next">Próximo: <strong>${esc(next.title)}</strong> · ${esc(countdownText(next).replace('Lança ', ''))} (${esc(fmtDate(next.released))})</div>` : '<div class="wish-next">Nenhum lançamento futuro na lista.</div>'}
+        <div class="wish-sum-stats">
+            <div class="wish-stat"><strong>${all.length}</strong><span>${all.length === 1 ? 'jogo na lista' : 'jogos na lista'}</span></div>
+            <div class="wish-stat"><strong>${up.length}</strong><span>${up.length === 1 ? 'lançamento futuro' : 'lançamentos futuros'}</span></div>
+            ${watching ? `<div class="wish-stat"><strong>${watching}</strong><span>com aviso ligado</span></div>` : ''}
+        </div>
+        ${next
+            ? `<div class="wish-next">${icon('calendar', { size: '1em' })}<span>Próximo: <strong>${esc(next.title)}</strong></span><span class="chip wr-count soon">${esc(countdownText(next))}</span><small>${esc(fmtDate(next.released))}</small></div>`
+            : '<div class="wish-next"><span>Nenhum lançamento futuro na lista.</span></div>'}
     </div>`;
 }
 
@@ -1594,7 +1603,7 @@ export function renderWishlist() {
     Object.keys(WISH_SORTS).forEach(k => { const el = document.getElementById(`sort-wish-${k}`); if (el) el.classList.toggle('active', appData.settings.wishSort === k); });
     box.innerHTML = '';
     renderWishSummary(all);
-    if (!all.length) { box.innerHTML = '<div class="empty-state">Sua wishlist está vazia. Adicione os jogos que pretende comprar ou baixar.</div>'; return; }
+    if (!all.length) { box.innerHTML = '<div class="empty-state">Sua Wish list está vazia. Use o botão <strong>+ Desejo</strong> para cadastrar um jogo — ou abra a tela <strong>Lançamentos</strong>, logo aqui em cima, para ver o que vem por aí.</div>'; return; }
     const items = applyFilters('wish', all);
     if (!items.length) { box.innerHTML = '<div class="empty-state">Nenhum desejo combina com os filtros.</div>'; return; }
     wishSections(items).forEach(sec => {

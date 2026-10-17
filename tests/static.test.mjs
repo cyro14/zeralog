@@ -112,7 +112,7 @@ test('Módulos: todo import nomeado existe como export no módulo alvo', () => {
 // ---------- 4) GUARDA DE HTML: ids essenciais usados pelo JS existem no index.html ----------
 test('HTML: ids essenciais referenciados pelo JS existem no index.html', () => {
     const html = read(join(ROOT, 'index.html'));
-    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades', 'quick-match', 'qm-body', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'modal-ach', 'ach-detail', 'sh-style-timeline'])
+    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-classic-decades', 'quick-match', 'qm-body', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'modal-ach', 'ach-detail', 'sh-style-timeline', 'wish-pane-list', 'wish-pane-releases', 'wish-sub-list', 'wish-sub-releases', 'wish-releases-grid', 'wish-summary', 'wish-list-container'])
         assert(html.includes(`id="${id}"`), `index.html deveria ter #${id}`);
     // ids que FORAM REMOVIDOS não podem estar no HTML (senão o JS pode tentar usá-los de volta)
     for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips', 'qm-count'])
@@ -265,4 +265,37 @@ test('Explorar: painéis de filtros e ordenação com layout contido e campos al
     assert(html.includes('id="gm-filter-foot"'), 'index.html tem o rodapé #gm-filter-foot');
     const panelAt = html.indexOf('id="gm-x-filter-panel"');
     assert(panelAt > -1 && html.slice(panelAt, html.indexOf('id="gm-x-sort-panel"')).includes('data-x-close'), 'painel de filtros tem o botão X de fechar');
+});
+
+// ---------- 13) GUARDA DA ABA DESEJOS: duas telas + nada de texto solto no topo ----------
+// A aba Desejos abria com um parágrafo solto e um resumo sem estilo ("3 lançamentos
+// futuros Próximo: ..."), parecendo texto jogado na tela. Agora ela tem um submenu
+// com as duas telas (Wish list e Lançamentos) e o resumo é um painel desenhado.
+test('Desejos: submenu alterna as duas telas; resumo é painel e não texto solto', () => {
+    const html = read(join(ROOT, 'index.html'));
+    const css = read(join(ROOT, 'style.css'));
+    const ui = read(join(JS, 'ui.js'));
+    const view = read(join(JS, 'wishview.js'));
+    const tabAt = html.indexOf('id="tab-wish"');
+    assert(tabAt > -1, '#tab-wish existe');
+    const tab = html.slice(tabAt, html.indexOf('<!-- FINISHED TAB -->', tabAt));
+    // as DUAS telas, cada uma com seu botão no submenu (o que troca de tela)
+    assert(tab.includes('class="subnav wish-subnav"'), 'submenu com as duas telas no topo da aba');
+    for (const [id, label] of [['wish-sub-list', 'Wish list'], ['wish-sub-releases', 'Lançamentos']]) {
+        const at = tab.indexOf(`id="${id}"`);
+        assert(at > -1, `botão #${id} existe`);
+        const btn = tab.slice(at, tab.indexOf('</button>', at));
+        assert(btn.includes(label), `#${id} tem o rótulo "${label}"`);
+        assert(btn.includes(`wishSubShow(`), `#${id} chama wishSubShow (o clique troca de tela)`);
+    }
+    // uma tela por vez: .wish-pane só aparece com .active (como as sub-telas do GameMatch)
+    assert(css.includes('.wish-pane { display: none; }'), 'as telas fora de cena somem');
+    assert(css.includes('.wish-pane.active { display: block;'), 'só a tela ativa aparece');
+    assert(view.includes("classList.toggle('active', on)"), 'wishview liga/desliga as telas e os botões');
+    // o parágrafo solto do topo foi embora e o resumo virou painel de verdade
+    assert(!tab.includes('wish-hint'), 'sem parágrafo solto de explicação no topo');
+    assert(!css.includes('.wish-hint'), 'o estilo do texto solto também saiu');
+    assert(ui.includes('class="wish-sum"'), 'o resumo é pintado como painel (.wish-sum)');
+    assert(css.includes('.wish-sum {') && css.includes('.wish-stat {'), 'o painel do resumo tem estilo');
+    assert(!tab.includes('wish-bar'), 'a barra antiga (texto + botão) saiu do HTML');
 });
