@@ -384,62 +384,74 @@ function timelineGroups(items) {
     });
     return groups;
 }
+// Plaquinha do período (ano ou mês) dentro da grade: identifica o "capítulo" sem
+// gastar uma página inteira para cada ano.
+function drawTimelineTile(ctx, p, x, y, w, h, grp) {
+    const r = Math.max(12, w * 0.1);
+    ctx.save();
+    const g = ctx.createLinearGradient(x, y, x + w, y + h);
+    g.addColorStop(0, rgba(p.play, 0.24)); g.addColorStop(1, rgba(p.fin, 0.2));
+    rr(ctx, x, y, w, h, r); ctx.fillStyle = g; ctx.fill();
+    rr(ctx, x, y, w, h, r); ctx.lineWidth = 2; ctx.strokeStyle = rgba(p.fin, 0.5); ctx.stroke();
+    ctx.restore();
+    const bw = Math.round(w * 0.34), bh = 5;
+    rr(ctx, x + (w - bw) / 2, y + h * 0.14, bw, bh, bh / 2); ctx.fillStyle = p.fin; ctx.fill();
+    const long = grp.label.length > 6;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `800 ${Math.round(w * (long ? 0.17 : 0.3))}px ${FONT}`;
+    const lines = wrap(ctx, grp.label, w - 16, 2);
+    ctx.fillStyle = p.text;
+    const startY = y + h * (long ? 0.37 : 0.42);
+    lines.forEach((l, i) => ctx.fillText(l, x + w / 2, startY + i * Math.round(w * 0.19)));
+    const rated = grp.items.map(it => parseFloat(it.userRating)).filter(n => !isNaN(n));
+    const avg = rated.length ? (rated.reduce((a, b) => a + b, 0) / rated.length).toFixed(1) : null;
+    ctx.font = `600 ${Math.round(w * 0.115)}px ${FONT}`; ctx.fillStyle = p.muted;
+    ctx.fillText(`${grp.items.length} ${grp.items.length === 1 ? 'jogo' : 'jogos'}`, x + w / 2, y + h * 0.71);
+    if (avg) { ctx.font = `600 ${Math.round(w * 0.105)}px ${FONT}`; ctx.fillStyle = rgba(p.star, 0.92); ctx.fillText(`nota média ${avg}`, x + w / 2, y + h * 0.83); }
+}
+
 export async function renderTimelineImg(items, o) {
     const p = pal();
     const groups = timelineGroups(items);
-    // Layout "recap": capítulos por ano (ou mês) com o rótulo grande centralizado e
-    // as capas GRANDES embaixo, centradas — a prateleira de madeira acompanha a
-    // largura das capas (nunca estica a tábua até a borda com 2 jogos só).
-    const COLS = 5, pad = 56, gap = 18;
+    // Grade cronológica compacta: cada ano (ou mês) vira uma PLAQUINHA dentro da
+    // própria grade e as capas seguem na sequência. Assim o tamanho da imagem cresce
+    // com o número de jogos — não com o número de anos do histórico.
+    const COLS = 7, pad = 56, gap = 14;
     const cartW = (W - pad * 2 - gap * (COLS - 1)) / COLS, cartH = cartW * 1.5;
-    const boardH = 40;
     const showTitles = !!o.titles;
-    const rowH = cartH + boardH + (showTitles ? 38 : 10);   // tábua (cartH-6 → +boardH) + título
-    const labelH = 144, groupGap = 40;
-    const rowsTotal = groups.reduce((a, g) => a + Math.ceil(g.items.length / COLS), 0);
+    const cellH = cartH + (showTitles ? 34 : 12);
+
+    // Monta as células e distribui na grade; a plaquinha nunca fica sozinha no fim
+    // da fileira (pelo menos uma capa do ano abre junto com ela).
+    const cells = [];
+    groups.forEach(grp => { cells.push({ kind: 'label', grp }); grp.items.forEach(g => cells.push({ kind: 'game', g })); });
+    let col = 0, row = 0;
+    const placed = cells.map(cell => {
+        if (cell.kind === 'label' && col > COLS - 2) { row++; col = 0; }
+        const at = { ...cell, row, col };
+        col++; if (col >= COLS) { col = 0; row++; }
+        return at;
+    });
+    const rows = row + (col > 0 ? 1 : 0);
+
     const tmp = document.createElement('canvas').getContext('2d'); tmp.font = `800 62px ${FONT}`;
     const titleLines = wrap(tmp, o.title, W - 112, 2).length;
     const subLines = o.subtitle ? wrap(tmp, o.subtitle, W - 112, 2).length : 0;
     const headerEnd = 190 + titleLines * 70 + 4 + (subLines ? subLines * 36 + 14 : 0) + 30;
-    const H = Math.round(headerEnd + 16 + groups.length * (labelH + groupGap) + rowsTotal * rowH + 120);
+    const H = Math.round(headerEnd + 16 + rows * cellH + 140);
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
     backdrop(ctx, H, p, null);
-    let y = header(ctx, p, o.title, o.subtitle, false) + 16;
-    for (const grp of groups) {
-        // Abertura do capítulo: barrinha com as cores do app, o ano/mês em letras
-        // grandes e a contagem (com a nota média do período, se houver).
-        const bw = 64, bh = 6;
-        const bg = ctx.createLinearGradient(W / 2 - bw / 2, 0, W / 2 + bw / 2, 0);
-        bg.addColorStop(0, p.play); bg.addColorStop(1, p.fin);
-        ctx.fillStyle = bg; rr(ctx, (W - bw) / 2, y, bw, bh, bh / 2); ctx.fill();
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = p.text;
-        const label = ellipsis(ctx, grp.label, W - 160);
-        ctx.font = `800 ${label.length <= 6 ? 84 : 56}px ${FONT}`;
-        ctx.fillText(label, W / 2, y + 56);
-        const rated = grp.items.map(g => parseFloat(g.userRating)).filter(n => !isNaN(n));
-        const avg = rated.length ? (rated.reduce((a, b) => a + b, 0) / rated.length).toFixed(1) : null;
-        ctx.font = `600 26px ${FONT}`; ctx.fillStyle = p.muted;
-        ctx.fillText(`${grp.items.length} ${grp.items.length === 1 ? 'jogo' : 'jogos'}${avg ? ` · nota média ${avg}` : ''}`, W / 2, y + 112);
-        y += labelH;
-        const rows = Math.ceil(grp.items.length / COLS);
-        for (let r = 0; r < rows; r++) {
-            const slice = grp.items.slice(r * COLS, (r + 1) * COLS);
-            const rowW = slice.length * cartW + (slice.length - 1) * gap;
-            const x0 = (W - rowW) / 2;
-            drawBoardSpan(ctx, x0 - 22, rowW + 44, y, cartH, boardH);   // tábua do tamanho da fileira
-            for (let k = 0; k < slice.length; k++) {
-                const it = slice[k], x = x0 + k * (cartW + gap);
-                await drawCart(ctx, it, x, y, cartW, cartH, p, true, false, o.plain);
-                if (showTitles) {
-                    ctx.font = `600 18px ${FONT}`; ctx.fillStyle = rgba(p.text, 0.9);
-                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.fillText(ellipsis(ctx, it.title, cartW + gap - 8), x + cartW / 2, y + cartH + 52);
-                }
-            }
-            y += rowH;
+    const y0 = header(ctx, p, o.title, o.subtitle, false) + 16;
+    for (const t of placed) {
+        const x = pad + t.col * (cartW + gap), y = y0 + t.row * cellH;
+        if (t.kind === 'label') { drawTimelineTile(ctx, p, x, y, cartW, cartH, t.grp); continue; }
+        await drawCart(ctx, t.g, x, y, cartW, cartH, p, true, false, o.plain);
+        if (showTitles) {
+            ctx.font = `600 15px ${FONT}`; ctx.fillStyle = rgba(p.text, 0.9);
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(ellipsis(ctx, t.g.title, cartW + gap - 10), x + cartW / 2, y + cartH + 18);
         }
-        y += groupGap;
     }
     footer(ctx, H - 70, p, false);
     return c;

@@ -142,3 +142,20 @@ test('outras listas: sem opção de linha do tempo e sem nada de cards', async (
     openShare({ items: appData.games, mode: 'home', title: 'Minha fila de jogos', style: 'shelf' });
     assertEq(elById('sh-style-row').style.display, 'none', 'fileira de estilos escondida fora dos zerados (só existe prateleira)');
 });
+
+test('linha do tempo: muitos anos NÃO fazem a imagem gigante (grade compacta)', async () => {
+    const items = [];
+    for (let y = 0; y < 15; y++) {
+        for (let i = 0; i < 2; i++) {
+            items.push({ id: `m${y}${i}`, title: `Jogo ${y}-${i}`, platform: 'PC', state: 'finished', dateFinished: `${String(4 + i * 9).padStart(2, '0')}/03/${2025 - y}`, userRating: 8, image: null });
+        }
+    }
+    const { renderTimelineImg } = await import('../js/share.js');
+    const canvas = await renderTimelineImg(items, { title: 'Jogos zerados', subtitle: '30 jogos', titles: true });
+    // 15 anos × 2 jogos precisa caber numa imagem de "post", não numa tira infinita
+    assert(canvas.height < 2600, `altura ${canvas.height}px — a linha do tempo não pode crescer um bloco inteiro por ano`);
+    assert(canvas.height > 800, 'e ainda tem espaço para o conteúdo');
+    const texts = canvas._texts.join(' | ');
+    assert(texts.includes('2025') && texts.includes('2012'), 'os anos aparecem na grade, em ordem');
+    assert(texts.includes('nota média 8.0'), 'cada plaquinha de ano traz a nota média do período');
+});
