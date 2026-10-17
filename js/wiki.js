@@ -43,7 +43,11 @@ async function api(src, params) {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 9000);
         try {
-            const res = await fetch(url, { signal: ctrl.signal });
+            // SEM Referer: o wiki.gg fica atrás do Cloudflare e o Referer do app
+            // (http://127.0.0.1...) dispara o desafio anti-bot — a resposta vira 403
+            // "Cf-Mitigated: challenge" e a wiki parecia não existir. Sem o cabeçalho,
+            // o mesmo pedido com origin=* responde 200 normalmente.
+            const res = await fetch(url, { signal: ctrl.signal, referrerPolicy: 'no-referrer' });
             if (!res.ok) throw Object.assign(new Error('http'), { status: res.status });
             const data = await res.json();
             if (data.error) throw Object.assign(new Error(data.error.info || data.error.code), { code: data.error.code });
@@ -103,9 +107,14 @@ export async function autoFindWiki(gameTitle) {
     return best || null;
 }
 
-// ================= FANDOM: DESCOBRIR PELO NOME =================
-// O Fandom não tem busca pública entre wikis, então tentamos os subdomínios mais prováveis
-// (franquia primeiro, depois o título) e só aceitamos se o nome da wiki bater com o termo.
+// ================= FANDOM e WIKI.GG: DESCOBRIR PELO NOME =================
+// Nenhum dos dois tem busca pública entre wikis, então tentamos os subdomínios mais
+// prováveis (franquia primeiro, depois o título) e só aceitamos se o nome da wiki bater
+// com o termo. Fandom: <slug>.fandom.com · wiki.gg: <slug>.wiki.gg (mesma API MediaWiki).
+export const WIKI_HOSTS = [
+    { key: 'fandom', label: 'Fandom', suffix: 'fandom.com', prefix: 'fd-' },
+    { key: 'wikigg', label: 'wiki.gg', suffix: 'wiki.gg', prefix: 'wg-' }
+];
 function slugCandidates(game) {
     const out = new Set();
     const add = text => {
@@ -126,25 +135,63 @@ function slugCandidates(game) {
     return [...out].filter(s => s.replace(/-/g, '').length >= 4).slice(0, 8);
 }
 
-export async function findFandomWiki(game) {
+async function probeHostWiki(game, key) {
+    const host = WIKI_HOSTS.find(h => h.key === key) || WIKI_HOSTS[0];
     const slugs = slugCandidates(game);
     if (!slugs.length) return null;
     const checks = await Promise.all(slugs.map(async slug => {
-        const src = { id: 'fd-' + slug, api: `https://${slug}.fandom.com/api.php`, articlepath: '/wiki/$1' };
+        const src = { id: host.prefix + slug, api: `https://${slug}.${host.suffix}/api.php`, articlepath: '/wiki/$1' };
         try {
             const data = await api(src, { action: 'query', meta: 'siteinfo', siprop: 'general' });
             const g = data.query && data.query.general;
             if (!g || !g.sitename || !norm(g.sitename).includes(norm(slug))) return null;
-            return { ...src, name: g.sitename, articlepath: g.articlepath || '/wiki/$1' };
+            return { ...src, name: g.sitename, articlepath: g.articlepath || '/wiki/$1', mainpage: g.mainpage || '' };
         } catch (e) { return null; }
     }));
     for (const src of checks.filter(Boolean)) {
         try {
-            const hits = await searchTitles(src, game.title, 5);
-            if (!hits.length) continue;
-            hits.sort((a, b) => similarity(game.title, b.title.replace(/\s*\([^)]*\)\s*$/, '')) - similarity(game.title, a.title.replace(/\s*\([^)]*\)\s*$/, '')));
-            return { src, title: hits[0].title };
+            const title = await pickTitle(src, game, key);
+            if (title) return { src, title };
         } catch (e) { /* tenta a próxima */ }
+    }
+    return null;
+}
+
+// O título exato (com redirects) é a página de verdade? Devolve o título canônico.
+async function exactTitle(src, title) {
+    const data = await api(src, { action: 'query', titles: title, redirects: 1 });
+    const pages = data.query && data.query.pages;
+    const page = Array.isArray(pages) ? pages[0] : pages && Object.values(pages)[0];
+    return page && !page.missing && !page.invalid && page.title ? page.title : null;
+}
+
+// Qual artigo abrir dentro da wiki. No wiki.gg a busca é fraca com o nome exato do jogo
+// (devolvia "Mod Calls" para "Calamity Mod"), então primeiro tentamos o próprio título;
+// se não existir, vale a busca e, no fim, a página inicial da wiki.
+async function pickTitle(src, game, key) {
+    if (key === 'wikigg') {
+        const exact = await exactTitle(src, game.title);
+        if (exact) return exact;
+    }
+    const hits = await searchTitles(src, game.title, 5);
+    if (!hits.length) return key === 'wikigg' ? (src.mainpage || null) : null;   // no Fandom, "sem resultado" = tenta a próxima wiki
+    const baseOf = t => t.replace(/\s*\([^)]*\)\s*$/, '').replace(/\s+wiki$/i, '');   // "Slay the Spire Wiki" -> "Slay the Spire"
+    const scored = hits.map((h, i) => ({ title: h.title, sim: similarity(game.title, baseOf(h.title)), i }));
+    scored.sort((a, b) => b.sim - a.sim || a.i - b.i);
+    if (key === 'wikigg' && scored[0].sim < 0.7) return src.mainpage || scored[0].title;
+    return scored[0].title;
+}
+
+export const findFandomWiki = game => probeHostWiki(game, 'fandom');
+export const findWikiGG = game => probeHostWiki(game, 'wikigg');
+
+// Procura nas duas hospedagens na ordem (Fandom primeiro; wiki.gg quando o jogo não
+// tem Fandom — é o caso de jogos cuja wiki oficial vive no wiki.gg).
+export async function findHostedWiki(game, onStep) {
+    for (const host of WIKI_HOSTS) {
+        if (onStep) onStep(host);
+        const found = await probeHostWiki(game, host.key);
+        if (found) return found;
     }
     return null;
 }
@@ -328,9 +375,8 @@ export async function openWiki(gameId) {
     setStatus('Procurando a wiki deste jogo...');
     let found = await autoFindWiki(game.title);
     if (token !== S.token) return;
-    if (!found || found.src.hint) {   // só Wikipédia (ou nada): procura uma wiki do Fandom
-        setStatus('Procurando no Fandom...');
-        const fd = await findFandomWiki(game);
+    if (!found || found.src.hint) {   // só Wikipédia (ou nada): procura a wiki do jogo (Fandom, depois wiki.gg)
+        const fd = await findHostedWiki(game, host => setStatus(`Procurando no ${esc(host.label)}...`));
         if (token !== S.token) return;
         if (fd) found = { src: registerSource(fd.src), title: fd.title };
     }
@@ -384,15 +430,15 @@ export async function wikiSearch(keepStatus = false) {
     }
 }
 
-export async function wikiFindFandom() {
+export async function wikiFindHosted() {
     const g = currentGame();
     if (!g) return;
     const token = S.token;
     $('wiki-results').innerHTML = '';
     setStatus('Procurando no Fandom...');
-    const fd = await findFandomWiki(g);
+    const fd = await findHostedWiki(g, host => setStatus(`Procurando no ${esc(host.label)}...`));
     if (token !== S.token) return;
-    if (!fd) { setStatus('Não achei uma wiki do Fandom com esse nome. Use "Outra wiki" e cole o endereço dela.'); return; }
+    if (!fd) { setStatus('Não achei wiki com esse nome no Fandom nem no wiki.gg. Use "Outra wiki" e cole o endereço dela.'); return; }
     S.src = registerSource(fd.src);
     S.history = [];
     g.wiki = { src: S.src.id, title: fd.title };
@@ -401,6 +447,9 @@ export async function wikiFindFandom() {
     triggerToast(`Wiki vinculada: ${S.src.name}`);
     loadPage(fd.title, { push: false });
 }
+
+// Nome antigo (botão "Achar no Fandom" de versões já instaladas): agora procura nas duas.
+export const wikiFindFandom = wikiFindHosted;
 
 export function wikiBack() {
     const prev = S.history.pop();
@@ -446,7 +495,7 @@ export async function wikiAddSource() {
     msg.textContent = 'Verificando a wiki...';
     let found = null;
     try { found = await discoverWiki(input.value); } catch (e) { /* endereço inválido */ }
-    if (!found) { msg.textContent = 'Não consegui acessar a API dessa wiki. Confira o endereço (precisa ser uma wiki MediaWiki, como Fandom ou Gamepedia).'; return; }
+    if (!found) { msg.textContent = 'Não consegui acessar a API dessa wiki. Confira o endereço (precisa ser uma wiki MediaWiki, como Fandom ou wiki.gg).'; return; }
     if (allSources().some(s => s.api === found.api)) { msg.textContent = 'Essa wiki já está na lista.'; return; }
     const src = { id: 'c-' + Date.now().toString(36), name: found.name, api: found.api, articlepath: found.articlepath };
     appData.wikis = appData.wikis || [];

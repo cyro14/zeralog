@@ -962,7 +962,7 @@
                 <button type="button" class="wiki-tool" id="wiki-link-btn" onclick="wikiLinkGame()" disabled><span data-icon="link" data-size="1em"></span><span id="wiki-link-label">Vincular a este jogo</span></button>
                 <a class="wiki-tool disabled" id="wiki-open-ext" target="_blank" rel="noopener noreferrer"><span data-icon="external" data-size="1em"></span>Abrir no navegador</a>
                 <button type="button" class="wiki-tool" onclick="wikiFindToggle()"><span data-icon="search" data-size="1em"></span>Localizar no texto</button>
-                <button type="button" class="wiki-tool" onclick="wikiFindFandom()"><span data-icon="search" data-size="1em"></span>Achar no Fandom</button>
+                <button type="button" class="wiki-tool" onclick="wikiFindHosted()" title="Procura a wiki do jogo no Fandom e no wiki.gg"><span data-icon="search" data-size="1em"></span>Achar a wiki</button>
                 <button type="button" class="wiki-tool" onclick="wikiToggleAdd()"><span data-icon="plus" data-size="1em"></span>Outra wiki</button>
             </div>
             <div id="wiki-find" class="wiki-find">
@@ -974,7 +974,7 @@
             </div>
             <div id="wiki-add" class="wiki-add">
                 <div class="wiki-add-row">
-                    <input type="text" id="wiki-add-url" placeholder="Endereço da wiki (ex.: hollowknight.fandom.com)" autocomplete="off" autocapitalize="off" spellcheck="false">
+                    <input type="text" id="wiki-add-url" placeholder="Endereço da wiki (ex.: hollowknight.fandom.com ou terraria.wiki.gg)" autocomplete="off" autocapitalize="off" spellcheck="false">
                     <button type="button" onclick="wikiAddSource()">Adicionar</button>
                 </div>
                 <small id="wiki-add-msg"></small>
@@ -986,7 +986,7 @@
             <div id="wiki-results"></div>
             <article id="wiki-body" class="wiki-content"></article>
         </div>
-        <button type="button" class="wiki-fab" onclick="wikiSearchFab()" title="Buscar nesta wiki (Fandom, Wikipédia...)" aria-label="Buscar nesta wiki"><span data-icon="search" data-size="1.4em"></span></button>
+        <button type="button" class="wiki-fab" onclick="wikiSearchFab()" title="Buscar nesta wiki (Fandom, wiki.gg, Wikipédia...)" aria-label="Buscar nesta wiki"><span data-icon="search" data-size="1.4em"></span></button>
     </dialog>
 
     <dialog id="modal-journal">

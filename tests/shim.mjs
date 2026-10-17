@@ -119,6 +119,19 @@ function installGlobals() {
     if (!globalThis.getComputedStyle) globalThis.getComputedStyle = () => ({ getPropertyValue: () => '' });
     if (!globalThis.Image) globalThis.Image = class { constructor() { this.width = 300; this.height = 200; } set src(v) { setTimeout(() => this.onload && this.onload(), 0); } };
     if (!globalThis.Path2D) globalThis.Path2D = class { constructor() {} };
+    // DOMParser mínimo: a descoberta de wikis (js/wiki.js) limpa o HTML dos trechos de
+    // busca com ele. Só o que roda fora do navegador: body.textContent = o TEXTO do HTML.
+    if (!globalThis.DOMParser) globalThis.DOMParser = class {
+        parseFromString(html) {
+            const source = String(html || '');
+            const decode = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+                .replace(/&#0?39;/g, "'").replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
+            const body = makeEl();
+            body.innerHTML = source;
+            body.textContent = decode(source.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+            return { body, documentElement: body, createElement: () => makeEl(), querySelectorAll: () => [] };
+        }
+    };
     if (!globalThis.URL.createObjectURL) { globalThis.URL.createObjectURL = () => 'blob:teste'; globalThis.URL.revokeObjectURL = () => {}; }
     if (!globalThis.createImageBitmap) globalThis.createImageBitmap = async () => ({ width: 600, height: 900, close() {} });   // para testar a capa vertical end-to-end
 }
