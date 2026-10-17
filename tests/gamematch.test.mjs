@@ -1,10 +1,11 @@
 // Testes do GameMatch (js/gamematch.js): perfil, motor de match, filtros do
 // Explorar e bloqueio de conteúdo adulto.
-import { test, assert, assertEq, elById } from './shim.mjs';
+import { test, assert, assertEq, elById, live } from './shim.mjs';
 import { appData } from '../js/store.js';
+import { listGames } from '../js/gameApi.js';
 import {
     GM_GENRES, GM_X_STYLES, GM_PLATFORMS, GENRE_RAWG, PLAT_RAWG_IDS,
-    profileGenreOf, matchScore, gmIsClean, farFuture, renderGmProfile
+    profileGenreOf, matchScore, gmIsClean, farFuture, renderGmProfile, exploreParams
 } from '../js/gamematch.js';
 
 test('integridade: TODO gênero do filtro do Explorar tem mapeamento para a RAWG', () => {
@@ -61,13 +62,17 @@ test('farFuture: datas futuras só valem quando o perfil pede lançamentos', () 
     assert(!farFuture({ released: '2030-06-01' }), 'perfil de lançamentos aceita o futuro');
 });
 
-// ---------- Lançamentos: janela de 3 anos, 40 por página, só com capa ----------
-test('Lançamentos (releases): params usam janela de 3 anos e page_size 40', () => {
-    // exploreParams é interno — mas dá para verificar o comportamento via
-    // o filtro do fetchExplorePage: ano máximo = atual + 3, sem capa não passa.
+// ---------- Lançamentos: janela de 3 anos, 40 por página, ordenados pelo hype ----------
+test('Lançamentos (releases): params ordenam pelo maior hype (RAWG -added)', () => {
     const y = new Date().getFullYear();
-    const maxY = y + 3;
+    const today = new Date().toISOString().slice(0, 10);
+    const p = exploreParams('releases', 1);
+    assertEq(p.ordering, '-added', 'hype primeiro = quem tem mais "added" na RAWG (GTA VI, remakes no topo)');
+    assert(!('exclude_additions' in p), 'sem exclude_additions: remakes são "addition" na RAWG e precisam aparecer');
+    assertEq(p.dates, `${today},${y + 3}-12-31`, 'janela do hoje até 3 anos à frente (anos seguintes incluídos)');
+    assertEq(p.page_size, 40, '40 por página');
     // jogos que passam e que NÃO passam no filtro local de lançamentos
+    const maxY = y + 3;
     const ok = { title: 'Dentro', released: `${maxY}-06-01`, image: 'https://x/capa.jpg', rawgId: 1, genres: [], tags: [], platforms: [] };
     const tooFar = { title: 'Longe demais', released: `${maxY + 1}-01-01`, image: 'https://x/capa.jpg', rawgId: 2, genres: [], tags: [], platforms: [] };
     const noCapa = { title: 'Sem capa', released: `${y + 1}-01-01`, image: null, rawgId: 3, genres: [], tags: [], platforms: [] };
@@ -77,6 +82,15 @@ test('Lançamentos (releases): params usam janela de 3 anos e page_size 40', () 
     assert(+(String(tooFar.released).slice(0, 4)) > maxY, 'fora da janela é rejeitado');
     assert(!noCapa.image, 'sem capa é rejeitado');
     assert(!tba.released, 'TBA sem data é rejeitado');
+});
+
+test('AO VIVO: Lançamentos vêm do maior hype para o menor (GTA VI no topo)', async () => {
+    const res = await live(listGames(exploreParams('releases', 1)));
+    const added = res.items.map(g => g.added || 0);
+    assert(added.length >= 30, `página cheia de lançamentos (${added.length} itens)`);
+    for (let i = 1; i < added.length; i++)
+        assert(added[i] <= added[i - 1], `hype em ordem decrescente (posição ${i}: ${added[i]} > ${added[i - 1]})`);
+    assert(added[0] > added[added.length - 1], 'o topo tem mais hype que o fim da página');
 });
 
 // ---------- aba Perfil (foto do usuário > foto da Steam > inicial) ----------

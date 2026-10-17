@@ -1138,7 +1138,7 @@ export function openGamePage(id, isWish = false) {
         if (!finished && !g.continuous && !playing) actions.push(btn(`${ic('play')} Jogar agora`, 'playNow', true));
         if (finished) actions.push(btn(`${ic('share')} Compartilhar`, 'openCardGenerator', true));
         if (!finished && !g.continuous) actions.push(btn(playing ? `${ic('stop')} Parar de jogar` : `${ic('play')} Marcar como jogando`, 'markPlaying'), btn(`${ic('check')} Marcar como zerado`, 'markFinished'));
-        actions.push(btn(`${ic('pen')} Anotar no diário`, 'openJournalEntry'), btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('info')} Dados do jogo`, 'openEditGameModal'), btn(`${ic('image')} Trocar capa`, 'openImageModal'));
+        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('edit')} Editar`, 'openEditGameModal'), btn(`${ic('image')} Trocar capa`, 'openImageModal'));
         if (finished) actions.push(btn(`${ic('edit')} Editar conclusão`, 'openEditFinishedModal'));
         else actions.push(btn(`${ic('bookmark')} Voltar à wishlist`, 'backlogToWish'));
         actions.push(btn(`${ic('trash')} Remover`, 'askDeleteGame', false, true));
@@ -1176,7 +1176,8 @@ export function openGamePage(id, isWish = false) {
             </details>
             <details class="gp-sec">
                 <summary>${ic('pen')} Anotações e diário</summary>
-                <div class="gp-sec-body">${notes ? esc(notes).replace(/\n/g, '<br>') : 'Sem anotações ainda. Toque em "Anotar no diário" para começar.'}</div>
+                <div class="gp-sec-body">${notes ? esc(notes).replace(/\n/g, '<br>') : (isWish ? 'Sem anotações ainda.' : 'Sem anotações ainda — a primeira entra pelo botão abaixo.')}</div>
+                ${isWish ? '' : `<div class="gp-sec-foot"><button type="button" class="pill-btn" onclick="openJournalEntry('${g.id}')">${ic('pen')} Anotar no diário</button></div>`}
             </details>
         </div>`;
     document.body.appendChild(el);
@@ -1382,7 +1383,7 @@ export function _oldShelfDetail(id, isWish = false) {
         if (finished) actions.push(btn(`${ic('share')} Compartilhar`, 'openCardGenerator', true));
         if (!finished && !g.continuous) actions.push(btn(g.state === 'playing' ? `${ic('stop')} Parar de jogar` : `${ic('play')} Marcar como jogando`, 'markPlaying'), btn(`${ic('check')} Marcar como zerado`, 'markFinished'));
         if (g.continuous) actions.push(btn(`${ic('pen')} Anotar no diário`, 'openJournalEntry'));
-        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('info')} Dados do jogo`, 'openEditGameModal'), btn(`${ic('image')} Trocar capa`, 'openImageModal'));
+        actions.push(btn(`${ic('search')} Wiki`, 'openWiki'), btn(`${ic('cart')} Comprar`, 'buyOnAmazon'), btn(`${ic('edit')} Editar`, 'openEditGameModal'), btn(`${ic('image')} Trocar capa`, 'openImageModal'));
         if (finished) actions.push(btn(`${ic('edit')} Editar conclusão`, 'openEditFinishedModal'));
         else actions.push(btn(`${ic('bookmark')} Voltar à wishlist`, 'backlogToWish'));
         actions.push(btn(`${ic('trash')} Remover`, 'askDeleteGame', false, true));

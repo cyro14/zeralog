@@ -131,6 +131,7 @@ function normalizeFull(g) {
         ...base,
         rating: g.rating || 0,
         ratingsCount: g.ratings_count || 0,
+        added: g.added || 0,   // quantas pessoas adicionaram o jogo: o "hype" da RAWG (ordering=-added)
         platforms: (g.platforms || []).map(p => p.platform && p.platform.name).filter(Boolean),
         tags: (g.tags || []).map(t => t.name).filter(Boolean),
         esrb: (g.esrb_rating && g.esrb_rating.name) || ''

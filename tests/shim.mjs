@@ -147,11 +147,11 @@ export function resetShim() {
     setAppData(migrateData(JSON.parse(JSON.stringify(defaultData))));
 }
 
-// Ajuda para testes ao vivo: erros de rede/limite da RAWG pulam o teste em vez de falhar
+// Ajuda para testes ao vivo: erros de rede/limite/servidor da RAWG pulam o teste em vez de falhar
 export async function live(promise) {
     try { return await promise; }
     catch (e) {
-        if (e && (e.kind === 'network' || e.status === 429 || e.status === 401 || e.status === 403)) {
+        if (e && (e.kind === 'network' || e.status === 429 || e.status === 401 || e.status === 403 || (e.status >= 500 && e.status < 600))) {
             skipTest(`RAWG indisponível (${e.kind || e.status}) — testando outro dia`);
         }
         throw e;

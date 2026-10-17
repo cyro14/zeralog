@@ -1458,6 +1458,8 @@ body.gp-open { overflow: hidden; }
 
 /* Seções colapsáveis */
 .gp-sec { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
+/* Rodapé da seção: o botão de anotar mora AQUI, na própria tela do diário */
+.gp-sec-foot { padding: 0 16px 14px; }
 .gp-sec summary { list-style: none; cursor: pointer; padding: 14px 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
 .gp-sec summary::-webkit-details-marker { display: none; }
 .gp-sec summary::after { content: '▸'; margin-left: auto; color: var(--text-muted); transition: transform 0.2s; }

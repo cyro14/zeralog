@@ -117,3 +117,37 @@ test('wishlist também ganha a página completa', async () => {
     assert(lastPage().innerHTML.includes('Desejo Teste'), 'página do desejo abre');
     assert(elById('gp-extra').innerHTML.includes('Desenvolvedora:'), 'extras hidratam no desejo também');
 });
+
+test('diário: o botão de anotar mora na própria seção do diário (não nas ações)', async () => {
+    addGame('g7', { journalNotes: 'Primeira entrada do diário' });
+    await openGamePage('g7', false);
+    const h = lastPage().innerHTML;
+    // o botão está DENTRO da seção "Anotações e diário"
+    assert(h.includes('gp-sec-foot'), 'rodapé da seção do diário');
+    assert(h.includes(`openJournalEntry('g7')`), 'botão de anotar na própria tela do diário');
+    // e saiu da fileira de ações do topo
+    const actions = h.split('class="gp-actions"')[1].split('</div>')[0];
+    assert(!actions.includes('openJournalEntry'), 'fileira de ações sem o botão de diário');
+    // sem notas, a dica aponta para o botão que está logo abaixo
+    addGame('g8');
+    await openGamePage('g8', false);
+    const h8 = created[created.length - 1].innerHTML;   // a página de g8 (a segunda criada neste teste)
+    assert(h8.includes('pelo botão abaixo'), 'texto de vazio orienta para o botão da seção');
+});
+
+test('"Dados do jogo" virou "Editar" com ícone de lápis', async () => {
+    addGame('g9');
+    await openGamePage('g9', false);
+    const h = lastPage().innerHTML;
+    assert(!h.includes('Dados do jogo'), 'rótulo antigo sumiu');
+    const seg = h.split(`gpDo('openEditGameModal', 'g9')`)[1].split('</button>')[0];
+    assert(seg.includes('Editar'), 'botão agora se chama Editar');
+    assert(seg.includes('M16.5 3.5'), 'ícone de lápis no Editar');
+});
+
+test('wishlist: sem botão de diário (diário é só dos jogos da biblioteca)', async () => {
+    appData.wishlist.push({ id: 'w2', title: 'Desejo Sem Diário', platform: 'PC', genres: [] });
+    await openGamePage('w2', true);
+    assert(!lastPage().innerHTML.includes('openJournalEntry'), 'wishlist sem botão de diário');
+    assert(!lastPage().innerHTML.includes('gp-sec-foot'), 'sem rodapé de diário na wishlist');
+});

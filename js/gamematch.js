@@ -604,7 +604,7 @@ export let exploreById = new Map();      // id -> objeto de jogo (p/ página do 
 let classicDecade = '';           // '' | '1980' | '1990' | '2000' | '2010'
 let exploreCat = 'you';
 
-function exploreParams(cat, page) {
+export function exploreParams(cat, page) {
     const today = new Date().toISOString().slice(0, 10);
     const y = new Date().getFullYear();
     switch (cat) {
@@ -615,10 +615,14 @@ function exploreParams(cat, page) {
             return { ordering: '-rating', dates: `${from.toISOString().slice(0, 10)},${today}`, page_size: 20, page, exclude_additions: 'true' };
         }
         case 'releases': {
-            // Lançamentos: até 3 anos a partir do ano atual (ex.: 2026 -> até 2029),
-            // 40 por página (mais variedade por plataforma) e só jogos com capa
+            // Lançamentos = os mais ESPERADOS primeiro. O "hype" da RAWG é quantas
+            // pessoas adicionaram o jogo à lista delas (ordering=-added), então
+            // GTA VI, remakes e afins vêm no topo, com data do hoje até 3 anos à
+            // frente — os anos seguintes entram logo abaixo e nas próximas páginas.
+            // SEM exclude_additions: remakes/remasters são marcados como "addition"
+            // na RAWG e são justamente os queridinhos (ex.: Prince of Persia Remake).
             const maxYear = y + 3;
-            return { ordering: 'released', dates: `${today},${maxYear}-12-31`, page_size: 40, page };
+            return { ordering: '-added', dates: `${today},${maxYear}-12-31`, page_size: 40, page };
         }
         case 'gems': {
             // Joias: indies pouco falados (poucas avaliações) — metade das vezes puxa clássicos indie antigos
