@@ -376,6 +376,63 @@ test('Ordenação: a Fila e os Zerados usam botão com painel; Lançamentos impo
     assert(css.includes('#tab-finished .gm-x-sort-btn.on'), 'e a opção ativa do painel também');
 });
 
+// ---------- 17) GUARDA DO HERO "JOGANDO ATUALMENTE": grade fluida e painel escuro ----------
+// Os cards de "Jogando Atualmente" ficavam colados à ESQUERDA (justify-content:
+// flex-start + largura fixa), deixando um vazio enorme à direita. Agora a grade
+// divide o espaço interno do painel em colunas IGUAIS (1fr a partir do espaço
+// disponível), todas as capas têm a mesma dimensão e o painel é um azul quase
+// preto com o roxo concentrado no topo e nas bordas — não um gradiente no tudo.
+test('Hero "Jogando Atualmente": cards dividem a largura do painel; fundo escuro com roxo nas bordas', () => {
+    const css = read(join(ROOT, 'style.css'));
+    const heroGrid = /#playing-category \.game-list\.shelf \{([^}]*)\}/.exec(css);
+    assert(heroGrid, 'regra da grade do hero existe');
+    assert(heroGrid[1].includes('repeat(auto-fit, minmax(min(100%, var(--cart-min)), 1fr))'), 'colunas fluidas a partir do espaço disponível (nunca largura fixa)');
+    assert(!heroGrid[1].includes('justify-content: flex-start'), 'nada de cards colados à esquerda');
+    assert(!heroGrid[1].includes('--cart-w'), 'o hero não usa a largura fixa da prateleira comum');
+    // TODAS as capas do hero com a mesma dimensão (capa larga não ocupa 2 colunas)
+    assert(css.includes('#playing-category .shelf-item.wide { grid-column: auto; }'), 'capa larga tem a mesma largura das outras no hero');
+    // painel num azul quase preto, com roxo no topo e nas bordas
+    assert(css.includes('background: color-mix(in srgb, var(--bg-color) 80%, #060a18)'), 'fundo do painel puxado para o preto azulado');
+    const glow = /#playing-category::before \{([^}]*)\}/.exec(css);
+    assert(glow, 'o brilho roxo do hero continua no CSS (::before)');
+    assert(glow[1].includes('at 50% -14%'), 'roxo concentrado no TOPO do painel');
+    assert(!css.includes('var(--accent-playing) 16%, var(--card-bg)'), 'sem tint roxo cobrindo o painel inteiro');
+    assert(!css.includes('min-height: 400px') && !css.includes('min-height: 320px'), 'sem altura mínima deixando o painel oco');
+    // cabeçalho mais baixo e colado nos cards
+    const heroHead = /#playing-category \.category-header \{([^}]*)\}/.exec(css);
+    assert(heroHead, 'regra do cabeçalho do hero existe');
+    assert(heroHead[1].includes('padding: 12px 20px 8px'), 'cabeçalho com menos respiro');
+    assert(heroHead[1].includes('margin-bottom: 0'), 'sem vão entre o cabeçalho e os cards');
+});
+
+// ---------- 18) GUARDA DE LAYOUT: divisores discretos, menu lateral e legenda de progresso ----------
+// Seções separadas por um fio discreto (em vez de grandes painéis de vidro),
+// opções da sidebar mais baixas com o settings ISOLADO no rodapé (divisor em
+// cima) e a barra de progresso das capas com a porcentagem escrita nela.
+test('Layout: seções com divisores discretos, sidebar mais baixa e % na barra de progresso', () => {
+    const css = read(join(ROOT, 'style.css'));
+    // categorias: sem painel colorido — só o divisor discreto sob o título
+    const cat = /\n\.category \{([^}]*)\}/.exec(css);
+    assert(cat, 'regra .category existe');
+    assert(cat[1].includes('background: none'), 'categoria sem painel de fundo');
+    assert(!cat[1].includes('box-shadow'), 'categoria sem sombra de painel');
+    const catHead = /\n\.category-header \{([^}]*)\}/.exec(css);
+    assert(catHead && catHead[1].includes('border-bottom: 1px'), 'divisor discreto sob o título da seção');
+    // menu lateral (desktop): opções mais baixas e settings isolado lá embaixo
+    const btn = /\n    \.tab-btn \{([^}]*)\}/.exec(css);
+    assert(btn, 'regra .tab-btn do desktop existe');
+    assert(btn[1].includes('padding: 8px 12px'), 'opções da sidebar mais baixas');
+    assert(btn[1].includes('flex: 0 0 auto'), 'opções não esticam na altura da sidebar (o flex:1 da barra de celular)');
+    const set = /\n    \.dtb-settings \{([^}]*)\}/.exec(css);
+    assert(set, 'regra .dtb-settings do desktop existe');
+    assert(set[1].includes('margin-top: auto'), 'settings empurrado para o fundo da sidebar');
+    assert(set[1].includes('border-top: 1px'), 'divisor separa o settings das abas');
+    // barra de progresso das capas: a legenda da porcentagem tem estilo próprio
+    const prog = /\n\.shelf-prog b \{([^}]*)\}/.exec(css);
+    assert(prog, 'legenda da porcentagem estilizada (.shelf-prog b)');
+    assert(prog[1].includes('margin-left: auto'), 'a % fica na ponta direita da barra');
+});
+
 // ---------- 16) CARDS E CATEGORIAS: alinhamento uniforme + categoria compartilhável ----------
 // Explorar e Lançamentos: título de 1 ou 2 linhas não pode mais mover os ícones do
 // card (corpo estica, selo e botões colam no fundo). Categorias: nome comprido não

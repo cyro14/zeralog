@@ -138,19 +138,17 @@ body {
 .tab-content.active { display: block; animation: fadeIn 0.3s; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Categorias e Listas */
+/* Categorias e Listas — seções soltas sobre o fundo do app, separadas por
+   DIVISORES DISCRETOS (um fio embaixo do título) em vez de painéis coloridos
+   grandes. O único painel é o hero "Jogando Atualmente" acima. */
 .category {
-    background: color-mix(in srgb, var(--card-bg) 62%, transparent);
-    backdrop-filter: blur(20px) saturate(1.2);
-    -webkit-backdrop-filter: blur(20px) saturate(1.2);
-    border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 25px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    transition: all 0.3s;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    margin-bottom: 28px;
 }
-.category-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; cursor: pointer; user-select: none; }
+.category-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid color-mix(in srgb, var(--border-color) 65%, transparent); padding-bottom: 8px; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; cursor: pointer; user-select: none; }
 /* Nome da categoria em UMA linha, com reticências: nome comprido não empurra os
    botões para baixo (a área do título encolhe; os botões nunca encolhem) */
 .cat-title-area { display: flex; align-items: center; gap: 8px; flex-grow: 1; flex-basis: 0; min-width: 0; }
@@ -163,62 +161,53 @@ body {
 .category.collapsed .chevron { transform: rotate(-90deg); }
 .category.collapsed .category-header { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
 
-#playing-category { border: 2px solid var(--accent-playing); display: none; }
-#playing-category h2 { color: var(--accent-playing); }
+#playing-category { display: none; }
 
-/* ===== HERO: "Jogando Atualmente" com fundo borrado (TODAS as telas) =====
-   O fundo é um blur da COR PRINCIPAL DO TEMA (accent-playing, com um toque
-   do accent-finished para dar profundidade) — nunca da capa do jogo;
-   as capas dos jogos jogando ficam em destaque por cima. No desktop são
-   maiores (165px); no celular, médias (130px). */
+/* ===== HERO: "Jogando Atualmente" (todas as telas) =====
+   Painel num azul quase preto, com o roxo do tema concentrado NO TOPO e
+   NAS BORDAS (nunca um gradiente cobrindo tudo, nunca a capa do jogo).
+   A grade ocupa a largura interna inteira do painel: os cards dividem o
+   espaço em partes IGUAIS — em telas estreitas a largura sai do espaço
+   disponível, não de um valor fixo. */
 #playing-category {
     position: relative;
     overflow: hidden;
-    border: none !important;
+    border: 1px solid color-mix(in srgb, var(--accent-playing) 32%, transparent);
     border-radius: 18px;
-    min-height: 320px;
     padding: 0;
-    background: color-mix(in srgb, var(--card-bg) 55%, transparent);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: color-mix(in srgb, var(--bg-color) 80%, #060a18);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent-playing) 24%, transparent);
 }
 #playing-category::before {
     content: '';
     position: absolute;
     inset: 0;
+    pointer-events: none;
     background:
-        radial-gradient(ellipse 75% 90% at 18% 12%, color-mix(in srgb, var(--accent-playing) 60%, transparent) 0%, transparent 68%),
-        radial-gradient(ellipse 70% 85% at 88% 92%, color-mix(in srgb, var(--accent-finished) 50%, transparent) 0%, transparent 68%),
-        color-mix(in srgb, var(--accent-playing) 16%, var(--card-bg));
-    filter: blur(42px) saturate(1.3);
-    transform: scale(1.15);
-    z-index: 0;
-}
-/* Overlay: usa a cor de fundo do tema — escuro escurece, claro clareia.
-   Assim o texto (var(--text-main)) SEMPRE tem contraste com o fundo. */
-#playing-category::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to bottom,
-        color-mix(in srgb, var(--bg-color) 35%, transparent),
-        color-mix(in srgb, var(--bg-color) 75%, transparent));
+        radial-gradient(ellipse 90% 60% at 50% -14%, color-mix(in srgb, var(--accent-playing) 55%, transparent) 0%, transparent 62%),
+        radial-gradient(ellipse 45% 42% at -6% 110%, color-mix(in srgb, var(--accent-finished) 36%, transparent) 0%, transparent 72%),
+        radial-gradient(ellipse 45% 42% at 106% 110%, color-mix(in srgb, var(--accent-playing) 30%, transparent) 0%, transparent 72%);
+    filter: blur(26px) saturate(1.25);
     z-index: 0;
 }
 #playing-category > * { position: relative; z-index: 1; }
-#playing-category .category-header { padding: 20px 24px 12px; background: none; }
-#playing-category h2 { color: var(--text-main); font-size: 1.3em; text-shadow: 0 1px 4px color-mix(in srgb, var(--bg-color) 60%, transparent); }
+/* Cabeçalho baixo e colado nos cards: divisor discreto arroxeado no lugar
+   do borderão de antes */
+#playing-category .category-header { padding: 12px 20px 8px; margin-bottom: 0; border-bottom: 1px solid color-mix(in srgb, var(--accent-playing) 26%, transparent); background: none; }
+#playing-category h2 { color: var(--text-main); font-size: 1.15em; text-shadow: 0 1px 4px color-mix(in srgb, var(--bg-color) 60%, transparent); }
 #playing-category .chevron { color: var(--text-muted); }
 #playing-category .game-list.shelf {
-    --cart-w: 130px;   /* mobile: médio; desktop sobe para 165px */
+    --cart-min: 130px;   /* piso p/ telas estreitas; no desktop sobe p/ 165px */
     --row-h: 215px;
-    justify-content: flex-start;
-    padding: 8px 24px 20px;
+    /* colunas iguais a partir do espaço disponível — a grade enche o painel */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--cart-min)), 1fr));
+    padding: 6px 20px 18px;
     background: none;
     border-radius: 0;
-    min-height: 215px;
     align-items: end;
 }
+/* No hero TODAS as capas têm a mesma dimensão (capa larga não ocupa 2 colunas) */
+#playing-category .shelf-item.wide { grid-column: auto; }
 #playing-category .cart {
     border-radius: 12px 12px 4px 4px;
     background: linear-gradient(rgba(255,255,255,0.08), rgba(0,0,0,0.25)), linear-gradient(#3a3a42, #1e1e24);
@@ -284,12 +273,15 @@ body {
     .tabs::-webkit-scrollbar { display: none; }
     .tab-btn {
         font-size: 0.88em;
-        padding: 11px 14px;
+        padding: 8px 12px;
+        /* flex:1 da barra de celular esticava cada opção na altura toda da
+           sidebar (~100px cada). Aqui em cima cada opção é só uma linha. */
+        flex: 0 0 auto;
         display: flex;
         align-items: center;
         gap: 10px;
         border: none;
-        border-radius: 12px;
+        border-radius: 10px;
         background: transparent;
         text-align: left;
         width: 100%;
@@ -303,12 +295,15 @@ body {
     }
     .tab-btn.active .ic-lead { color: var(--accent-playing); }
     .tab-btn:hover { background: color-mix(in srgb, var(--text-main) 8%, transparent); }
-    /* botão de settings no fundo da sidebar */
+    /* botão de settings ISOLADO no fundo da sidebar: um divisor discreto separa
+       ele das abas (e o margin-top:auto empurra para o rodapé quando sobra espaço) */
     .dtb-settings {
         margin-top: auto;
         font-size: 0.88em;
-        padding: 11px 14px;
+        padding: 10px 12px 6px;
         border: none;
+        border-top: 1px solid color-mix(in srgb, var(--border-color) 45%, transparent);
+        border-radius: 0;
         background: transparent;
         color: var(--text-muted);
         cursor: pointer;
@@ -316,7 +311,6 @@ body {
         display: flex;
         align-items: center;
         gap: 10px;
-        border-radius: 12px;
     }
     .dtb-settings .ic-lead { margin: 0; font-size: 1.1em; }
     .dtb-settings .ic-lead svg { width: 20px !important; height: 20px !important; }
@@ -377,9 +371,8 @@ body {
     .dtb-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
     /* (o header inteiro já está display:none acima — os botões sumiram junto) */
     /* hero maior no desktop */
-    #playing-category { min-height: 400px; }
-    #playing-category h2 { font-size: 1.4em; }
-    #playing-category .game-list.shelf { --cart-w: 165px; --row-h: 270px; min-height: 270px; }
+    #playing-category h2 { font-size: 1.25em; }
+    #playing-category .game-list.shelf { --cart-min: 165px; --row-h: 270px; }
 }
 /* mobile: topbar, logo da sidebar e settings escondidos */
 @media (max-width: 899px) {
@@ -400,8 +393,6 @@ body {
 
 /* Itens de Jogo & Modo Compacto */
 .game-list { list-style: none; padding: 0; margin: 0; }
-
-body.compact-mode .category { padding: 15px; margin-bottom: 15px; }
 
 input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
 .chk-playing { accent-color: var(--accent-playing); }
@@ -909,7 +900,8 @@ body.session-on { padding-top: calc(20px + 42px + env(safe-area-inset-top, 0px))
 #modal-game .flag-box input[type="text"] { width: 100%; box-sizing: border-box; }
 
 /* ===== Seção de Jogos Contínuos ===== */
-.category.continuous { border-left: 4px solid var(--accent-live); }
+/* No estilo de divisores, o marcador da seção é um fio vertical discreto */
+.category.continuous { border-left: 3px solid var(--accent-live); padding-left: 12px; }
 .category.continuous .category-header h2 { color: var(--accent-live); }
 .category.continuous .cat-title-area { flex-wrap: wrap; gap: 8px; }
 .add-continuous-wrap { margin: 0 0 20px; }
@@ -1286,13 +1278,16 @@ body.shelf-plain .shelf-item:focus-visible .cart { box-shadow: none; }
 body.shelf-plain .shelf-item:focus-visible .cart-label { box-shadow: 0 0 0 2px var(--accent-playing), 0 4px 10px rgba(0, 0, 0, 0.5); }
 body.shelf-plain .shelf-badges { bottom: 22px; left: 6px; }
 body.shelf-plain .shelf-live, body.shelf-plain .shelf-playing { top: 6px; right: 6px; }
-body.shelf-plain .shelf-prog { bottom: 10px; left: 4px; right: 4px; }
+body.shelf-plain .shelf-prog { bottom: 1px; left: 4px; right: 4px; }
 body.shelf-plain .shelf-item.is100 .cart { box-shadow: none; }
 body.shelf-plain .shelf-item.is100 .cart-label { box-shadow: 0 0 0 2px var(--star-color), 0 4px 10px rgba(0, 0, 0, 0.5); }
 
-/* Barra de progresso na base do cartucho (prateleira) */
-.shelf-prog { position: absolute; left: 8px; right: 8px; bottom: 18px; height: 4px; border-radius: 2px; background: rgba(0,0,0,0.55); overflow: hidden; }
-.shelf-prog i { display: block; height: 100%; background: var(--accent-playing); }
+/* Barra de progresso na base do cartucho (prateleira) — com a porcentagem
+   ESCRITA na própria barra. A faixa mora na base, abaixo da capa: nada de
+   texto por cima da arte, e os selos (nota, 100%) seguem mais acima. */
+.shelf-prog { position: absolute; left: 6px; right: 6px; bottom: 2px; height: 12px; border-radius: 999px; background: rgba(0,0,0,0.6); display: flex; align-items: center; overflow: hidden; }
+.shelf-prog i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--accent-playing); }
+.shelf-prog b { position: relative; z-index: 1; margin-left: auto; margin-right: 2px; padding: 2px 5px; border-radius: 999px; background: rgba(0,0,0,0.78); color: #fff; font-size: 0.5em; font-weight: 800; line-height: 1; }
 
 /* Icones dentro dos botoes do modal da prateleira */
 .sd-actions .pill-btn { display: inline-flex; align-items: center; gap: 6px; }

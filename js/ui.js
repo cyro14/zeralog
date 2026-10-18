@@ -1224,7 +1224,8 @@ export function createShelfItem(g, kind = 'game') {
         if (st === 'future' || st === 'today') badges.push(`<span class="shelf-badge gold">${esc(fmtDate(g.released).replace(/ de /g, ' '))}</span>`);
         else if (st === 'tba') badges.push('<span class="shelf-badge">TBA</span>');
     }
-    // Barra de progresso na base do cartucho (horas jogadas vs. tempo estimado), igual ao modo cards
+    // Barra de progresso na base do cartucho (horas jogadas vs. tempo estimado), igual ao modo cards.
+    // A porcentagem vai ESCRITA na própria barra (legenda) — não só no tooltip.
     let prog = '';
     if (kind !== 'wish' && g.meta && g.hoursPlayed) {
         let total = parseFloat(String(g.meta).replace(',', '.')) || 0;
@@ -1232,7 +1233,7 @@ export function createShelfItem(g, kind = 'game') {
         const played = parseFloat(g.hoursPlayed) || 0;
         if (total > 0) {
             const pct = Math.min(100, Math.round(played / total * 100));
-            prog = `<span class="shelf-prog" title="${played}h de ${total % 1 ? total.toFixed(1) : total}h (${pct}%)"><i style="width:${pct}%"></i></span>`;
+            prog = `<span class="shelf-prog" title="${played}h de ${total % 1 ? total.toFixed(1) : total}h (${pct}%)"><i style="width:${pct}%"></i><b>${pct}%</b></span>`;
         }
     }
     li.innerHTML = `

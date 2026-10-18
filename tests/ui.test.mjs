@@ -257,6 +257,23 @@ test('Zerados (linha do tempo): a opção "Por mês" separa cada mês e fica sal
     assertEq(appData.settings.timelineGroup, 'year', 'e dá para voltar ao agrupamento por ano');
 });
 
+// ---------- Prateleira: barra de progresso com a porcentagem ESCRITA na barra ----------
+test('Prateleira: capa com progresso traz a porcentagem escrita na própria barra', async () => {
+    const { createShelfItem } = await import('../js/ui.js');
+    const li = createShelfItem({ id: 'pg1', title: 'Jogo no Meio', platform: 'PC', state: 'playing', catId: 'c1', meta: '20', hoursPlayed: '5' });
+    const h = li.innerHTML;
+    assert(h.includes('shelf-prog'), 'a barra de progresso existe');
+    assert(h.includes('width:25%'), 'preenchimento de 25% (5h jogadas de 20h)');
+    assert(h.includes('<b>25%</b>'), 'legenda com o valor da porcentagem na barra');
+    assert(h.includes('(25%)'), 'o tooltip mantém a explicação das horas');
+    // sem tempo estimado não há barra (nem legenda solta)
+    const li2 = createShelfItem({ id: 'pg2', title: 'Jogo Sem Meta', platform: 'PC', state: 'playing', catId: 'c1', hoursPlayed: '5' });
+    assert(!li2.innerHTML.includes('shelf-prog'), 'sem meta estimada a capa fica sem barra');
+    // meta em minutos também vira porcentagem legível
+    const li3 = createShelfItem({ id: 'pg3', title: 'Jogo Curto', platform: 'PC', state: 'playing', catId: 'c1', meta: '90m', hoursPlayed: '1.5' });
+    assert(li3.innerHTML.includes('<b>100%</b>'), '90 minutos = 1,5h: barra completa com a legenda de 100%');
+});
+
 // ---------- FAB "+" da aba Fila: atalho de cadastro com duas opções ----------
 test('FAB "+": abre as duas opções de cadastro e fecha ao toque', async () => {
     const { toggleAddMenu, closeAddMenu } = await import('../js/ui.js');
