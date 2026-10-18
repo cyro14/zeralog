@@ -376,17 +376,29 @@ test('Ordenação: a Fila e os Zerados usam botão com painel; Lançamentos impo
     assert(css.includes('#tab-finished .gm-x-sort-btn.on'), 'e a opção ativa do painel também');
 });
 
-// ---------- 17) GUARDA DO HERO "JOGANDO ATUALMENTE": grade fluida e painel escuro ----------
-// Os cards de "Jogando Atualmente" ficavam colados à ESQUERDA (justify-content:
-// flex-start + largura fixa), deixando um vazio enorme à direita. Agora a grade
-// divide o espaço interno do painel em colunas IGUAIS (1fr a partir do espaço
-// disponível), todas as capas têm a mesma dimensão e o painel é um azul quase
-// preto com o roxo concentrado no topo e nas bordas — não um gradiente no tudo.
-test('Hero "Jogando Atualmente": cards dividem a largura do painel; fundo escuro com roxo nas bordas', () => {
+// ---------- 17) GUARDA DO HERO "JOGANDO ATUALMENTE": cards altos e centrados + painel escuro ----------
+// O 1fr da grade antiga esticava 1-2 capas pela largura quase toda do painel
+// mantendo a ALTURA FIXA — no celular sobravam capas largas e ACHATADAS.
+// Agora a coluna tem TETO (--cart-max), o que sobra fica nas laterais (grade
+// centralizada) e a ALTURA ACOMPANHA a largura (aspect-ratio): o cartucho
+// fica em pé, alto igual no celular e no desktop. O painel segue num azul
+// quase preto com o roxo concentrado no topo e nas bordas.
+test('Hero "Jogando Atualmente": capas altas e centradas no celular e no desktop', () => {
     const css = read(join(ROOT, 'style.css'));
     const heroGrid = /#playing-category \.game-list\.shelf \{([^}]*)\}/.exec(css);
     assert(heroGrid, 'regra da grade do hero existe');
-    assert(heroGrid[1].includes('repeat(auto-fit, minmax(min(100%, var(--cart-min)), 1fr))'), 'colunas fluidas a partir do espaço disponível (nunca largura fixa)');
+    assert(heroGrid[1].includes('repeat(auto-fit, minmax(min(100%, var(--cart-min)), min(100%, var(--cart-max))))'), 'colunas fluidas com TETO: card nunca vira faixa larga e achatada');
+    assert(heroGrid[1].includes('--cart-max: 190px'), 'teto da largura no celular');
+    assert(heroGrid[1].includes('justify-content: center'), 'grade centralizada quando sobra espaço');
+    assert(heroGrid[1].includes('grid-auto-rows: auto'), 'altura da linha vem do próprio card');
+    assert(!heroGrid[1].includes('--row-h'), 'sem altura de linha fixa no hero');
+    // altura PROPORCIONAL à largura: capa estreita no celular fica ALTA igual à do desktop
+    const heroItem = /#playing-category \.shelf-item \{([^}]*)\}/.exec(css);
+    assert(heroItem, 'regra do item do hero existe');
+    assert(heroItem[1].includes('height: auto') && heroItem[1].includes('aspect-ratio: 7 / 10'), 'a altura acompanha a largura (cartucho em pé, proporção de desktop)');
+    // desktop: mesmo comportamento, só com cartuchos maiores
+    assert(css.includes('--cart-min: 165px; --cart-max: 210px;'), 'desktop sobe o piso e o teto da largura');
+    assert(!/--row-h: (215|270)px/.test(css), 'as alturas fixas do hero (215/270px) saíram de vez');
     assert(!heroGrid[1].includes('justify-content: flex-start'), 'nada de cards colados à esquerda');
     assert(!heroGrid[1].includes('--cart-w'), 'o hero não usa a largura fixa da prateleira comum');
     // TODAS as capas do hero com a mesma dimensão (capa larga não ocupa 2 colunas)
@@ -431,6 +443,26 @@ test('Layout: seções com divisores discretos, sidebar mais baixa e % na barra 
     const prog = /\n\.shelf-prog b \{([^}]*)\}/.exec(css);
     assert(prog, 'legenda da porcentagem estilizada (.shelf-prog b)');
     assert(prog[1].includes('margin-left: auto'), 'a % fica na ponta direita da barra');
+    // legenda mais bonita: pílula de vidro com números tabulares
+    assert(prog[1].includes('font-variant-numeric: tabular-nums'), 'números tabulares na legenda');
+    assert(prog[1].includes('box-shadow: inset 0 0 0 1px'), 'pílula com aro interno (vidro)');
+    // trilho com profundidade e preenchimento em gradiente da cor do tema
+    const progTrack = /\n\.shelf-prog \{([^}]*)\}/.exec(css);
+    assert(progTrack, 'regra do trilho da barra existe');
+    assert(progTrack[1].includes('box-shadow'), 'trilho com sombra interna (profundidade)');
+    const progFill = /\n\.shelf-prog i \{([^}]*)\}/.exec(css);
+    assert(progFill, 'regra do preenchimento existe');
+    assert(progFill[1].includes('linear-gradient(90deg'), 'preenchimento em gradiente');
+    assert(progFill[1].includes('color-mix(in srgb, var(--accent-playing) 55%'), 'gradiente nas cores do próprio tema');
+    assert(/\n\.shelf-prog i::after \{/.test(css), 'ponta do preenchimento iluminada (::after)');
+    // 100%: barra dourada na cor do selo "100%" (classe .done pintada pelo ui.js)
+    assert(/\n\.shelf-prog\.done i \{/.test(css), 'estado .done pinta o preenchimento de dourado');
+    assert(/\n\.shelf-prog\.done b \{/.test(css), 'legenda do .done também dourada');
+    // no hero os cartuchos são maiores: barra e legenda acompanham
+    const heroProg = /#playing-category \.shelf-prog \{([^}]*)\}/.exec(css);
+    assert(heroProg && heroProg[1].includes('height: 14px'), 'barra do hero é mais alta (cartucho grande)');
+    const heroCart = /#playing-category \.cart \{([^}]*)\}/.exec(css);
+    assert(heroCart && heroCart[1].includes('padding: 7px 8px 18px'), 'base do cartucho do hero dá lugar à barra maior');
 });
 
 // ---------- 16) CARDS E CATEGORIAS: alinhamento uniforme + categoria compartilhável ----------

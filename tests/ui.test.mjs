@@ -266,12 +266,14 @@ test('Prateleira: capa com progresso traz a porcentagem escrita na própria barr
     assert(h.includes('width:25%'), 'preenchimento de 25% (5h jogadas de 20h)');
     assert(h.includes('<b>25%</b>'), 'legenda com o valor da porcentagem na barra');
     assert(h.includes('(25%)'), 'o tooltip mantém a explicação das horas');
+    assert(h.includes('class="shelf-prog"'), 'no meio do caminho a barra é a comum (sem classe extra)');
     // sem tempo estimado não há barra (nem legenda solta)
     const li2 = createShelfItem({ id: 'pg2', title: 'Jogo Sem Meta', platform: 'PC', state: 'playing', catId: 'c1', hoursPlayed: '5' });
     assert(!li2.innerHTML.includes('shelf-prog'), 'sem meta estimada a capa fica sem barra');
     // meta em minutos também vira porcentagem legível
     const li3 = createShelfItem({ id: 'pg3', title: 'Jogo Curto', platform: 'PC', state: 'playing', catId: 'c1', meta: '90m', hoursPlayed: '1.5' });
     assert(li3.innerHTML.includes('<b>100%</b>'), '90 minutos = 1,5h: barra completa com a legenda de 100%');
+    assert(li3.innerHTML.includes('shelf-prog done'), 'barra completa ganha a classe done (dourada no CSS)');
 });
 
 // ---------- FAB "+" da aba Fila: atalho de cadastro com duas opções ----------

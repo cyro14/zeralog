@@ -197,15 +197,27 @@ body {
 #playing-category h2 { color: var(--text-main); font-size: 1.15em; text-shadow: 0 1px 4px color-mix(in srgb, var(--bg-color) 60%, transparent); }
 #playing-category .chevron { color: var(--text-muted); }
 #playing-category .game-list.shelf {
-    --cart-min: 130px;   /* piso p/ telas estreitas; no desktop sobe p/ 165px */
-    --row-h: 215px;
-    /* colunas iguais a partir do espaço disponível — a grade enche o painel */
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--cart-min)), 1fr));
-    padding: 6px 20px 18px;
+    --cart-min: 150px;   /* piso p/ telas estreitas; no desktop sobe p/ 165px */
+    --cart-max: 190px;   /* teto: com poucos jogos o card cresce só até aqui */
+    /* Colunas fluidas COM TETO e grade centralizada. O 1fr de antes esticava
+       1-2 capas pela largura quase toda do painel com a altura FIXA — no
+       celular sobrava uma capa LARGA e achatada. Agora a largura tem limite
+       (a altura acompanha logo abaixo) e o que sobra fica repartido nas
+       laterais, com os cards no centro do painel. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--cart-min)), min(100%, var(--cart-max))));
+    grid-auto-rows: auto;
+    justify-content: center;
+    row-gap: 16px;
+    /* respiro no topo para o card levantar no hover sem ser cortado
+       (a altura da linha agora é do próprio card — não há mais folga) */
+    padding: 14px 20px 18px;
     background: none;
     border-radius: 0;
     align-items: end;
 }
+/* Altura PROPORCIONAL à largura (cartucho em pé): a capa fica alta igual no
+   celular e no desktop — é a proporção que manda, não uma altura fixa. */
+#playing-category .shelf-item { height: auto; aspect-ratio: 7 / 10; }
 /* No hero TODAS as capas têm a mesma dimensão (capa larga não ocupa 2 colunas) */
 #playing-category .shelf-item.wide { grid-column: auto; }
 #playing-category .cart {
@@ -213,9 +225,16 @@ body {
     background: linear-gradient(rgba(255,255,255,0.08), rgba(0,0,0,0.25)), linear-gradient(#3a3a42, #1e1e24);
     box-shadow: 0 8px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1);
     border: 1px solid rgba(255,255,255,0.08);
+    /* Respiro uniforme (vale também no modo "prateleira limpa") e base mais
+       alta para a barra de progresso MAIOR do hero, colada na base. */
+    padding: 7px 8px 18px;
 }
 #playing-category .shelf-item:hover, #playing-category .shelf-item:focus-visible { transform: translateY(-6px) scale(1.03); }
 #playing-category .shelf-badge { font-size: 0.75em; color: var(--text-main); background: color-mix(in srgb, var(--card-bg) 85%, transparent); backdrop-filter: blur(4px); }
+/* Cartuchos grandes pedem barra e legenda maiores na base (o resto do desenho
+   vem da regra base de .shelf-prog, logo abaixo) */
+#playing-category .shelf-prog { left: 10px; right: 10px; bottom: 2px; height: 14px; }
+#playing-category .shelf-prog b { font-size: 0.56em; padding: 2px 6px; }
 
 /* ===== DESKTOP (só >= 900px): sidebar LARGA com nomes + topbar =====
    Sidebar fixa à esquerda com nome em cada opção, settings no fundo,
@@ -372,7 +391,7 @@ body {
     /* (o header inteiro já está display:none acima — os botões sumiram junto) */
     /* hero maior no desktop */
     #playing-category h2 { font-size: 1.25em; }
-    #playing-category .game-list.shelf { --cart-min: 165px; --row-h: 270px; }
+    #playing-category .game-list.shelf { --cart-min: 165px; --cart-max: 210px; }
 }
 /* mobile: topbar, logo da sidebar e settings escondidos */
 @media (max-width: 899px) {
@@ -1339,10 +1358,18 @@ body.shelf-plain .shelf-item.is100 .cart-label { box-shadow: 0 0 0 2px var(--sta
 
 /* Barra de progresso na base do cartucho (prateleira) — com a porcentagem
    ESCRITA na própria barra. A faixa mora na base, abaixo da capa: nada de
-   texto por cima da arte, e os selos (nota, 100%) seguem mais acima. */
-.shelf-prog { position: absolute; left: 6px; right: 6px; bottom: 2px; height: 12px; border-radius: 999px; background: rgba(0,0,0,0.6); display: flex; align-items: center; overflow: hidden; }
-.shelf-prog i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--accent-playing); }
-.shelf-prog b { position: relative; z-index: 1; margin-left: auto; margin-right: 2px; padding: 2px 5px; border-radius: 999px; background: rgba(0,0,0,0.78); color: #fff; font-size: 0.5em; font-weight: 800; line-height: 1; }
+   texto por cima da arte, e os selos (nota, 100%) seguem mais acima.
+   Trilho em cápsula escura com profundidade (sombra interna), preenchimento
+   em GRADIENTE da cor do tema com brilho suave e ponta iluminada; a legenda
+   é uma pílula de vidro com números tabulares. */
+.shelf-prog { position: absolute; left: 6px; right: 6px; bottom: 2px; height: 12px; border-radius: 999px; background: linear-gradient(rgba(255,255,255,0.07), rgba(255,255,255,0) 55%), rgba(6, 8, 14, 0.72); box-shadow: inset 0 1px 2px rgba(0,0,0,0.55), inset 0 -1px 0 rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.35); display: flex; align-items: center; overflow: hidden; }
+.shelf-prog i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: linear-gradient(90deg, color-mix(in srgb, var(--accent-playing) 55%, #131a2e), var(--accent-playing)); box-shadow: 0 0 8px color-mix(in srgb, var(--accent-playing) 60%, transparent), inset 0 1px 0 rgba(255,255,255,0.35); }
+/* ponta do preenchimento: fio de luz no ponto onde a barra "parou" */
+.shelf-prog i::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 2px; border-radius: 999px; background: linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.25)); }
+/* 100%: a barra inteira fica DOURADA, na cor do selo "100%" */
+.shelf-prog.done i { background: linear-gradient(90deg, color-mix(in srgb, var(--star-color) 55%, #40300a), var(--star-color)); box-shadow: 0 0 8px color-mix(in srgb, var(--star-color) 60%, transparent), inset 0 1px 0 rgba(255,255,255,0.35); }
+.shelf-prog.done b { color: var(--star-color); }
+.shelf-prog b { position: relative; z-index: 1; margin-left: auto; margin-right: 2px; padding: 2px 5px; border-radius: 999px; background: linear-gradient(rgba(255,255,255,0.16), rgba(255,255,255,0.02)), rgba(8, 10, 16, 0.82); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14); color: #fff; font-size: 0.5em; font-weight: 800; line-height: 1; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; text-shadow: 0 1px 1px rgba(0,0,0,0.45); }
 
 /* Icones dentro dos botoes do modal da prateleira */
 .sd-actions .pill-btn { display: inline-flex; align-items: center; gap: 6px; }

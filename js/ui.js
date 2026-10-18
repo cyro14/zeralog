@@ -1234,6 +1234,7 @@ export function createShelfItem(g, kind = 'game') {
     }
     // Barra de progresso na base do cartucho (horas jogadas vs. tempo estimado), igual ao modo cards.
     // A porcentagem vai ESCRITA na própria barra (legenda) — não só no tooltip.
+    // Em 100% a barra ganha a classe "done": o CSS pinta ela de dourado (cor do selo "100%").
     let prog = '';
     if (kind !== 'wish' && g.meta && g.hoursPlayed) {
         let total = parseFloat(String(g.meta).replace(',', '.')) || 0;
@@ -1241,7 +1242,7 @@ export function createShelfItem(g, kind = 'game') {
         const played = parseFloat(g.hoursPlayed) || 0;
         if (total > 0) {
             const pct = Math.min(100, Math.round(played / total * 100));
-            prog = `<span class="shelf-prog" title="${played}h de ${total % 1 ? total.toFixed(1) : total}h (${pct}%)"><i style="width:${pct}%"></i><b>${pct}%</b></span>`;
+            prog = `<span class="shelf-prog${pct >= 100 ? ' done' : ''}" title="${played}h de ${total % 1 ? total.toFixed(1) : total}h (${pct}%)"><i style="width:${pct}%"></i><b>${pct}%</b></span>`;
         }
     }
     li.innerHTML = `
