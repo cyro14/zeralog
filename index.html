@@ -49,8 +49,21 @@
     <!-- DESKTOP: topbar com salvar, notificações e perfil (canto superior direito) -->
     <div class="desktop-topbar" id="desktop-topbar">
         <button type="button" class="dtb-bell" onclick="openBackupModal()" title="Salvar backup" aria-label="Salvar backup"><span data-icon="save" data-size="1.1em"></span></button>
-        <button type="button" class="dtb-bell" onclick="openSettingsSection('notify')" title="Notificações" aria-label="Notificações"><span data-icon="bell" data-size="1.1em"></span></button>
+        <button type="button" class="dtb-bell notif-bell" onclick="notifyToggle()" title="Notificações" aria-label="Notificações"><span data-icon="bell" data-size="1.1em"></span><span class="notif-badge" id="notif-badge" hidden></span></button>
         <button type="button" class="dtb-profile" onclick="switchTab('profile')" title="Seu perfil" aria-label="Abrir perfil"><span class="dtb-avatar-wrap" id="dtb-avatar-wrap"><span data-icon="crown" data-size="1.2em"></span></span></button>
+    </div>
+
+    <!-- Central de notificações: o registro de tudo que o app já avisou
+         (sessões, lançamentos da wishlist, conquistas) -->
+    <div id="notif-center" hidden>
+        <div class="notif-head">
+            <strong><span data-icon="bell" data-size="1em"></span>Notificações</strong>
+            <div class="notif-actions">
+                <button type="button" class="notif-ghost" onclick="notifyClear()">Limpar</button>
+                <button type="button" class="notif-ghost" onclick="notifyClose()" aria-label="Fechar notificações"><span data-icon="x" data-size="1em"></span></button>
+            </div>
+        </div>
+        <div id="notif-list" class="notif-list"></div>
     </div>
 
     <!-- Header: logo no canto superior esquerdo, ações (salvar/settings/perfil) à direita -->
@@ -64,6 +77,7 @@
         </div>
         <div class="header-actions">
             <button class="btn-top" onclick="openBackupModal()" title="Salvar Backup" aria-label="Salvar Backup"><span data-icon="save" data-size="1em"></span></button>
+            <button type="button" class="btn-top notif-bell" onclick="notifyToggle()" title="Notificações" aria-label="Notificações"><span data-icon="bell" data-size="1em"></span><span class="notif-badge" id="notif-badge-mob" hidden></span></button>
             <button class="btn-top" onclick="openSettings()" title="Configurações" aria-label="Configurações"><span data-icon="settings" data-size="1em"></span></button>
             <button type="button" class="btn-top btn-top-profile" onclick="switchTab('profile')" title="Seu perfil" aria-label="Abrir perfil"><span class="dtb-avatar-wrap" id="mob-avatar-wrap"><span data-icon="crown" data-size="1em"></span></span></button>
         </div>
@@ -431,7 +445,7 @@
                     <button type="button" class="set-card" onclick="openSettingsSection('notify')">
                         <span class="set-card-ic" data-icon="bell" data-size="1.5em"></span>
                         <strong>Notificações</strong>
-                        <small>Sessão na barra</small>
+                        <small>Sessão na barra e permissão</small>
                     </button>
                     <button type="button" class="set-card" onclick="openSettingsSection('covers')">
                         <span class="set-card-ic" data-icon="image" data-size="1.5em"></span>

@@ -23,6 +23,7 @@ export const defaultData = {
     wikis: [],
     wishlist: [],
     savedFilters: [],
+    notifications: [],
     counters: { sessions: 0, sessionMinutes: 0, wishMoved: 0 },
     achSeeded: false,
     unlockedAchievements: [],
@@ -43,7 +44,7 @@ const str = (v, fallback = '') => (v === null || v === undefined ? fallback : St
 // Deixa qualquer dado (antigo, importado ou incompleto) no formato atual, sem apagar nada do usuário
 export function migrateData(data) {
     if (!isObj(data)) data = clone(defaultData);
-    ['categories', 'games', 'wikis', 'wishlist', 'collapsedCats', 'unlockedAchievements', 'savedFilters'].forEach(k => { if (!Array.isArray(data[k])) data[k] = []; });
+    ['categories', 'games', 'wikis', 'wishlist', 'collapsedCats', 'unlockedAchievements', 'savedFilters', 'notifications'].forEach(k => { if (!Array.isArray(data[k])) data[k] = []; });
     if (!Array.isArray(data.platforms)) data.platforms = clone(defaultData.platforms);
     data.settings = { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', timelineGroup: 'year', wishSort: 'release', wishView: 'shelf', wishSub: 'list', homeView: 'shelf', platformDisplay: 'icon', shelfPlain: true, autoCoverPref: 'vertical', ...(isObj(data.settings) ? data.settings : {}) };   // shelfPlain/autoCoverPref: padrões ligados (quem mudou fica como está)
     // Linha do tempo: agrupa por ANO por padrão; "month" separa cada mês (opção da própria tela)
@@ -85,6 +86,20 @@ export function migrateData(data) {
     };
     data.games = data.games.filter(isObj).map(g => fixItem(g, 'g'));
     data.wishlist = data.wishlist.filter(isObj).map(g => fixItem(g, 'w'));
+
+    // Central de notificações: registro das notificações que o app já mostrou
+    // (sessões, lançamentos da wishlist, conquistas). Mais antigas que o limite descartam.
+    // O "tab" entra num onclick do painel: só valores da whitelist passam.
+    data.notifications = (Array.isArray(data.notifications) ? data.notifications : []).filter(isObj).map(n => ({
+        id: str(n.id, 'n' + Math.random().toString(36).slice(2, 10)),
+        kind: str(n.kind, 'session'),
+        title: str(n.title, 'Notificação'),
+        text: str(n.text),
+        at: +n.at || Date.now(),
+        read: !!n.read,
+        tab: ['home', 'gamematch', 'wish', 'finished', 'stats', 'profile'].includes(n.tab) ? n.tab : ''
+    }));
+    if (data.notifications.length > 60) data.notifications = data.notifications.slice(0, 60);
 
     // Troca emojis e ícones SVG antigos pelos ícones atuais (mantém imagens e ícones Phosphor personalizados)
     data.platforms.forEach(p => {

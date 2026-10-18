@@ -15,6 +15,7 @@ import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
 import { renderSteamSettings } from './steam.js';
 import { openShare } from './share.js';
+import { notifyPush, paintNotifBadge } from './notify.js';
 import { appData, defaultData, setAppData, backupData, setBackupData, saveData, homeSortLabels, sortLabels, migrateData } from './store.js';
 import { getIgdbClient, setIgdbClient, igdbConfigured, igdbSelfTest } from './igdb.js';
 
@@ -527,6 +528,8 @@ export function toggleCollapse(id, event) {
 export function render() {
     // ordenação da fila: o botão mostra a ordem ativa (o painel é montado ao abrir)
     paintHomeSort();
+    // contador de não lidas no sino (dados podem ter voltado de backup/desfazer)
+    paintNotifBadge();
 
     const containerHome = document.getElementById('app-container'); 
     const finishedContainer = document.getElementById('finished-list-container');
@@ -830,7 +833,12 @@ export function checkNewAchievements() {
     const before = (appData.unlockedAchievements || []).length;
     const fresh = detectNewAchievements();
     if (!wasSeeded || appData.unlockedAchievements.length !== before) saveData(null);
-    fresh.forEach(a => notifyAchievement(a.name));
+    // cada conquista desbloqueada entra na central de notificações (o sino do topo)
+    fresh.forEach(a => {
+        notifyAchievement(a.name);
+        notifyPush('achievement', `Conquista: ${a.name}`, `${a.desc} (+${a.xp} XP)`);
+    });
+    paintNotifBadge();
 }
 
 export function setStatsPane(p) {

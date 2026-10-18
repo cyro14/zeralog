@@ -3,6 +3,7 @@
 // com o app instalado, o service worker também confere em segundo plano (Periodic Background Sync), sem rede.
 import { appData, saveData } from './store.js';
 import { searchGames, getGameDetails } from './gameApi.js';
+import { notifyPush } from './notify.js';
 
 const DAY = 86400000;
 const pad = n => String(n).padStart(2, '0');
@@ -76,7 +77,13 @@ async function mergeDoneFromSw() {
         const done = await idbGet('releasesDone');
         if (!Array.isArray(done) || !done.length) return 0;
         let n = 0;
-        (appData.wishlist || []).forEach(w => { if (done.includes(w.id) && !w.releaseNotified) { w.releaseNotified = true; n++; } });
+        (appData.wishlist || []).forEach(w => {
+            if (done.includes(w.id) && !w.releaseNotified) {
+                w.releaseNotified = true; n++;
+                // o aviso tocou com o app fechado: entra para o registro da central
+                notifyPush('release', `${w.title} já está disponível!`, `Lançamento em ${fmtDate(w.released, true)}. Toque para abrir sua wishlist.`, { tab: 'wish' });
+            }
+        });
         await idbSet('releasesDone', null);
         if (n) saveData();
         return n;
@@ -90,7 +97,10 @@ export async function checkReleases() {
     if (due.length) {
         due.forEach(w => { w.releaseNotified = true; });
         saveData();
-        for (const w of due) await showReleaseNotification(w);
+        for (const w of due) {
+            notifyPush('release', `${w.title} já está disponível!`, `Lançamento em ${fmtDate(w.released, true)}. Toque para abrir sua wishlist.`, { tab: 'wish' });
+            await showReleaseNotification(w);
+        }
     }
     await syncReleaseWatch();
     return due;

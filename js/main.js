@@ -19,6 +19,7 @@ import { coversSearchGoogle } from './covers.js';
 import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, pickBannerFromGamePage, shelfDo, openShelfDetail, openGamePage, gpClose, gpDo, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, setTimelineGroup, filterByFranchise, toggleAddMenu, closeAddMenu, fabAddGame, fabAddCategory, openCategoryShare } from './ui.js';
 import { openWiki, wikiChangeSource, wikiSearch, wikiSearchFab, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindHosted, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
 import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSync } from './steam.js';
+import { initNotify, notifyToggle, notifyClose, notifyClear, notifyGo } from './notify.js';
 import { initGameMatch, gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject, gmXMore, gmXOpen, gmXClose, gmXWish, gmXBacklog, gmGoogle, gmExploreBacklog, gmXFilterGenre, gmXFilterPlat, gmXFilterToggle, gmXFilterClear, gmXFilterRemove, gmXSortToggle, gmXSort, gmXHideOwned } from './gamematch.js';
 import { initStores, storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect, itchSaveKey, itchSync, itchDisconnect, enrichStoreGames } from './stores.js';
 import { 
@@ -147,6 +148,9 @@ Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEd
 // Steam: login, sincronização e configurações
 Object.assign(window, { steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSyncUI: steamSync });
 
+// Central de notificações (o sino do topo): registro das sessões, lançamentos e conquistas
+Object.assign(window, { notifyToggle, notifyClose, notifyClear, notifyGo });
+
 // GameMatch: aba de descoberta estilo Tinder
 Object.assign(window, { gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject, gmXMore, gmXOpen, gmXClose, gmXWish, gmXBacklog, gmGoogle, gmExploreBacklog, gmXFilterGenre, gmXFilterPlat, gmXFilterToggle, gmXFilterClear, gmXFilterRemove, gmXSortToggle, gmXSort, gmXHideOwned });
 Object.assign(window, { storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect, itchSaveKey, itchSync, itchDisconnect });
@@ -180,6 +184,7 @@ async function start() {
     ensureForData(appData);
     hydrateIcons();
     render();
+    initNotify();
     initSession({ render, toast: msg => triggerToast(msg, false), undo: saveStateForUndo });
     initStorageUI({ render, toast: (msg, undo) => triggerToast(msg, undo !== false) });
     initFilters({ render });

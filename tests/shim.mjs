@@ -101,6 +101,9 @@ function installGlobals() {
         body: makeEl(), head: makeEl(), documentElement: makeEl(),
     };
     globalThis.window = globalThis;
+    // navigator mínimo: session.js/releases.js conferem 'serviceWorker' in navigator
+    // (sem isso, a chamada lançava ReferenceError e virava unhandled rejection no Node)
+    if (!globalThis.navigator) globalThis.navigator = {};
     // window.addEventListener existe no navegador: o app usa para fechar listas de
     // sugestão no scroll/resize. Sem isso, uma tela inteira lançava e não pintava nada.
     if (!globalThis.addEventListener) globalThis.addEventListener = () => {};

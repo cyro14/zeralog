@@ -379,6 +379,8 @@ body {
     .desktop-topbar { display: none; }
     .dtb-settings { display: none; }
     .sidebar-brand { display: none; }
+    /* central de notificações: quase a largura toda, pendurada do lado direito */
+    #notif-center { top: 64px; right: 12px; left: 12px; width: auto; }
 }
 #finished-category h2 { color: var(--accent-finished); }
 
@@ -436,6 +438,59 @@ button:hover { opacity: 0.8; }
 
 #achievement-notif { position: fixed; top: -300px; left: 50%; transform: translateX(-50%); background: linear-gradient(45deg, #ffd700, #ff9800); color: #000; padding: 15px 25px; border-radius: 50px; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 2000; font-weight: 800; border: 2px solid white; }
 #achievement-notif.show { top: 20px; }
+
+/* ===== Central de Notificações (o sino do topo) ===== */
+/* badge de não lidas nos dois sinos (topbar do desktop e header do celular) */
+.notif-bell { position: relative; }
+.notif-badge {
+    position: absolute; top: -5px; right: -5px;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 10px;
+    background: var(--accent-playing); color: var(--on-accent);
+    border: 2px solid var(--bg-color);
+    font-size: 0.58em; font-weight: 800; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+}
+/* display: flex acima venceria o hidden — o [hidden] explícito devolve o esconderijo */
+.notif-badge[hidden] { display: none; }
+#notif-center {
+    position: fixed; top: 66px; right: 20px;
+    width: min(380px, calc(100vw - 24px));
+    max-height: min(540px, 72vh);
+    z-index: 230;
+    display: flex; flex-direction: column;
+    background: color-mix(in srgb, var(--card-bg) 94%, transparent);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+    border-radius: 16px;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+}
+#notif-center[hidden] { display: none; }
+/* sessão rolando: a barra fixa do topo toma o espaço — o painel desce abaixo dela
+   (specificidade body.session-on vence o top dos dois breakpoints) */
+body.session-on #notif-center { top: calc(70px + 42px + env(safe-area-inset-top, 0px)); }
+.notif-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid color-mix(in srgb, var(--border-color) 45%, transparent); flex-shrink: 0; }
+.notif-head strong { font-size: 0.95em; display: flex; align-items: center; gap: 8px; }
+.notif-actions { display: flex; gap: 4px; }
+.notif-ghost { background: none; border: none; color: var(--text-muted); cursor: pointer; font: inherit; font-size: 0.8em; padding: 6px 8px; border-radius: 8px; display: flex; align-items: center; }
+.notif-ghost:hover { background: color-mix(in srgb, var(--text-main) 8%, transparent); color: var(--text-main); }
+.notif-list { overflow-y: auto; display: flex; flex-direction: column; }
+.notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-bottom: 1px solid color-mix(in srgb, var(--border-color) 25%, transparent); cursor: default; }
+.notif-item[role="button"] { cursor: pointer; }
+.notif-item[role="button"]:hover { background: color-mix(in srgb, var(--text-main) 5%, transparent); }
+.notif-item:last-child { border-bottom: none; }
+.notif-item.unread { background: color-mix(in srgb, var(--accent-playing) 7%, transparent); }
+.notif-ic { width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent-playing) 14%, transparent); color: var(--accent-playing); }
+.notif-ic.k-release { background: color-mix(in srgb, var(--accent-finished) 16%, transparent); color: var(--accent-finished); }
+.notif-ic.k-achievement { background: color-mix(in srgb, #ffd700 18%, transparent); color: #e6b800; }
+.notif-body { min-width: 0; flex: 1; }
+.notif-title { font-weight: 700; font-size: 0.88em; overflow-wrap: break-word; }
+.notif-text { color: var(--text-muted); font-size: 0.78em; margin-top: 2px; overflow-wrap: break-word; }
+.notif-when { color: var(--text-muted); font-size: 0.7em; white-space: nowrap; margin-left: auto; flex-shrink: 0; padding-top: 2px; }
+.notif-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 34px 20px; color: var(--text-muted); text-align: center; }
+.notif-empty small { font-size: 0.8em; }
 
 dialog { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; width: 90%; max-width: 450px; box-sizing: border-box; margin: auto; max-height: 90vh; max-height: 90dvh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
 dialog::backdrop { background: rgba(0, 0, 0, 0.7); }

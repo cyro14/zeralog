@@ -1,6 +1,7 @@
-﻿// Sessão de Jogo: cronômetro em tempo real. O início fica salvo no localStorage,
+// Sessão de Jogo: cronômetro em tempo real. O início fica salvo no localStorage,
 // então o tempo continua correto mesmo se você fechar a aba ou recarregar a página.
 import { appData, saveData } from './store.js';
+import { notifyPush } from './notify.js';
 
 const KEY = 'zeralog_session';
 const TAG = 'zeralog-session';
@@ -149,6 +150,10 @@ export async function syncSessionFromIdb() {
     try { remote = await idbGet('session'); } catch (e) { return; }
     const local = getSession();
     if (remote && (!local || (remote.updatedAt || 0) > (local.updatedAt || 0))) {
+        // pausa/retomada que aconteceram pela notificação da barra com o app fechado
+        // entram no registro da central de notificações
+        if (local && local.gameId === remote.gameId && !!local.paused !== !!remote.paused)
+            notifyPush('session', remote.paused ? 'Sessão pausada' : 'Sessão retomada', `${remote.title || 'Jogo'} · pela notificação da barra`);
         try { localStorage.setItem(KEY, JSON.stringify(remote)); } catch (e) {}
         startTicking(); updateBar(); hooks.render();
     }
@@ -194,6 +199,7 @@ export function startSession(gameId) {
     updateBar();
     hooks.render();
     hooks.toast(`Sessão iniciada: ${g.title}`);
+    notifyPush('session', 'Sessão iniciada', g.title);
     // O pedido de permissão precisa acontecer dentro do toque do usuário
     if (notifyOn() && typeof Notification !== 'undefined' && Notification.permission === 'default') {
         Notification.requestPermission().then(() => { paintNotifySettings(); showSessionNotification(); }).catch(() => {});
@@ -205,6 +211,7 @@ export function pauseSession() {
     if (!s || s.paused) return;
     s.accMs = elapsedMs(s); s.runStart = null; s.paused = true; s.updatedAt = Date.now();
     setSession(s); updateBar(); hooks.render(); showSessionNotification();
+    notifyPush('session', 'Sessão pausada', `${s.title} · ${formatHuman(Math.round(s.accMs / 60000))} jogados`);
 }
 
 export function resumeSession() {
@@ -212,6 +219,7 @@ export function resumeSession() {
     if (!s || !s.paused) return;
     s.runStart = Date.now(); s.paused = false; s.updatedAt = Date.now();
     setSession(s); startTicking(); updateBar(); hooks.render(); showSessionNotification();
+    notifyPush('session', 'Sessão retomada', s.title);
 }
 
 export function togglePauseSession() { const s = getSession(); if (s) (s.paused ? resumeSession() : pauseSession()); }
@@ -256,6 +264,9 @@ export function sessionFinish(add) {
         if (prependJournal(g, $('session-note').value)) msgNote = ' Anotação salva no diário.';
         saveData();
         msg = `+${formatHuman(min)} somados às horas jogadas de ${g.title}.${msgNote}`;
+        notifyPush('session', 'Sessão finalizada', `+${formatHuman(min)} em ${g.title}${msgNote ? ' · anotação no diário' : ''}`);
+    } else {
+        notifyPush('session', 'Sessão descartada', s.title || 'Jogo');
     }
     setSession(null);
     hideSessionNotification();

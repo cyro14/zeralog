@@ -466,3 +466,40 @@ test('Cards e categorias: zona de baixo alinhada, título em uma linha e botão 
     assert(/window\.openCategoryShare\s*=/.test(main), 'openCategoryShare anexada no window (onclick do header)');
     assert(ui.includes("mode: 'home'"), 'a prateleira da categoria usa o mesmo modo da Fila');
 });
+
+// ---------- 19) GUARDA DA CENTRAL DE NOTIFICAÇÕES: o sino abre o registro ----------
+// O sino abria as configurações; agora abre a CENTRAL — o registro de tudo que
+// o app avisou (sessões, lançamentos da wishlist, conquistas), com badge de não
+// lidas. Os avisos da barra do celular são passageiros; o registro fica salvo.
+test('Central de notificações: sino abre o registro (badge, painel e origens)', () => {
+    const html = read(join(ROOT, 'index.html'));
+    const css = read(join(ROOT, 'style.css'));
+    const notify = read(join(JS, 'notify.js'));
+    // o painel e a lista existem no HTML estático
+    for (const id of ['notif-center', 'notif-list', 'notif-badge', 'notif-badge-mob'])
+        assert(html.includes(`id="${id}"`), `index.html deveria ter #${id}`);
+    assert(html.includes('<div id="notif-center" hidden>'), 'painel nasce fechado (atributo hidden no HTML)');
+    // dois sinos (topbar do desktop e header do celular), ambos abrindo a central
+    const bellHtml = [];
+    for (const m of html.matchAll(/<button[^>]*notif-bell[^>]*>/g)) {
+        bellHtml.push(html.slice(m.index, html.indexOf('</button>', m.index)));   // botão inteiro, badge incluso
+    }
+    assert(bellHtml.length >= 2, 'sino no desktop E no celular');
+    for (const b of bellHtml) {
+        assert(b.includes('notifyToggle()'), 'o sino chama notifyToggle (abre a central, não as configurações)');
+        assert(b.includes('notif-badge'), 'cada sino carrega seu badge de não lidas');
+    }
+    assert(html.includes('onclick="notifyClear()"') && html.includes('onclick="notifyClose()"'), 'painel com Limpar e Fechar');
+    // display flex/none: o painel e o badge SÓ podem ter display via classe — o
+    // [hidden] explícito é o que devolve o esconderijo (regressão do guard 11)
+    assert(css.includes('#notif-center[hidden] { display: none; }'), 'painel some com [hidden]');
+    assert(css.includes('.notif-badge[hidden] { display: none; }'), 'badge some com [hidden]');
+    // as três origens têm ícone próprio no registro (kind → ícone na central)
+    assert(/session:\s*\{\s*ic:\s*'clock'/.test(notify), 'sessão com ícone de relógio');
+    assert(/release:\s*\{\s*ic:\s*'calendar'/.test(notify), 'lançamento com ícone de calendário');
+    assert(/achievement:\s*\{\s*ic:\s*'trophy'/.test(notify), 'conquista com ícone de troféu');
+    // os registros ficam no banco: defaultData e migrateData mantêm a lista
+    const store = read(join(JS, 'store.js'));
+    assert(store.includes('notifications: []'), 'defaultData nasce com a lista de notificações');
+    assert(/data\.notifications = \(Array\.isArray/.test(store), 'migrateData sanitiza as notificações');
+});

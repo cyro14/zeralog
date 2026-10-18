@@ -34,7 +34,7 @@
 - **Sem cadastro e sem servidor.** Tudo fica salvo no **IndexedDB** do seu navegador (banco local, com espaço para milhares de capas). Você é dono dos dados e pode exportá-los a qualquer momento em um arquivo `.json`.
 - **Feito para o celular.** Layout pensado para telas verticais, com ajustes para paisagem e desktop. Instalável como PWA.
 - **Automático quando você quer, manual quando precisa.** Digitou o nome do jogo? O app busca capa, gêneros, data de lançamento, nota do Metacritic, descrição e tempo médio. Prefere preencher na mão? Todos os campos continuam editáveis.
-- **Mais que uma lista.** Wishlist, Timer de Sessão com pausa e notificação na barra do celular, diário de bordo, linha do tempo, prateleira de cartuchos, franquias com busca de novos jogos, gráficos de gênero, capas verticais automáticas com recorte, 12 temas e conquistas, wishlist com datas de lançamento e avisos, filtros universais e imagens bonitas para compartilhar.
+- **Mais que uma lista.** Wishlist, Timer de Sessão com pausa e notificação na barra do celular, central de notificações com o registro de tudo que o app avisou, diário de bordo, linha do tempo, prateleira de cartuchos, franquias com busca de novos jogos, gráficos de gênero, capas verticais automáticas com recorte, 12 temas e conquistas, wishlist com datas de lançamento e avisos, filtros universais e imagens bonitas para compartilhar.
 
 ## Galeria
 
@@ -162,6 +162,13 @@ Alterne **Cards ↔ Prateleira** na Fila e **Lista ↔ Linha do tempo ↔ Pratel
 - O estado da sessão fica salvo no navegador (e no IndexedDB, que o service worker `sw.js` lê): o tempo continua correto mesmo se você **fechar a aba ou recarregar**.
 - Ao **Finalizar**, você ajusta os minutos, vê a prévia "3,5h → 4,5h" e escolhe **Somar às horas**, **Descartar** ou **Continuar jogando**. Também pode **anotar no diário** na hora.
 - Uma sessão por vez.
+
+### 7b. Central de Notificações (o sino)
+
+- O **sino do topo** (no desktop e no celular) abre o **registro de tudo que o app já avisou**: sessões iniciadas, pausadas, retomadas e finalizadas, jogos da wishlist que lançaram (avisados pelo app ou em segundo plano) e conquistas desbloqueadas.
+- O contador no sino mostra as **não lidas**; abrir a central já marca tudo como lido, e **Limpar** esvazia o registro.
+- Cada origem tem seu ícone e cor (relógio para sessões, calendário para lançamentos, troféu para conquistas), com a idade de cada aviso ("há 5 min", "ontem"...). Tocar num lançamento abre direto a aba **Desejos**.
+- Os avisos da barra do celular são passageiros (o navegador os dispensa); o registro fica **salvo no banco** — as 60 mais recentes sobrevivem a recarregar, fechar o app e voltar de um backup.
 
 ### 8. Diário de Bordo
 
@@ -346,6 +353,7 @@ zeralog/
     ├── gameApi.js      # busca automática (RAWG), capas, tratamento de erros
     ├── wiki.js         # leitor de wikis (MediaWiki), vínculo automático, Fandom, localizar no texto
     ├── session.js      # Timer de Sessão e entradas de diário
+    ├── notify.js       # central de notificações: registro de sessões, lançamentos e conquistas
     ├── quickmatch.js   # filtros de humor e roleta
     ├── genres.js       # gráfico de gêneros (Chart.js + alternativa em SVG)
     ├── franchises.js   # franquias em sanfona e busca de mais jogos da série
