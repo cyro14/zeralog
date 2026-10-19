@@ -1213,6 +1213,7 @@ export function createShelfItem(g, kind = 'game') {
     const sess = getSession();
     const live = !!(sess && sess.gameId === g.id);
     li.className = `shelf-item${g.is100 ? ' is100' : ''}${g.wideCover ? ' wide' : ''}`;
+    li.dataset.id = g.id;   // o arrasto da Fila (dragdrop.js) lê o jogo daqui
     li.dataset.platform = g.platform;
     li.dataset.portable = g.isPortable ? 'true' : 'false';
     li.dataset.franchise = (g.franchise || '').toLowerCase();

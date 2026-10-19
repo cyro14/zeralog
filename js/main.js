@@ -22,6 +22,7 @@ import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steam
 import { initNotify, notifyToggle, notifyClose, notifyClear, notifyGo } from './notify.js';
 import { initGameMatch, gmSubShow, gmSwipe, gmExplore, gmExploreWish, gmBuy, gmClassicDecade, gmOnboardOpen, gmObGo, gmObToggle, gmObPick, gmObToggleUpcoming, gmObSetName, gmUseLibrary, gmObFinish, gmUnreject, gmXMore, gmXOpen, gmXClose, gmXWish, gmXBacklog, gmGoogle, gmExploreBacklog, gmXFilterGenre, gmXFilterPlat, gmXFilterToggle, gmXFilterClear, gmXFilterRemove, gmXSortToggle, gmXSort, gmXHideOwned } from './gamematch.js';
 import { initStores, storeImport, gogLogin, gogSaveCode, gogSync, gogDisconnect, epicLogin, epicSaveCode, epicSync, epicDisconnect, itchSaveKey, itchSync, itchDisconnect, enrichStoreGames } from './stores.js';
+import { initDragDrop } from './dragdrop.js';
 import { 
     render, checkWelcome, closeWelcome, closeModal, triggerToast, 
     changeTheme, toggleShelfPlain, saveStateForUndo, undoAction, switchTab, 
@@ -184,6 +185,7 @@ async function start() {
     ensureForData(appData);
     hydrateIcons();
     render();
+    initDragDrop();   // arrastar jogos da Fila (posição dentro da categoria e entre categorias)
     initNotify();
     initSession({ render, toast: msg => triggerToast(msg, false), undo: saveStateForUndo });
     initStorageUI({ render, toast: (msg, undo) => triggerToast(msg, undo !== false) });

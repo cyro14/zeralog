@@ -88,10 +88,12 @@ test('wiki.gg: toda chamada vai SEM Referer (o Referer dispara o desafio do Clou
     const opts = [];
     const realFetch = globalThis.fetch;
     globalThis.fetch = async (u, o) => {
-        // Só as chamadas de wiki (MediaWiki = api.php) entram na lista: um fetch de
-        // fundo de outro teste pode vazar nesta janela (rede lenta) e não é o que
-        // este teste confere — o que ele vigia é o referrerPolicy da wiki.js.
-        if (String(u).includes('api.php')) opts.push(o || {});
+        // Só as chamadas do wiki.js entram na lista. Um fetch de fundo de outro
+        // teste pode vazar nesta janela (rede lenta) — e api.php não é exclusivo
+        // daqui: o covers.js pergunta à Wikipédia (/w/api.php) SEM referrerPolicy,
+        // e essa chamada lenta às vezes caía DENTRO desta janela e derrubava o
+        // teste. O que ele vigia é o referrerPolicy da wiki.js (hosts wiki.gg).
+        if (String(u).includes('api.php') && !String(u).includes('wikipedia.org')) opts.push(o || {});
         const u2 = String(u);
         const body = u2.includes('titles=')
             ? { query: { pages: [{ title: 'Moonstone Island' }] } }

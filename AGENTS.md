@@ -78,6 +78,11 @@ pegariam os dois hoje.
   grande com a % de zerados na base (a MESMA `shelf-prog` do hero "Jogando
   Atualmente", dourada com `.done` quando completa), sanfona de jogos e
   sugestões da RAWG. Testes: `tests/franchises.test.mjs`.
+- `js/dragdrop.js` — arrastar jogos da Fila (Pointer Events: mover com o mouse
+  ou SEGURAR no toque): troca posição na categoria e move entre categorias.
+  O núcleo é puro e testado (`placeGame`/`applyDrop` — a ordem manual é a
+  ordem de `appData.games`; hero/contínuos ficam fora). Testes:
+  `tests/dragdrop.test.mjs`.
 - `js/covers.js` — capas e fundos: `autoVerticalCover` (capa vertical em
   streaming), `autoBanner` (fundo horizontal automático — devolve só a URL, que
   fica no campo `banner` do jogo), `bannerUrlOf` (userBanner > banner) e o
