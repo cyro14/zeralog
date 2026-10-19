@@ -205,6 +205,19 @@ test('Tela do jogo: o fundo segue a cor do tema (nada de gradiente preto fixo)',
     assert(veil.includes('var(--accent-playing)') && veil.includes('var(--accent-finished)'), 'véu por cima da capa com as cores do tema');
     assert(veil.includes('var(--bg-color)'), 'véu usa o fundo do tema (escuro escurece, claro clareia)');
     assert(!veil.includes('rgba(0,0,0'), 'véu sem preto fixo (quebrava os temas claros)');
+    // A ARTE de fundo também segue o tema (--gp-bg-filter): a versão com brightness
+    // 0.32 fixa virava, nos temas claros, uma sombra suja por baixo do véu branco
+    const artAt = css.indexOf('.gp-bg img { filter:');
+    assert(artAt > -1, 'regra do filtro da arte de fundo existe');
+    const art = css.slice(artAt, css.indexOf('}', artAt));
+    assert(art.includes('var(--gp-bg-filter,'), 'o tratamento da arte vem do tema (--gp-bg-filter)');
+    assert(art.includes('brightness(0.32)'), 'temas escuros: arte escurecida (clima de sala escura)');
+    for (const t of ['light', 'sepia', 'pink']) {
+        const start = css.indexOf(`html[data-theme="${t}"]`);
+        const block = css.slice(start, css.indexOf('}', start));
+        assert(block.includes('--gp-bg-filter'), `tema ${t} define o tratamento claro da arte`);
+        assert(/brightness\(1\./.test(block), `tema ${t}: a arte CLAREIA (não pode escurecer no tema claro)`);
+    }
 });
 
 // ---------- 10) GUARDA DE ÍCONES: todo arquivo icons/... citado no código existe ----------
