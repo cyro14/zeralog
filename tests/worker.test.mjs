@@ -93,3 +93,17 @@ test('Worker: as lojas continuam recebendo o token delas (Authorization)', async
     await call('https://embed.gog.com/user/data/games', { headers: { authorization: 'Bearer gog-token' } });
     assertEq(seen[0].init.headers['authorization'], 'Bearer gog-token', 'token da GOG repassado');
 });
+
+test('Worker: BINÁRIO passa intacto — as capas do HLTB vêm por aqui', async () => {
+    // howlongtobeat.com/games/*.jpg não tem cabeçalho de CORS: o download só
+    // funciona pelo Worker. O res.text() antigo corrompia os bytes da imagem.
+    const bytes = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46]);
+    globalThis.fetch = async () => new Response(bytes, { status: 200, headers: { 'content-type': 'image/jpeg' } });
+    const res = await call('https://howlongtobeat.com/games/The_Deed_header.jpg');
+    assertEq(res.status, 200, 'a capa passa pelo Worker');
+    const back = new Uint8Array(await res.arrayBuffer());
+    assertEq(back.length, bytes.length, 'mesma quantidade de bytes');
+    assertEq([...back].join(','), [...bytes].join(','), 'bytes íntegros (sem text() transformando a imagem em lixo)');
+    assertEq(res.headers.get('content-type'), 'image/jpeg', 'o tipo da imagem preservado');
+    assertEq(res.headers.get('access-control-allow-origin'), '*', 'e com CORS para o navegador baixar');
+});

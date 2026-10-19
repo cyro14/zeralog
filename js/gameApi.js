@@ -233,6 +233,9 @@ export async function fetchMetacriticScore(title) {
 const HLTB_SEARCH = 'https://howlongtobeat.com/api/search/site';
 const HLTB_INIT = 'https://howlongtobeat.com/api/search/site/init';
 let hltbToken = { token: '', at: 0 };
+// Estado de MÓDULO (o resetShim dos testes só alcança o banco): sem isso, o token
+// pego num teste vazava para os seguintes e a fila de buscas mudava com ele.
+export function _resetHltbToken() { hltbToken = { token: '', at: 0 }; }
 
 function hltbBody(title) {
     return JSON.stringify({
@@ -317,10 +320,14 @@ export const IMAGE_PROXIES = [
 //     SEM "Access-Control-Allow-Origin" e então barra o fetch com "bloqueado pela
 //     política de CORS"; trocar a URL força a ida ao servidor (era o bug das
 //     screenshots da RAWG que "não existiam" para o app);
-//  3) cada proxy público, nas duas versões.
+//  3) o Worker do projeto — o único com CORS DE VERDADE para os hosts permitidos
+//     (o HLTB é o caso: howlongtobeat.com/games/*.jpg não manda cabeçalho nenhum
+//     e os proxies públicos vivem mortos). Host fora da lista dele responde 400
+//     rápido e a fila segue;
+//  4) cada proxy público, nas duas versões.
 export function imageAttempts(url) {
     const bust = `${url}${url.includes('?') ? '&' : '?'}zl=${Date.now()}`;
-    const out = [url, bust];
+    const out = [url, bust, workerProxy(url)];
     IMAGE_PROXIES.forEach(mk => out.push(mk(url)));
     IMAGE_PROXIES.forEach(mk => out.push(mk(bust)));
     return out;

@@ -1,9 +1,12 @@
 # Proxy do ZeraLog (Cloudflare Worker)
 
-> **Atualizado em 2026:** o Worker ganhou três hosts novos e passou a repassar mais
-> cabeçalhos. Basta **recolar `steam-proxy/worker.js` inteiro** no seu Worker e clicar
-> em **Deploy** de novo — a URL continua a mesma. Sem isso, a busca da loja da Steam
-> responde 400, o HowLongToBeat responde 403 e a IGDB fica sem capas.
+> **Atualizado em 2026:** o Worker ganhou três hosts novos, passou a repassar mais
+> cabeçalhos e o corpo agora é repassado como **binário** (as capas do HLTB,
+> `howlongtobeat.com/games/*.jpg`, precisam dos bytes intactos — o `res.text()`
+> antigo corrompia imagem). Basta **recolar `steam-proxy/worker.js` inteiro** no
+> seu Worker e clicar em **Deploy** de novo — a URL continua a mesma. Sem isso, a
+> busca da loja da Steam responde 400, o HowLongToBeat responde 403, a IGDB fica
+> sem capas e as capas do HLTB não são baixadas.
 
 # Proxy das lojas/APIs para o ZeraLog (Cloudflare Worker)
 

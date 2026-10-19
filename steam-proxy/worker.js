@@ -12,6 +12,9 @@
 // 5. No HowLongToBeat ele assume o papel do navegador (User-Agent de navegador + Referer
 //    do próprio site): a busca do site recusa com 403 qualquer requisição que não
 //    pareça ter vindo da página deles — e o app não pode mandar Referer por conta própria.
+// 6. O corpo é repassado como BINÁRIO (arrayBuffer): JSON chega igual, e as CAPAS do
+//    HLTB (howlongtobeat.com/games/*.jpg, sem cabeçalho de CORS) chegam com os bytes
+//    intactos — o res.text() antigo corrompia imagem.
 //
 // Variável opcional (Settings → Variables and Secrets):
 //   STEAM_DEFAULT_KEY = sua chave 32-char de steamcommunity.com/dev/apikey
@@ -76,7 +79,9 @@ export default {
         } catch (e) {
             return new Response(JSON.stringify({ proxy_error: true }), { status: 502, headers: corsHeaders() });
         }
-        const body = await res.text();
+        // BINÁRIO intacto: JSON chega igual e as capas do HLTB chegam com os
+        // bytes certos (res.text() corromperia imagem).
+        const body = await res.arrayBuffer();
         return new Response(body, {
             status: res.status,
             headers: { ...corsHeaders(), 'Content-Type': res.headers.get('content-type') || 'application/json; charset=utf-8' }

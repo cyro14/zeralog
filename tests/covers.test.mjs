@@ -7,6 +7,7 @@
 // Também cobre a busca automática de FUNDO (autoBanner), que é o que põe a arte
 // horizontal nos dados do jogo (campo `banner`) e vira a "capa de Facebook".
 import { test, assert, assertEq, mockFetch, sleep } from './shim.mjs';
+import { _resetHltbToken } from '../js/gameApi.js';
 import { autoVerticalCover, openCoverPicker, coversSearch, coversPick, coversPickFile, autoBanner, bannerUrlOf, probeImage } from '../js/covers.js';
 
 const MOCK_VERTICAL = [
@@ -164,6 +165,32 @@ test('picker: foto do APARELHO horizontal abre o RECORTADOR (como as candidatas)
     } finally { globalThis.createImageBitmap = orig; }
     assert(!picked, 'nada foi salvo direto: foi para o recorte');
     assertEq(document.getElementById('modal-crop')._shown, 1, 'recortador aberto para a foto horizontal');
+});
+
+// ---------- capa de site SEM CORS (o HLTB é o caso) entra como LINK ----------
+// howlongtobeat.com não manda Access-Control-Allow-Origin: o <img> do grid exibe
+// a boxart de boas, mas o download dos bytes é barrado. A capa VERTICAL entra
+// como link (a escolha não se perde) — igual o fundo já fazia.
+test('picker: capa do HLTB sem CORS entra como LINK (a escolha não se perde)', async () => {
+    let picked = null;
+    mockFetch([
+        ['The_Deed_header.jpg', () => ({ __res: { ok: false, status: 404 } })],   // download barrado: 404 encerra a fila na hora
+        ['howlongtobeat.com', u => String(u).includes('init') ? { token: 'TKN-123' } : { data: [{ comp_main: 36000, game_image: 'The_Deed_header.jpg' }] }],
+        ['/api/games?', { results: [] }],
+        ['store.steampowered.com', {}],
+        ['wikipedia.org', { query: {} }],
+    ]);
+    try {
+        openCoverPicker({ title: 'The Deed', rawgId: null, onPick: (src, horizontal) => { picked = { src, horizontal }; } });
+        await sleep(80);   // a busca automática das fontes assenta
+        const grid = document.getElementById('cv-grid');
+        assert(grid.innerHTML.includes('The_Deed_header.jpg'), 'a boxart do HLTB apareceu no grid');
+        await coversPick(0);
+        assert(picked && picked.src === 'https://howlongtobeat.com/games/The_Deed_header.jpg', `entrou como LINK quando o download é barrado (obtido: ${picked && picked.src})`);
+        assertEq(picked.horizontal, false, 'sem flag de capa larga');
+    } finally {
+        _resetHltbToken();   // o token é cache de MÓDULO: não vaza para os testes seguintes
+    }
 });
 
 // ---------- Busca AUTOMÁTICA de fundo (autoBanner) ----------

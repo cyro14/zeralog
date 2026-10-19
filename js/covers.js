@@ -439,12 +439,35 @@ async function pick(i) {
         onPick(src, true);
         return;
     }
-    if (!blob) { $('cv-status').textContent = 'Essa imagem foi bloqueada pelo site. Tente outra.'; return; }
-    $('modal-covers').close();
-    if (horizontal) { onPick(await blobToSmallJpeg(blob, 640), true); return; }   // sem recorte: a opção veio do próprio seletor
-    const size = await imageSize(blob);
-    if (isVerticalSize(size)) onPick(await blobToSmallJpeg(blob));
-    else openCropper({ blob, onDone: p => onPick(p) });   // arte horizontal: recorta para vertical
+    // CAPA com os bytes na mão (site com CORS ou um proxy/Worker que funcionou).
+    // O imageSize valida os bytes: proxy desatualizado pode devolver lixo — e
+    // lixo não vira capa (cai no fallback de link logo abaixo).
+    if (blob) {
+        const size = await imageSize(blob);
+        if (size && (horizontal || isVerticalSize(size))) {
+            try {
+                const src = await blobToSmallJpeg(blob, horizontal ? 640 : undefined);
+                $('modal-covers').close();
+                onPick(src, !!horizontal);
+                return;
+            } catch (e) { /* bytes ruins no meio do caminho: usa o link */ }
+        } else if (size) {
+            $('modal-covers').close();
+            openCropper({ blob, onDone: p => onPick(p) });   // arte horizontal: recorta para vertical
+            return;
+        }
+    }
+    // CAPA sem os bytes (site sem cabeçalho de CORS — o HLTB é o caso): o <img>
+    // do grid exibiu a capa de boas, só o download é barrado. Vertical (ou com a
+    // opção "usar na horizontal") entra como LINK — a escolha não se perde, como
+    // no fundo. Horizontal que precisaria de RECORTAR não dá: o recortador precisa
+    // dos bytes — aí a mensagem ensina o caminho.
+    if (horizontal || c.vertical) {
+        $('modal-covers').close();
+        onPick(c.url, !!horizontal);
+        return;
+    }
+    $('cv-status').textContent = 'Não consegui baixar essa imagem para recortar. Marque "Usar a capa na horizontal" para entrar inteira — ou escolha outra.';
 }
 
 function init() {

@@ -67,7 +67,8 @@ pegariam os dois hoje.
 - `js/gameApi.js` — toda a RAWG: busca, detalhes (dev/pub/arte extra),
   screenshots, estúdios, redimensionamento de imagens, `viewImage`, e o download
   de imagens com CORS (`fetchImageBlob` → `imageAttempts`: link direto, link com
-  cache-buster e os proxies de `IMAGE_PROXIES`; 404 encerra na hora).
+  cache-buster, o Worker do projeto e os proxies de `IMAGE_PROXIES`; 404 encerra
+  na hora).
   Testes: `tests/gameapi.test.mjs`.
 - `js/store.js` — formato do banco, `migrateData`, padrões (ex.: "Prateleira
   limpa" ligada por padrão). Testes: `tests/store.test.mjs`.
@@ -91,7 +92,8 @@ pegariam os dois hoje.
 - `js/covers.js` — capas e fundos: `autoVerticalCover` (capa vertical em
   streaming), `autoBanner` (fundo horizontal automático — devolve só a URL, que
   fica no campo `banner` do jogo), `bannerUrlOf` (userBanner > banner) e o
-  buscador manual. Testes: `tests/covers.test.mjs`.
+  buscador manual (capa de site sem CORS, como o HLTB, entra como LINK — a
+  escolha não se perde). Testes: `tests/covers.test.mjs`.
 - `js/ui.js` — página do jogo (banner "capa de Facebook" a partir de `banner`/
   `userBanner`, screenshots do usuário, atalhos de capa/fundo; a busca
   automática salva o fundo em `saveGame` e na primeira abertura).

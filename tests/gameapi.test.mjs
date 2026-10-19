@@ -4,7 +4,7 @@ import {
     resizeUrl, esc, shotsGalleryHtml, normText, guessFranchise, describeError,
     searchCompanies, listGames, getGameDetails, getGameScreenshots,
     fetchImageBlob, imageAttempts, IMAGE_PROXIES,
-    fetchHLTBData, fetchHLTBTime, scrapeUrl
+    fetchHLTBData, fetchHLTBTime, scrapeUrl, _resetHltbToken
 } from '../js/gameApi.js';
 
 // ---------- puros (rodam sempre) ----------
@@ -49,15 +49,16 @@ test('describeError explica erros de rede/chave/limite para o usuário', () => {
 // ---------- download de imagens (CORS): a ordem das tentativas e o 401 do corsproxy ----------
 // Bug real: as screenshots da RAWG eram barradas por CORS e o app só tentava UM proxy
 // (o corsproxy.io, que passou a responder 401). O fundo do jogo "nunca" era baixado.
-test('imageAttempts: direta, direta com cache-buster e depois os proxies', () => {
+test('imageAttempts: direta, cache-buster, o WORKER do projeto e depois os proxies', () => {
     const url = 'https://media.rawg.io/media/screenshots/202/abc.jpg';
     const tries = imageAttempts(url);
     assertEq(tries[0], url, 'a primeira tentativa é sempre o link direto');
     assert(tries[1].startsWith(url + '?'), 'a segunda é a mesma URL com cache-buster');
     assert(tries[1] !== url, 'o cache-buster muda a URL (fura cache sem CORS)');
+    assert(tries[2].startsWith('https://worker-') && tries[2].includes(encodeURIComponent(url)), 'a terceira é o Worker do projeto (CORS de verdade para hosts permitidos, como as capas do HLTB)');
     assert(tries.some(u => u.includes('allorigins.win/raw')), 'allorigins na lista');
     assert(tries.some(u => u.includes('api.codetabs.com')), 'codetabs na lista');
-    assert(tries.length >= 2 + IMAGE_PROXIES.length * 2, 'as duas versões de cada proxy entram na fila');
+    assertEq(tries.length, 3 + IMAGE_PROXIES.length * 2, 'as duas versões de cada proxy público entram na fila');
 });
 
 test('fetchImageBlob: 401 de um proxy não mata a fila — o próximo proxy salva o download', async () => {
@@ -91,6 +92,7 @@ function resp({ ok = true, status = 200, json = {}, text = '' } = {}) {
 }
 
 test('HLTB: busca nova (/api/search/site) com o token do /init no x-auth-token', async () => {
+    _resetHltbToken();   // estado de módulo: começa limpo, sem herdar token de outro teste
     const calls = [];
     globalThis.fetch = async (url, opts = {}) => {
         const u = String(url);
@@ -111,6 +113,7 @@ test('HLTB: busca nova (/api/search/site) com o token do /init no x-auth-token',
 });
 
 test('HLTB: token recusado (403) pega outro token e repete uma vez', async () => {
+    _resetHltbToken();   // idem: o teste mede a RENOVAÇÃO, não pode entrar com token fresco herdado
     let buscas = 0, inits = 0;
     globalThis.fetch = async (url) => {
         const u = String(url);
