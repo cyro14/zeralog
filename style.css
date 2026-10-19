@@ -1185,6 +1185,9 @@ body.dragging #playing-category .shelf-item:hover, body.dragging #playing-catego
 /* Busca no Google dentro do seletor de capas */
 .cv-google { display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; background: var(--bg-color); color: var(--text-main); border: 1px dashed var(--border-color); border-radius: 999px; padding: 9px 12px; font-weight: 700; cursor: pointer; transition: border-color .12s, color .12s; }
 .cv-google:hover { border-color: var(--google-blue, #4285f4); color: var(--text-main); }
+/* Foto do PC/celular dentro da própria busca (a tela "Editar Capa" saiu) */
+.cv-file { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 999px; padding: 9px 14px; font-weight: 700; font-size: 0.85em; cursor: pointer; transition: border-color .12s; }
+.cv-file:hover { border-color: var(--accent-playing); }
 
 /* ===== Modal de jogo: polimento ===== */
 #modal-game .lbl { display: block; font-size: 0.8em; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: -6px; }

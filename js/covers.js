@@ -395,6 +395,31 @@ export function openCoverPicker({ title, rawgId, mode = 'cover', onPick }) {
 // inteiro (o clique real vem pelo listener do grid, registrado no init).
 export async function coversPick(i) { return pick(i); }
 
+// Foto do PC/celular, DENTRO da própria busca (a tela antiga de "Editar Capa"
+// foi aposentada). Mesma regra das candidatas: vertical entra direto,
+// horizontal abre o recorte — a menos que a opção "usar na horizontal" esteja
+// marcada, que salva a imagem inteira como capa larga.
+export async function coversPickFile(input) {
+    const f = input.files && input.files[0];
+    try { input.value = ''; } catch (e) { /* input falso dos testes */ }
+    if (!f || !state.onPick) return;
+    const onPick = state.onPick;
+    const horizontal = $('cv-horizontal') && $('cv-horizontal').checked;
+    $('cv-status').textContent = 'Preparando a foto...';
+    try {
+        const size = await imageSize(f);
+        if (horizontal || isVerticalSize(size)) {
+            $('modal-covers').close();
+            onPick(await blobToSmallJpeg(f, horizontal ? 640 : undefined), !!horizontal);
+        } else {
+            $('modal-covers').close();
+            openCropper({ blob: f, onDone: p => onPick(p) });   // horizontal: recorta para vertical
+        }
+    } catch (e) {
+        $('cv-status').textContent = 'Não consegui usar essa foto. Tente outra.';
+    }
+}
+
 async function pick(i) {
     const c = state.cands[i];
     if (!c || !state.onPick) return;

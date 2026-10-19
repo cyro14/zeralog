@@ -7,7 +7,7 @@
 // Também cobre a busca automática de FUNDO (autoBanner), que é o que põe a arte
 // horizontal nos dados do jogo (campo `banner`) e vira a "capa de Facebook".
 import { test, assert, assertEq, mockFetch, sleep } from './shim.mjs';
-import { autoVerticalCover, openCoverPicker, coversSearch, coversPick, autoBanner, bannerUrlOf, probeImage } from '../js/covers.js';
+import { autoVerticalCover, openCoverPicker, coversSearch, coversPick, coversPickFile, autoBanner, bannerUrlOf, probeImage } from '../js/covers.js';
 
 const MOCK_VERTICAL = [
     // busca na RAWG (searchGames)
@@ -131,6 +131,39 @@ test('picker modo capa (padrão): continua priorizando verticais e chamando o re
     await sleep(60);
     assert(grid.innerHTML.includes('library_600x900.jpg'), 'capa vertical da Steam na lista');
     assert(grid.innerHTML.includes('recortar'), 'horizontais marcadas para recorte');
+});
+
+// ---------- FOTO DO APARELHO dentro da própria busca (a tela "Editar Capa" saiu) ----------
+// Mesma regra das candidatas: vertical entra direto, horizontal abre o recorte —
+// e a opção "usar na horizontal" salva a imagem inteira como capa larga.
+const fotoFake = () => new Blob([Buffer.alloc(300, 1)], { type: 'image/jpeg' });
+
+test('picker: foto do APARELHO vertical entra direto (sem recorte)', async () => {
+    let picked = null;
+    openCoverPicker({ title: '', onPick: (src, horizontal) => { picked = { src, horizontal }; } });   // título vazio: não dispara busca
+    // o createImageBitmap do shim devolve 600x900 (vertical)
+    await coversPickFile({ files: [fotoFake()], value: '' });
+    assert(picked && typeof picked.src === 'string' && picked.src.startsWith('data:'), 'foto processada e salva direto');
+    assertEq(picked.horizontal, false, 'sem a flag de capa larga');
+    // com a opção "usar na horizontal" marcada: a MESMA foto entra inteira e larga
+    document.getElementById('cv-horizontal').checked = true;
+    picked = null;
+    await coversPickFile({ files: [fotoFake()], value: '' });
+    assert(picked && picked.horizontal === true, 'capa LARGA quando a opção está marcada');
+    document.getElementById('cv-horizontal').checked = false;
+});
+
+test('picker: foto do APARELHO horizontal abre o RECORTADOR (como as candidatas)', async () => {
+    let picked = null;
+    openCoverPicker({ title: '', onPick: (src, horizontal) => { picked = { src, horizontal }; } });
+    // o bitmap do shim é sempre vertical: fingir uma foto horizontal (900x600)
+    const orig = globalThis.createImageBitmap;
+    globalThis.createImageBitmap = async () => ({ width: 900, height: 600, close() {} });
+    try {
+        await coversPickFile({ files: [fotoFake()], value: '' });
+    } finally { globalThis.createImageBitmap = orig; }
+    assert(!picked, 'nada foi salvo direto: foi para o recorte');
+    assertEq(document.getElementById('modal-crop')._shown, 1, 'recortador aberto para a foto horizontal');
 });
 
 // ---------- Busca AUTOMÁTICA de fundo (autoBanner) ----------

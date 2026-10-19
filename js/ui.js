@@ -9,7 +9,7 @@ import { applyTheme, renderThemePicker } from './themes.js';
 import { phHtml, openIconPicker, anyIconHtml } from './phosphor.js';
 import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
-import { searchGames, getGameDetails, getGameScreenshots, shotsGalleryHtml, viewImage, coverToDataURL, fileToSmallJpeg, blobToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
+import { searchGames, getGameDetails, getGameScreenshots, shotsGalleryHtml, viewImage, coverToDataURL, fileToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
 import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade, autoBanner, bannerUrlOf } from './covers.js';
 import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
@@ -263,25 +263,7 @@ export function coverCropFromGameModal() {
 export function coverRemoveFromGameModal() { pendingCover = ''; updateCoverPreview(null); }
 
 // Procura um item tanto na biblioteca quanto na wishlist (capas funcionam nas duas telas)
-const findItemAny = id => appData.games.find(g => g.id === id) || (appData.wishlist || []).find(g => g.id === id);
-
-export function coverPickFromImageModal() {
-    const id = document.getElementById('edit-img-game-id').value;
-    const game = findItemAny(id);
-    if (!game) return;
-    openCoverPicker({
-        title: game.title,
-        rawgId: game.rawgId,
-        onPick: (src, horizontal) => {
-            saveStateForUndo();
-            game.image = src;
-            game.wideCover = !!horizontal;   // opção veio do seletor de capas
-            closeModal('modal-image');
-            saveData(() => render());
-            triggerToast('Capa atualizada.');
-        }
-    });
-}
+const findItemAny = id => appData.games.find(g => g.id === id) || (appData.wishlist || []).find(w => w.id === id);
 
 // Buscador de artes de FUNDO (tela cheia): escolhe uma horizontal online e
 // salva como userBanner — o topo "capa de Facebook" da página do jogo.
@@ -2118,21 +2100,23 @@ export function quickSearch(site) {
     if(site === 'meta') window.open(`https://www.metacritic.com/search/${encodeURIComponent(title)}/`, '_blank');
 }
 
-let editImageSrc = null, editImageDirty = false;
-function paintEditImage(src) {
-    const el = document.getElementById('image-preview');
-    el.innerHTML = src ? `<img src="${esc(src)}" style="max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 8px;">` : icon('gamepad', { size: '3em' });
-}
+// Capa clicada (página do jogo, ficha da prateleira, card da wishlist): abre
+// DIRETO a BUSCA AUTOMÁTICA — a tela antiga de "Editar Capa" foi aposentada.
+// A foto do PC/celular entrou como opção DENTRO da própria busca (coversPickFile).
 export function openImageModal(gameId) {
     const game = findItemAny(gameId);
     if (!game) return;
-    document.getElementById('edit-img-game-id').value = gameId;
-    document.getElementById('edit-game-name').innerText = game.title;
-    editImageSrc = game.image || null; editImageDirty = false;
-    document.getElementById('edit-game-icon').value = '';
-    document.getElementById('edit-img-wide').checked = !!game.wideCover;
-    paintEditImage(editImageSrc);
-    document.getElementById('modal-image').showModal();
+    openCoverPicker({
+        title: game.title,
+        rawgId: game.rawgId,
+        onPick: (src, horizontal) => {
+            saveStateForUndo();
+            game.image = src;
+            game.wideCover = !!horizontal;   // opção veio do próprio seletor
+            saveData(() => render());
+            triggerToast('Capa atualizada.');
+        }
+    });
 }
 // Navegador embutido (o parâmetro igu=1 libera o Google dentro do iframe do app)
 export function openBrowser(url, title = 'Busca no Google') {
@@ -2149,33 +2133,7 @@ export function closeBrowser() {
     document.getElementById('modal-browser').close();
 }
 
-export function searchCoverOnGoogle() { const gameId = document.getElementById('edit-img-game-id').value; const game = findItemAny(gameId); if (game) openBrowser(`https://www.google.com/search?tbm=isch&igu=1&q=${encodeURIComponent(game.title + " cover")}&tbs=isz:i`, `Capas: ${game.title}`); }
-export function previewImageEdit(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = e => { editImageSrc = e.target.result; editImageDirty = true; paintEditImage(editImageSrc); };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-export function cropEditImage() {
-    if (!editImageSrc) { triggerToast('Escolha uma foto ou busque uma capa primeiro.', false); return; }
-    openCropper({ src: editImageSrc, onDone: data => { editImageSrc = data; editImageDirty = true; paintEditImage(data); } });
-}
-export async function saveEditedImage() {
-    const gameId = document.getElementById('edit-img-game-id').value;
-    const game = findItemAny(gameId);
-    if (!game) { closeModal('modal-image'); return; }
-    const wide = document.getElementById('edit-img-wide').checked;
-    const wideChanged = wide !== !!game.wideCover;
-    if ((editImageDirty && editImageSrc) || wideChanged) {
-        saveStateForUndo();
-        game.wideCover = wide;
-        if (editImageDirty && editImageSrc) game.image = await blobToSmallJpeg(await (await fetch(editImageSrc)).blob()).catch(() => editImageSrc);
-        closeModal('modal-image');
-        saveData(() => render());
-        triggerToast('Capa atualizada.');
-    } else { closeModal('modal-image'); }
-}
+
 
 let coverBatchRunning = false;
 export async function upgradeCovers() {

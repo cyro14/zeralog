@@ -115,7 +115,7 @@ test('HTML: ids essenciais referenciados pelo JS existem no index.html', () => {
     for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-x-owned', 'gm-classic-decades', 'quick-match', 'qm-body', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'fin-sort-btn', 'fin-sort-panel', 'modal-ach', 'ach-detail', 'sh-style-timeline', 'wish-pane-list', 'wish-pane-releases', 'wish-sub-list', 'wish-sub-releases', 'wish-releases-grid', 'wish-summary', 'wish-list-container', 'wish-filter-btn', 'wish-sort-btn', 'wish-x-filter-panel', 'wish-x-sort-panel', 'wish-x-genre', 'wish-x-plat', 'wish-dev-filter', 'wish-pub-filter', 'home-sort-btn', 'home-sort-panel', 'wish-sortlist-btn', 'wish-sortlist-panel'])
         assert(html.includes(`id="${id}"`), `index.html deveria ter #${id}`);
     // ids que FORAM REMOVIDOS não podem estar no HTML (senão o JS pode tentar usá-los de volta)
-    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips', 'qm-count', 'home-sort-bar', 'sort-home-manual', 'sort-home-az', 'sort-home-time', 'sort-home-meta', 'fin-sort-bar', 'sort-fin-date', 'sort-fin-rating', 'sort-fin-time', 'sort-fin-played', 'sort-fin-portable', 'wish-sort-bar', 'sort-wish-release', 'sort-wish-added', 'sort-wish-az', 'sort-wish-meta'])
+    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips', 'qm-count', 'home-sort-bar', 'sort-home-manual', 'sort-home-az', 'sort-home-time', 'sort-home-meta', 'fin-sort-bar', 'sort-fin-date', 'sort-fin-rating', 'sort-fin-time', 'sort-fin-played', 'sort-fin-portable', 'wish-sort-bar', 'sort-wish-release', 'sort-wish-added', 'sort-wish-az', 'sort-wish-meta', 'modal-image', 'edit-img-game-id', 'edit-game-icon', 'edit-img-wide', 'image-preview', 'edit-game-name'])
         assert(!html.includes(`id="${gone}"`), `index.html NÃO deveria ter #${gone} (foi removido)`);
     // o botão de sortear não tem mais números nem o "Sortear agora!" de cima
     assert(!html.includes('Sortear agora!'), 'o botão de sortear em cima foi removido (o confirmar é no final do carrossel)');
@@ -236,6 +236,11 @@ test('Buscador de capas: fechado, o dialog some (display só com [open])', () =>
     const tag = /<dialog id="modal-covers"[^>]*>/.exec(html);
     assert(tag, 'dialog#modal-covers existe no index.html');
     assert(!/style\s*=\s*"[^"]*display/.test(tag[0]), 'sem display inline no dialog do buscador');
+    // 6) a FOTO DO APARELHO mora DENTRO da própria busca (a tela "Editar Capa"
+    //    foi aposentada: capa clicada abre a busca automática direto)
+    assert(html.includes('id="cv-file"'), 'botão de foto do aparelho no buscador');
+    assert(html.includes('coversPickFile(this)'), 'o input chama o coversPickFile');
+    assert(!html.includes('id="modal-image"'), 'a tela antiga "Editar Capa" saiu do HTML');
 });
 
 // ---------- 12) GUARDA DO EXPLORAR: painéis de filtros/ordenação legíveis ----------

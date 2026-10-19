@@ -975,6 +975,10 @@
         <div id="cv-status" class="cv-status" aria-live="polite"></div>
         <div id="cv-grid" class="cv-grid"></div>
         <div class="cv-foot">
+            <label class="cv-file" for="cv-file" title="Usar uma foto sua, do PC ou do celular">
+                <span data-icon="upload" data-size="1em"></span>Foto do aparelho
+                <input type="file" id="cv-file" accept="image/*" hidden onchange="coversPickFile(this)">
+            </label>
             <button type="button" class="cv-google" onclick="coversSearchGoogle()" title="Buscar no Google Imagens dentro do app"><span data-icon="search" data-size="1em"></span>Buscar no Google</button>
             <button type="button" class="btn-cancel" onclick="closeModal('modal-covers')">Fechar</button>
         </div>
@@ -1142,24 +1146,6 @@
 
             <button type="button" class="btn-cancel" onclick="openGameDataFromFinished()" style="width: 100%;">Editar dados do jogo / buscar automaticamente</button>
             <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-edit-finished')">Cancelar</button><button onclick="saveFinishedEdit()">Salvar Alterações</button></div>
-        </div>
-    </dialog>
-
-    <dialog id="modal-image">
-        <div class="modal-form">
-            <h3 style="margin-top: 0; margin-bottom: 0;">Editar Capa</h3>
-            <p style="font-size: 0.85em; color: var(--text-muted); margin-top: 0;" id="edit-game-name"></p>
-            <input type="hidden" id="edit-img-game-id">
-            <div id="image-preview" class="image-preview-box" style="text-align:center; font-size:3em; margin: 10px 0;"><span data-icon="gamepad" data-size="1em"></span></div>
-            <label class="flag-row" style="background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px;">
-                <input type="checkbox" id="edit-img-wide">
-                <span><strong>Capa horizontal</strong><small>Exibe a capa em formato largo na lista — ideal para jogos antigos que só têm arte widescreen.</small></span>
-            </label>
-            <button type="button" class="btn-search-google" style="background-color: var(--accent-playing); width:100%; margin-bottom: 8px;" onclick="coverPickFromImageModal()"><span class="ic-lead" data-icon="image"></span>Buscar capas automaticamente</button>
-            <button type="button" class="btn-search-google" style="background-color: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color); width:100%; margin-bottom: 8px;" onclick="cropEditImage()"><span class="ic-lead" data-icon="image"></span>Recortar a capa</button>
-            <button type="button" class="btn-search-google" style="background-color: var(--google-blue); width:100%;" onclick="searchCoverOnGoogle()"><span class="ic-lead" data-icon="search"></span>Buscar Capa no Google</button>
-            <div style="position: relative; overflow: hidden; display: block; width: 100%;"><span class="btn-upload" style="background-color: var(--bg-color); color: var(--text-main); display: block; text-align: center; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: bold; width: 100%; margin-top: 10px;">Escolher Foto</span><input type="file" id="edit-game-icon" accept="image/*" style="font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%;" onchange="previewImageEdit(this)"></div>
-            <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('modal-image')">Cancelar</button><button onclick="saveEditedImage()">Salvar</button></div>
         </div>
     </dialog>
 

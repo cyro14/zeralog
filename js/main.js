@@ -12,11 +12,11 @@ import { initSession, startSession, openEndSession, sessionPreview, sessionFinis
 import { openAchDetail } from './achievements.js';
 import { qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetDiff, qmToggleEmulated, qmSetPlatform, qmSetFranchise, qmSetScore, qmNext, qmPrev, qmConfirmSorteio } from './quickmatch.js';
 import { genreSetBase, genreSetYear } from './genres.js';
-import { coversSearch } from './covers.js';
+import { coversSearch, coversPickFile } from './covers.js';
 import { viewImage } from './gameApi.js';
 import { cropApply, cropCancel, cropReset, cropFit } from './crop.js';
 import { coversSearchGoogle } from './covers.js';
-import { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, pickBannerFromGamePage, shelfDo, openShelfDetail, openGamePage, gpClose, gpDo, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, setTimelineGroup, filterByFranchise, toggleAddMenu, closeAddMenu, fabAddGame, fabAddCategory, openCategoryShare } from './ui.js';
+import { coverCropFromGameModal, coverRemoveFromGameModal, upgradeCovers, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, pickBannerFromGamePage, shelfDo, openShelfDetail, openGamePage, gpClose, gpDo, toggleModalFlags, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, setTimelineGroup, filterByFranchise, toggleAddMenu, closeAddMenu, fabAddGame, fabAddCategory, openCategoryShare } from './ui.js';
 import { openWiki, wikiChangeSource, wikiSearch, wikiSearchFab, wikiBack, wikiLinkGame, wikiToggleAdd, wikiAddSource, wikiFindFandom, wikiFindHosted, wikiFindToggle, wikiFindStep, wikiFindClose } from './wiki.js';
 import { initSteam, steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSync } from './steam.js';
 import { initNotify, notifyToggle, notifyClose, notifyClear, notifyGo } from './notify.js';
@@ -31,7 +31,7 @@ import {
     openCatModal, openEditCatModal, saveCategory, askDeleteCategory, moveCategory,
     openGameModal, openEditGameModal, askDeleteGame, toggleState,
     openRatingModal, openEditFinishedModal, cancelRating, skipRating, saveRating, saveFinishedEdit,
-    spinRoulette, acceptRoulette, quickSearch, openImageModal, searchCoverOnGoogle, previewImageEdit, saveEditedImage, openBrowser, closeBrowser,
+    spinRoulette, acceptRoulette, quickSearch, openImageModal, openBrowser, closeBrowser,
     openBackupModal, exportBackup, importBackup, openSettings, openFactoryReset, confirmFactoryReset,
     renderPlatformAdmin, previewPlatformIcon, searchPlatformIconOnGoogle, editPlatform, cancelEditPlatform, savePlatform, removePlatform, fetchGameFromRAWG, pickRawgResult, toggleJournal, saveRawgKey, saveIGDBClient, testIGDB, saveCoverPref, openSettingsSection, backToSettingsHub, welcomeSteam, buyOnAmazon, checkAppUpdate
 } from './ui.js';
@@ -101,13 +101,11 @@ window.saveFinishedEdit = saveFinishedEdit;
 window.spinRoulette = spinRoulette;
 window.acceptRoulette = acceptRoulette;
 window.quickSearch = quickSearch;
-window.openImageModal = openImageModal;
-window.searchCoverOnGoogle = searchCoverOnGoogle;
+window.openImageModal = openImageModal;   // capa clicada abre a BUSCA automática direto
 window.openBrowser = openBrowser;
 window.closeBrowser = closeBrowser;
 window.coversSearchGoogle = coversSearchGoogle;
-window.previewImageEdit = previewImageEdit;
-window.saveEditedImage = saveEditedImage;
+window.coversPickFile = coversPickFile;   // foto do PC/celular dentro da busca
 window.openBackupModal = openBackupModal;
 window.exportBackup = exportBackup;
 window.importBackup = importBackup;
@@ -144,7 +142,7 @@ window.wikiFindHosted = wikiFindHosted;
 window.wikiFindToggle = wikiFindToggle;
 window.wikiFindStep = wikiFindStep;
 window.wikiFindClose = () => wikiFindClose();
-Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, cropEditImage, upgradeCovers, cropApply, cropCancel, cropReset, cropFit, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, iconSearch, iconWeightChange, iconMore, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, coverPickFromImageModal, pickBannerFromGamePage, coversSearch, qmSetDiff, qmToggleEmulated, qmNext, qmPrev, qmConfirmSorteio, genreSetBase, genreSetYear, shelfDo, openShelfDetail, openGamePage, gpClose, gpDo, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetPlatform, qmSetFranchise, qmSetScore, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, setTimelineGroup, filterByFranchise });
+Object.assign(window, { coverCropFromGameModal, coverRemoveFromGameModal, upgradeCovers, cropApply, cropCancel, cropReset, cropFit, togglePauseSession, pauseSession, resumeSession, setSessionNotify, askNotifyPermission, pickCategoryIcon, clearCategoryIcon, pickPlatformIcon, setPlatformDisplay, iconSearch, iconWeightChange, iconMore, setStatsPane, openAddFromSuggestion, coverPickFromGameModal, pickBannerFromGamePage, coversSearch, qmSetDiff, qmToggleEmulated, qmNext, qmPrev, qmConfirmSorteio, genreSetBase, genreSetYear, shelfDo, openShelfDetail, openGamePage, gpClose, gpDo, openJournalEntry, saveJournalEntry, toggleModalFlags, startSession, openEndSession, sessionPreview, sessionFinish, qmSetTime, qmSetGenre, qmTogglePortable, qmReset, qmSetPlatform, qmSetFranchise, qmSetScore, openGameDataFromFinished, wishToBacklog, wishToPlaying, backlogToWish, askDeleteWish, openEditWishModal, setFinishedView, setTimelineDir, setTimelineGroup, filterByFranchise });
 
 // Steam: login, sincronização e configurações
 Object.assign(window, { steamLogin, steamLogout, steamSaveKey, steamSaveProxy, steamSaveManualId, steamSyncUI: steamSync });

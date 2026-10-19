@@ -58,10 +58,20 @@ test('hero "Jogando Atualmente": o fundo é a cor do tema, não a capa do jogo',
     assert(css.includes('#playing-category::before'), 'o fundo do hero continua definido no CSS');
 });
 
-test('capa é um atalho para Trocar capa (gpDo openImageModal)', async () => {
+test('capa é atalho para a BUSCA automática direto (a tela "Editar Capa" saiu)', async () => {
     addGame('g2', { image: 'data:image/jpeg;base64,CAPA' });
     await openGamePage('g2', false);
-    assert(lastPage().innerHTML.includes(`gpDo('openImageModal', 'g2')`), 'clique na capa abre a troca');
+    assert(lastPage().innerHTML.includes(`gpDo('openImageModal', 'g2')`), 'clique na capa abre a busca');
+    // a ação abre DIRETO o buscador em tela cheia, já com o nome do jogo e a
+    // busca automática disparando — a tela antiga de "Editar Capa" foi aposentada
+    const { openImageModal } = await import('../js/ui.js');
+    mockFetch([['api.rawg.io', { results: [] }], ['api.php', {}], ['steampowered', {}], ['api/search/site', {}]]);
+    openImageModal('g2');
+    assert(elById('modal-covers')._shown >= 1, 'buscador de capas aberto direto');
+    assertEq(elById('cv-game-name').textContent, 'Jogo g2', 'nome do jogo no buscador');
+    assertEq(elById('cv-title').value, 'Jogo g2', 'campo de busca já preenchido');
+    assertEq(appData.games.find(g => g.id === 'g2').image, 'data:image/jpeg;base64,CAPA', 'capa intacta até a escolha');
+    await sleep(120);   // deixa as fontes da busca assentarem no mock (nada vaza p/ rede)
 });
 
 test('sem fundo próprio: a arte da RAWG vira a capa de Facebook', async () => {
