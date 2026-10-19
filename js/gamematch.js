@@ -1259,11 +1259,15 @@ function genreAffinity() {
 }
 
 // Círculos do perfil no topo (topbar do desktop + header do mobile): a FOTO
-// preenche o círculo inteiro; sem foto nenhuma mostra a coroa.
+// preenche o círculo inteiro; sem foto nenhuma o círculo continua CHEIO
+// (gradiente do tema com a coroa) — nunca um ícone flutuando no vazio.
 export function paintTopAvatars() {
     const steam = appData.settings.steam || {};
     const photo = appData.settings.userPhoto || steam.avatar || '';
-    document.querySelectorAll('.dtb-avatar-wrap').forEach(el => { el.innerHTML = photo ? `<img src="${esc(photo)}" alt="Perfil">` : icon('crown', { size: '1.2em' }); });
+    document.querySelectorAll('.dtb-avatar-wrap').forEach(el => {
+        el.classList.toggle('no-photo', !photo);
+        el.innerHTML = photo ? `<img src="${esc(photo)}" alt="Perfil">` : icon('crown', { size: '1.2em' });
+    });
 }
 
 export function renderGmProfile() {
@@ -1311,7 +1315,7 @@ export function renderGmProfile() {
     <details class="gp-sec" open>
         <summary>${icon('star', { size: '1em' })} Conquistas (${unlocked.size}/${ACHIEVEMENTS.length})</summary>
         <div class="gm-ach-mini">
-            ${ACHIEVEMENTS.map(a => `<div class="gm-ach-it ${unlocked.has(a.id) ? '' : 'off'}" title="${esc(a.desc)}">${icon(a.icon, { size: '1.25em' })}<span>${esc(a.name)}</span><small>+${a.xp} XP</small></div>`).join('')}
+            ${ACHIEVEMENTS.map(a => `<div class="gm-ach-it ${unlocked.has(a.id) ? '' : 'off'}" role="button" tabindex="0" onclick="openAchDetail('${a.id}')" onkeydown="if(event.key==='Enter')openAchDetail('${a.id}')" title="${esc(a.desc)} · Ver como conquistar" aria-label="Como conquistar: ${esc(a.name)}">${icon(a.icon, { size: '1.25em' })}<span>${esc(a.name)}</span><small>+${a.xp} XP</small></div>`).join('')}
         </div>
     </details>
     <details class="gp-sec" open>

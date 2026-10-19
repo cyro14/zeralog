@@ -166,6 +166,14 @@ test('Perfil no topo: círculo preenchido pela foto; aba Perfil sem busca nem fi
         assert(!r.includes('border:'), `${sel} não pode ter border (a foto preenche o círculo inteiro)`);
     }
     assert(rule('.dtb-avatar-wrap img').includes('object-fit: cover'), 'foto cobre o círculo inteiro (object-fit: cover)');
+    // sem foto nenhuma o círculo de entrada continua CHEIO (gradiente do tema),
+    // não uma coroa flutuando num círculo vazio
+    assert(rule('.dtb-avatar-wrap.no-photo').includes('linear-gradient'), 'círculo de entrada preenchido mesmo sem foto');
+    // página do Perfil: o avatar também é preenchido pela foto INTEIRA — o anel
+    // fica POR FORA (a borda interna de 3px comia as bordas da foto)
+    const gphoto = rule('.gm-p-photo');
+    assert(gphoto.includes('object-fit: cover'), 'avatar da página do perfil cobre o círculo');
+    assert(!gphoto.includes('border: 3px'), 'sem borda interna comendo a foto (anel via box-shadow)');
     // aba Perfil esconde a busca e os filtros de plataforma (igual ao GameMatch)
     const ui = read(join(JS, 'ui.js'));
     assert(ui.includes("classList.toggle('profile-tab'"), 'switchTab liga a classe profile-tab');

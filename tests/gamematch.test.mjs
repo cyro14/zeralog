@@ -136,6 +136,15 @@ function profileReady() {
     appData.gamematch = { profile: { name: '', genres: ['RPG'], platforms: ['PC'], styles: ['single'], price: 'any', era: 'both', time: 'some' }, likes: [], favorites: [], rejects: [], backlogAdds: [], genreBoost: {}, franchiseBoost: {} };
 }
 const profileHtml = () => (elById('gm-profile') ? elById('gm-profile').innerHTML : '');
+// Círculo falso do topo: o paintTopAvatars troca o innerHTML E a classe no-photo
+const circle = () => {
+    const cls = new Set();
+    return {
+        innerHTML: '',
+        classList: { toggle(c, on) { on ? cls.add(c) : cls.delete(c); }, contains: c => cls.has(c) },
+        toggled: c => cls.has(c)
+    };
+};
 
 test('perfil: usa a foto da Steam quando não há upload', () => {
     profileReady();
@@ -173,18 +182,20 @@ test('perfil: os círculos do topo (desktop e mobile) recebem a mesma foto', () 
     appData.settings.userPhoto = 'data:image/jpeg;base64,FOTOTOPO';
     // dois círculos: o do topbar (desktop) e o do header (mobile) — a renderGmProfile
     // precisa pintar TODOS os .dtb-avatar-wrap, não só o de um id
-    const circles = [{ innerHTML: '' }, { innerHTML: '' }];
+    const circles = [circle(), circle()];
     const orig = document.querySelectorAll;
     document.querySelectorAll = sel => (sel === '.dtb-avatar-wrap' ? circles : []);
     try { renderGmProfile(); } finally { document.querySelectorAll = orig; }
     assert(circles[0].innerHTML.includes('FOTOTOPO'), 'círculo do desktop com a foto');
     assert(circles[1].innerHTML.includes('FOTOTOPO'), 'círculo do mobile com a foto');
-    // sem foto nenhuma: os círculos voltam para o ícone de coroa
+    assert(!circles[0].toggled('no-photo'), 'com foto não carrega o fundo de coroa');
+    // sem foto nenhuma: os círculos voltam para o ícone de coroa — e ficam CHEIOS
     delete appData.settings.userPhoto;
     circles[0].innerHTML = ''; circles[1].innerHTML = '';
     document.querySelectorAll = sel => (sel === '.dtb-avatar-wrap' ? circles : []);
     try { renderGmProfile(); } finally { document.querySelectorAll = orig; }
     assert(circles[0].innerHTML.includes('<svg'), 'sem foto o círculo mostra a coroa');
+    assert(circles[0].toggled('no-photo'), 'e ganha a classe no-photo (círculo preenchido com o gradiente)');
 });
 
 test('perfil: a foto aparece no círculo do topo mesmo sem perfil do GameMatch', () => {
@@ -192,7 +203,7 @@ test('perfil: a foto aparece no círculo do topo mesmo sem perfil do GameMatch',
     // do topo têm que receber a foto mesmo assim
     appData.gamematch = { likes: [], favorites: [], rejects: [], backlogAdds: [], genreBoost: {}, franchiseBoost: {} };
     appData.settings.userPhoto = 'data:image/jpeg;base64,SEMPERFIL';
-    const circles = [{ innerHTML: '' }, { innerHTML: '' }];
+    const circles = [circle(), circle()];
     const orig = document.querySelectorAll;
     document.querySelectorAll = sel => (sel === '.dtb-avatar-wrap' ? circles : []);
     try { renderGmProfile(); } finally { document.querySelectorAll = orig; }
@@ -200,12 +211,11 @@ test('perfil: a foto aparece no círculo do topo mesmo sem perfil do GameMatch',
     assert(circles[1].innerHTML.includes('SEMPERFIL'), 'círculo do mobile pintado sem perfil montado');
 });
 
-test('perfil: a foto do topo aparece no BOOT (sem precisar visitar a aba Perfil)', () => {
-    // O bug: os círculos do header/topbar nascem com a COROA no HTML e só eram
+test('perfil: a foto do topo aparece no BOOT (sem precisar visitar a aba Perfil)', () => {    // O bug: os círculos do header/topbar nascem com a COROA no HTML e só eram
     // pintados pela renderGmProfile (ao visitar a aba) — ao abrir o app a
     // coroa ficava no lugar da foto salva. O initGameMatch pinta no boot.
     appData.settings.userPhoto = 'data:image/jpeg;base64,FOTOBOOT';
-    const circles = [{ innerHTML: '' }, { innerHTML: '' }];
+    const circles = [circle(), circle()];
     const handlers = {};
     const origQsa = document.querySelectorAll, origAel = document.addEventListener;
     document.querySelectorAll = sel => (sel === '.dtb-avatar-wrap' ? circles : []);
@@ -231,6 +241,20 @@ test('perfil: a foto do topo aparece no BOOT (sem precisar visitar a aba Perfil)
         document.querySelectorAll = origQsa;
         document.addEventListener = origAel;
     }
+});
+
+test('perfil: as conquistas em miniatura ABREM a descrição ao clicar', () => {
+    // As miniaturas da página do perfil só tinham o tooltip nativo (que não
+    // existe no celular). Agora cada uma abre o detalhe da conquista — a mesma
+    // janela da aba Conquistas, com a descrição e o COMO conquistar.
+    profileReady();
+    renderGmProfile();
+    const h = profileHtml();
+    assert(h.includes('gm-ach-it'), 'grid de miniaturas de conquistas');
+    assert(h.includes(`openAchDetail('ach-10')`), 'miniatura clicável (abre o detalhe com a descrição)');
+    assert(h.includes('aria-label="Como conquistar:'), 'com rótulo acessível de como conquistar');
+    // e o clique de teclado também funciona (Enter)
+    assert(/onkeydown="if\(event\.key==='Enter'\)openAchDetail\('/.test(h), 'Enter também abre o detalhe');
 });
 
 // ---------- Explorar: botões Filtros/Ordenar, painéis e capa vertical ----------
