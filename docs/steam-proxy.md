@@ -79,7 +79,8 @@ A Steam exige uma chave da Web API para ler a biblioteca. Você pode emprestar a
    - Valor: a chave
    - Marque como **Secret**.
 3. A partir daí, chamadas que chegarem sem `&key=` usam a sua chave automaticamente —
-   o usuário só faz login com a Steam e aperta sincronizar.
+   o usuário só faz login com a Steam e aperta sincronizar. A versão de 2026 do Worker
+   também injeta quando o app antigo (cache do PWA) manda o literal `key=undefined`.
 
 > A chave da Steam só permite **ler** (nome, jogos, horas) dados de perfis públicos.
 > Ela não movimenta conta, não compra, não troca itens.

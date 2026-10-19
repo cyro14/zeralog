@@ -284,7 +284,7 @@ const gog = () => st('gog');
 function gogStatus(msg) { const el = $('gog-sync-status'); if (el) el.textContent = msg; }
 
 export function gogLogin() {
-    gogStatus('Abrindo o login da GOG em outra aba... Entre na sua conta e, depois de logar, copie o endereço completo da página (mesmo se der erro) e cole no campo ao lado.');
+    gogStatus('Entrar com a GOG: faça login na aba que abrir. No fim, a página fica em branco ou dá erro (é normal): copie o endereço COMPLETO da barra do navegador (algo com embed.gog.com/on_login_success?...code=...) e cole no campo ao lado. Se oferecerem abrir o aplicativo GOG Galaxy, recuse e fique na aba.');
     window.open(GOG_AUTH_URL, '_blank', 'noopener');
 }
 
@@ -403,7 +403,7 @@ const epic = () => st('epic');
 function epicStatus(msg) { const el = $('epic-sync-status'); if (el) el.textContent = msg; }
 
 export function epicLogin() {
-    epicStatus('Abrindo o login da Epic... Faça login na aba que abrir. Quando aparecer um texto começando com {"warning":..., ela tem "authorizationCode" PREENCHIDO: copie o texto da página inteiro (Ctrl+A, Ctrl+C) e cole aqui em seguida. Se "authorizationCode" aparece null, não recarregue: clique em "Entrar com a Epic" de novo. Cada código vale uma única vez.');
+    epicStatus('Entrar com a Epic: faça login na aba que abrir. No fim aparece um texto começando com {"warning":... OU uma página de erro — os dois servem: copie o texto da página (Ctrl+A, Ctrl+C) ou o endereço da aba e cole no campo ao lado. "authorizationCode" null = expirou: clique de novo. O código vale uma única vez.');
     window.open(EPIC_AUTH_URL, '_blank', 'noopener');
 }
 
@@ -423,7 +423,7 @@ export async function epicSaveCode() {
     if (mJson) code = mJson[1];
     else if (m) code = m[1];
     else if (mAny) code = mAny[1];
-    if (!code) { epicStatus('Não achei o código nesse texto. O JSON precisa ter "authorizationCode" preenchido — se veio null, o login expirou: clique em "Entrar com a Epic" de novo e cole o resultado logo em seguida.'); return; }
+    if (!code) { epicStatus('Não achei o código nesse texto. Vale colar: o texto da página ({"warning":...,"authorizationCode":"..."}), o endereço da aba (https://localhost/launcher/authorized?code=...) ou o código puro de 32 caracteres. "authorizationCode" null = o login expirou: clique em "Entrar com a Epic" de novo e cole o resultado logo em seguida.'); return; }
     epicStatus('Trocando o código pelo acesso à conta...');
     try {
         // Algumas contas recebem "exchange code" em vez de authorization code: tenta os dois
@@ -540,7 +540,7 @@ function itchStatus(msg) { const el = $('itch-sync-status'); if (el) el.textCont
 
 export function itchSaveKey() {
     const v = String(($('itch-key-input') && $('itch-key-input').value) || '').trim();
-    if (!v) { itchStatus('Cole sua chave de API. Crie em itch.io/user/settings/api-keys (botão "Generate new API key").'); return; }
+    if (!v) { itchStatus('Cole sua chave de API. É gerada em 1 clique em itch.io/user/settings/api-keys ("Generate new API key") — a Itch.io não tem login direto para apps de terceiros, a chave é o caminho oficial dela.'); return; }
     appData.settings.stores.itch = { ...itch(), apiKey: v };
     saveData(null);
     renderStoreStatus('itch');

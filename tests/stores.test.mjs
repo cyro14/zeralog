@@ -1,9 +1,9 @@
 // Testes dos logos das lojas/conexões (js/stores.js + js/icons.js + js/steam.js):
 // toda loja com o mesmo ícone-proporção em hub, categoria e plataforma — e os
 // arquivos da pasta icons/ realmente existem.
-import { test, assert, assertEq } from './shim.mjs';
+import { test, assert, assertEq, sleep } from './shim.mjs';
 import { appData } from '../js/store.js';
-import { applyStoreCatIcons } from '../js/stores.js';
+import { applyStoreCatIcons, gogSaveCode, epicSaveCode } from '../js/stores.js';
 import { STORE_ICONS, brandImg, platformIcons } from '../js/icons.js';
 import { anyIconHtml } from '../js/phosphor.js';
 import { existsSync } from 'node:fs';
@@ -96,4 +96,42 @@ test('anyIconHtml: Phosphor vira <i>, logo HTML passa direto, lixo vira vazio', 
     assertEq(anyIconHtml(brandImg('icons/Steam.webp')), brandImg('icons/Steam.webp'), 'logo HTML passa inteiro');
     assertEq(anyIconHtml('steam-logo'), '', 'nome solto não vira nada');
     assertEq(anyIconHtml(null), '', 'nulo não explode');
+});
+
+// Os logins de GOG/Epic terminam numa página de erro com o código no endereço —
+// o usuário só cola esse endereço. Aqui o fluxo inteiro roda com a rede mockada.
+test('GOG: colar o endereço depois do login (?code=...) conecta e importa a biblioteca', async () => {
+    globalThis.fetch = async url => {
+        const u = String(url);
+        if (u.includes('auth.gog.com'))
+            return { ok: true, status: 200, text: async () => JSON.stringify({ access_token: 'TOKEN_GOG', refresh_token: 'REFR_GOG', user_id: 'u1', expires_in: 3600 }) };
+        if (u.includes('embed.gog.com'))
+            return { ok: true, status: 200, text: async () => JSON.stringify({ owned: [1207658924] }) };
+        if (u.includes('api.gog.com'))
+            return { ok: true, status: 200, text: async () => JSON.stringify({ 1207658924: { title: 'The Witcher 3: Wild Hunt' } }) };
+        // RAWG/capas (enriquecimento em segundo plano): vazio, nada de rede
+        return { ok: true, status: 200, text: async () => '{}', json: async () => ({ results: [] }), blob: async () => new Blob(['x'], { type: 'image/jpeg' }) };
+    };
+    document.getElementById('gog-code-input').value = 'https://embed.gog.com/on_login_success?origin=client&code=CODIGO_ABC123XYZ';
+    await gogSaveCode();
+    await sleep(500);   // gogSync e o enriquecimento rodam em segundo plano
+    assertEq(appData.settings.stores.gog.token, 'TOKEN_GOG', 'endereço colado trocado por token');
+    assertEq(appData.settings.stores.gog.userId, 'u1', 'usuário da conta salvo');
+    assertEq(appData.games.filter(g => g.store === 'gog').length, 1, 'jogo da conta entrou na categoria GOG');
+});
+
+test('Epic: colar o endereço da página final (localhost/launcher/authorized?code=...) conecta', async () => {
+    globalThis.fetch = async url => {
+        const u = String(url);
+        if (u.includes('account-public-service-prod03'))
+            return { ok: true, status: 200, text: async () => JSON.stringify({ access_token: 'TOKEN_EPIC', refresh_token: 'REFR_EPIC', expires_in: 7200, displayName: 'Zé' }) };
+        if (u.includes('library-service.live.use1a.on.epicgames.com'))
+            return { ok: true, status: 200, text: async () => JSON.stringify({ records: [] }) };
+        return { ok: true, status: 200, text: async () => '{}', json: async () => ({ results: [] }), blob: async () => new Blob(['x'], { type: 'image/jpeg' }) };
+    };
+    document.getElementById('epic-code-input').value = 'https://localhost/launcher/authorized?code=abc123def4567890abc123def4567890';
+    await epicSaveCode();
+    await sleep(30);   // a sincronização da biblioteca roda em segundo plano
+    assertEq(appData.settings.stores.epic.token, 'TOKEN_EPIC', 'código do endereço trocado por token');
+    assertEq(appData.settings.stores.epic.user, 'Zé', 'nome da conta salvo');
 });

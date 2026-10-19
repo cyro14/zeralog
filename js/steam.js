@@ -6,8 +6,10 @@
 // 2. A Steam Web API (api.steampowered.com) não aceita chamadas diretas do navegador
 //    (CORS), então as chamadas passam por proxies públicos — dá para definir um próprio
 //    nas opções avançadas, no formato https://meu-proxy.com/?url=%s
-// 3. A GetOwnedGames exige a chave da Web API do próprio usuário (grátis em
-//    steamcommunity.com/dev/apikey) e que os "Detalhes do jogo" do perfil estejam públicos.
+// 3. A GetOwnedGames pede uma chave da Web API. Quem conecta não digita nada: o
+//    Worker do projeto injeta a chave padrão do app (STEAM_DEFAULT_KEY,
+//    docs/steam-proxy.md). A chave própria (steamcommunity.com/dev/apikey) é
+//    plano B — e os "Detalhes do jogo" do perfil precisam estar públicos.
 // 4. Os jogos entram na categoria "Steam" (criada automaticamente), plataforma "Steam",
 //    com as horas jogadas; as capas verticais são baixadas e salvas no app em segundo plano.
 import { appData, saveData } from './store.js';
@@ -63,6 +65,11 @@ async function steamApi(path, params) {
             const res = await fetch(mk(url), { signal: ctrl.signal });
             clearTimeout(timer);
             if (res.status === 403) { last = Object.assign(new Error('403'), { status: 403 }); break; }   // chave/perfil: outro proxy não resolve
+            if (res.status === 400) {   // "Required parameter 'key' is missing": nenhum proxy resolve, para na hora
+                const txt = await res.text().catch(() => '');
+                last = Object.assign(new Error('400'), { status: 400, detail: txt });
+                break;
+            }
             if (!res.ok) { last = Object.assign(new Error(`HTTP ${res.status}`), { status: res.status }); continue; }
             return JSON.parse(await res.text());
         } catch (e) { clearTimeout(timer); last = e; }
@@ -102,7 +109,9 @@ function catchOpenIdReturn() {
     saveData(null);
     renderSteamSettings();
     if (hooks.openSteamSettings) hooks.openSteamSettings();   // volta direto para a tela de Conexões
-    if (st().apiKey) { hooks.toast('Steam conectada! Sincronizando sua biblioteca...', false); steamSync(); }
+    // Com a chave do servidor (Worker do projeto) a sincronização já começa —
+    // quem conecta não digita nada. A chave própria só entra como plano B.
+    if (hasKey()) { hooks.toast('Steam conectada! Sincronizando sua biblioteca...', false); steamSync(); }
     else hooks.toast('Steam conectada! Cole sua chave da Web API para importar os jogos — a sincronização começa sozinha ao salvar a chave.', false);
 }
 
@@ -119,9 +128,12 @@ export async function steamSaveManualId() {
         if (!hasKey()) { steamStatus('Para achar pelo nome do perfil preciso da chave da Web API (abaixo). Cole o link com o número (profiles/7656...) ou gere a chave.'); return; }
         steamStatus('Procurando seu perfil na Steam...');
         try {
-            const r = await steamApi('ISteamUser/ResolveVanityURL/v1/', { key: st().apiKey, vanityurl: van[1] });
+            // Sem chave própria o parâmetro fica de fora e o Worker injeta a padrão
+            const p = { vanityurl: van[1] };
+            if (st().apiKey) p.key = st().apiKey;
+            const r = await steamApi('ISteamUser/ResolveVanityURL/v1/', p);
             if (r && r.response && r.response.success === 1) id = r.response.steamid;
-        } catch (e) { steamStatus('Não consegui resolver o nome do perfil. Cole o link com o número (steamcommunity.com/profiles/7656...) ou gere a chave da Web API.'); return; }
+        } catch (e) { steamStatus('Não consegui resolver o nome do perfil. Cole o link com o número (steamcommunity.com/profiles/7656...) ou gere a chave.'); return; }
     }
     if (!id) { steamStatus('Não reconheci o endereço. Cole o link do seu perfil (steamcommunity.com/id/... ou /profiles/...) ou o SteamID64 (17 dígitos).'); return; }
     appData.settings.steam = { ...st(), steamId: id };
@@ -179,7 +191,14 @@ export async function steamSync() {
     if (btn) { btn.disabled = true; btn.textContent = 'Sincronizando...'; }
     steamStatus('Buscando sua biblioteca na Steam...');
     try {
-        const data = await steamApi('IPlayerService/GetOwnedGames/v1/', { key: s.apiKey, steamid: s.steamId, include_appinfo: 1, include_played_free_games: 1, format: 'json' });
+        const data = await steamApi('IPlayerService/GetOwnedGames/v1/', (() => {
+            // Sem chave própria o parâmetro "key" fica FORA da URL: assim o Worker do
+            // projeto injeta a STEAM_DEFAULT_KEY (docs/steam-proxy.md). Um "key="
+            // vazio/"undefined" iria literal na URL e a Steam recusaria com 403.
+            const params = { steamid: s.steamId, include_appinfo: 1, include_played_free_games: 1, format: 'json' };
+            if (s.apiKey) params.key = s.apiKey;
+            return params;
+        })());
         const resp = data && data.response;
         const games = resp && Array.isArray(resp.games) ? resp.games : (resp && resp.game_count === 0 ? [] : null);
         if (!games) throw Object.assign(new Error('vazio'), { empty: true });
@@ -227,7 +246,12 @@ export async function steamSync() {
         hooks.toast(games.length ? `Steam: ${added} ${added === 1 ? 'novo' : 'novos'}, ${updated} atualizados.` : 'A conta não tem jogos para importar.', added > 0);
         if (added) { embedSteamCovers(); enrichSteamGames(newGames); }
     } catch (e) {
-        if (e && e.status === 403) steamStatus('A Steam recusou (403): confira a chave (steamcommunity.com/dev/apikey) e se os "Detalhes do jogo" do seu perfil estão públicos (Privacidade da Steam).');
+        if (e && e.status === 403) {
+            steamStatus(!s.apiKey
+                ? 'A Steam recusou (403): confira se os "Detalhes do jogo" do seu perfil estão públicos (Privacidade da Steam). Se já estão, o servidor do ZeraLog está sem a chave padrão configurada (STEAM_DEFAULT_KEY, docs/steam-proxy.md) — ou cole sua própria chave abaixo, que a sincronização passa a usar a sua.'
+                : 'A Steam recusou (403): confira a chave (steamcommunity.com/dev/apikey) e se os "Detalhes do jogo" do seu perfil estão públicos (Privacidade da Steam).');
+        }
+        else if (e && e.status === 400) steamStatus('A Steam respondeu que falta a chave (400): o servidor do ZeraLog não tem a STEAM_DEFAULT_KEY configurada (o dono do app configura uma vez, veja docs/steam-proxy.md). Enquanto isso, cole sua própria chave abaixo — a sincronização passa a usar a sua.');
         else if (e && e.empty) steamStatus('A Steam respondeu vazio. Deixe os "Detalhes do jogo" do seu perfil públicos nas configurações de privacidade da Steam e tente de novo.');
         else steamStatus(`Todos os proxies públicos falharam (limites de uso deles, é temporário). Tente de novo em alguns minutos. Se for sempre assim, confira se a chave tem 32 caracteres e se os "Detalhes do jogo" do perfil estão públicos.`);
         hooks.toast('A sincronização com a Steam falhou — detalhe em Configurações › Steam.', false);
@@ -241,8 +265,10 @@ export async function steamSync() {
 // Nome e avatar do jogador (Configurações e aba Perfil)
 export async function fetchPersona() {
     const s = st();
-    if (!s.steamId || !s.apiKey) return;
-    const r = await steamApi('ISteamUser/GetPlayerSummaries/v2/', { key: s.apiKey, steamids: s.steamId });
+    if (!s.steamId || !hasKey()) return;   // a chave pode ser a do servidor (Worker): não exige a própria
+    const params = { steamids: s.steamId };
+    if (s.apiKey) params.key = s.apiKey;   // sem chave própria: Worker injeta a padrão
+    const r = await steamApi('ISteamUser/GetPlayerSummaries/v2/', params);
     const pl = r && r.response && r.response.players && r.response.players[0];
     if (pl) {
         appData.settings.steam = { ...st(), persona: pl.personaname || '', avatar: pl.avatarfull || pl.avatarmedium || pl.avatar || '' };   // avatarfull: 184px (o medium é 64px, fica borrado no perfil)

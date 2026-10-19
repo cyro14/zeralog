@@ -57,8 +57,12 @@ export default {
         if (!ALLOWED_HOSTS.has(t.hostname)) {
             return new Response('Host fora da lista permitida do ZeraLog.', { status: 400, headers: corsHeaders() });
         }
-        if (t.hostname === 'api.steampowered.com' && !t.searchParams.get('key') && env.STEAM_DEFAULT_KEY) {
-            t.searchParams.set('key', env.STEAM_DEFAULT_KEY);
+        if (t.hostname === 'api.steampowered.com' && env.STEAM_DEFAULT_KEY) {
+            // Injeta a chave padrão quando a chamada veio sem "key" — inclusive com o
+            // literal "undefined": versões antigas do app (cache do PWA) montavam a
+            // query com valor ausente e geravam "key=undefined", que a Steam recusa.
+            const k = t.searchParams.get('key');
+            if (!k || k === 'undefined') t.searchParams.set('key', env.STEAM_DEFAULT_KEY);
         }
         const headers = {};
         for (const name of FORWARD) {

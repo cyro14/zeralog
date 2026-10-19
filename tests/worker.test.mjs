@@ -84,8 +84,10 @@ test('Worker: a chave padrão da Steam só entra quando o app não manda uma', a
     globalThis.fetch = async (url) => { seen.push(String(url)); return new Response('{}', { status: 200 }); };
     await call('https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/', {}, { STEAM_DEFAULT_KEY: 'chave-do-dono' });
     await call('https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=chave-do-usuario', {}, { STEAM_DEFAULT_KEY: 'chave-do-dono' });
+    await call('https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=undefined&steamid=1', {}, { STEAM_DEFAULT_KEY: 'chave-do-dono' });
     assert(seen[0].includes('key=chave-do-dono'), 'sem chave própria: usa a do dono do Worker');
     assert(seen[1].includes('key=chave-do-usuario') && !seen[1].includes('chave-do-dono'), 'a chave do usuário tem prioridade');
+    assert(seen[2].includes('key=chave-do-dono') && !seen[2].includes('key=undefined'), 'app antigo em cache (key=undefined literal) também recebe a chave do dono');
 });
 
 test('Worker: as lojas continuam recebendo o token delas (Authorization)', async () => {

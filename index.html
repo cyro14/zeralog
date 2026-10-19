@@ -633,12 +633,12 @@
                     <input type="text" id="steam-id-input" placeholder="ou cole o link do seu perfil / SteamID64" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter'){event.preventDefault();steamSaveManualId();}">
                     <button type="button" onclick="steamSaveManualId()">Vincular</button>
                 </div>
-                <label for="steam-key-input" style="font-size: 0.85em; color: var(--text-muted);">Chave da Steam Web API (necessária para importar os jogos):</label>
+                <label for="steam-key-input" style="font-size: 0.85em; color: var(--text-muted);">Chave da Steam Web API (opcional — só se a sincronização não funcionar sozinha):</label>
                 <div style="display: flex; gap: 6px;">
                     <input type="text" id="steam-key-input" placeholder="32 caracteres" autocomplete="off" autocapitalize="off" spellcheck="false" onchange="steamSaveKey(this.value)" style="flex: 1;">
                     <a class="pill-btn" href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener" title="Abrir a página da Steam para gerar sua chave de API grátis" style="display: inline-flex; align-items: center; gap: 5px; text-decoration: none; white-space: nowrap;"><span data-icon="external" data-size="0.95em"></span>Gerar chave</a>
                 </div>
-                <small id="steam-sync-status" style="color: var(--text-muted);">Como usar: com a Steam logada no navegador, clique em "Gerar chave" para criar a chave grátis no site da Steam (o domínio pode ser qualquer um) e deixe os "Detalhes do jogo" do seu perfil públicos (Privacidade da Steam). Os jogos entram na categoria "Steam" com as horas jogadas — e "Sincronizar agora" atualiza as horas e pega jogos novos.</small>
+                <small id="steam-sync-status" style="color: var(--text-muted);">Como usar: clique em "Entrar com a Steam" e faça login — a sincronização da biblioteca começa sozinha. Só deixe os "Detalhes do jogo" do seu perfil públicos (Privacidade da Steam). Se a sincronização reclamar de chave, gere a sua grátis em steamcommunity.com/dev/apikey (com a Steam logada; o domínio pode ser qualquer um) e cole acima. Os jogos entram na categoria "Steam" com as horas jogadas — e "Sincronizar agora" atualiza as horas e pega jogos novos.</small>
                 <details class="steam-adv">
                     <summary>Opções avançadas (proxy CORS)</summary>
                     <small>A Steam não aceita chamadas diretas do navegador, então o app tenta vários proxies públicos automaticamente — em geral <strong>não precisa mexer aqui</strong>. Se os cinco falharem de novo, cole um proxy próprio no formato https://meu-proxy.com/?url=%s (%s vira a URL da Steam).</small>
