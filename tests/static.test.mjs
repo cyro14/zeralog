@@ -264,6 +264,19 @@ test('Buscador de capas: fechado, o dialog some (display só com [open])', () =>
     assert(!html.includes('id="modal-image"'), 'a tela antiga "Editar Capa" saiu do HTML');
 });
 
+// Regressão: no Chrome, as linhas "auto" do grid do buscador colapsavam para a altura
+// de UMA LINHA DE TEXTO (~20px) dentro do dialog com altura restrita (flex + min-height
+// + overflow-y). Os cards com aspect-ratio estouravam as linhas e ficavam UNS SOBRE OS
+// OUTROS — dava para ver só uma faixa de cada imagem. Linhas EXPLÍCITAS seguem o
+// tamanho real do card em qualquer navegador. Medição de layout (headless, 4 cenários
+// capa/fundo × mobile/desktop): 63 pares sobrepostos antes → 0 depois.
+test('Buscador de capas: linhas do grid do tamanho dos cards (imagens nunca sobrepostas)', () => {
+    const css = read(join(ROOT, 'style.css'));
+    const grid = /\.cv-grid\s*\{([^}]*)\}/.exec(css);
+    assert(grid, 'regra .cv-grid existe');
+    assert(/grid-auto-rows\s*:\s*max-content/.test(grid[1]), 'grid-auto-rows: max-content — o auto implícito colapsava e os cards se sobrepunham');
+});
+
 // ---------- 12) GUARDA DO EXPLORAR: painéis de filtros/ordenação legíveis ----------
 // O painel esticava na largura toda (selects de 700px no desktop), os campos de
 // estúdio colavam um no outro e o rodapé vazio desenhava só a borda de cima.
