@@ -148,10 +148,12 @@ body {
     padding: 0;
     margin-bottom: 28px;
 }
-.category-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid color-mix(in srgb, var(--border-color) 65%, transparent); padding-bottom: 8px; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; cursor: pointer; user-select: none; }
-/* Nome da categoria em UMA linha, com reticências: nome comprido não empurra os
-   botões para baixo (a área do título encolhe; os botões nunca encolhem) */
-.cat-title-area { display: flex; align-items: center; gap: 8px; flex-grow: 1; flex-basis: 0; min-width: 0; }
+/* Cabeçalho de categoria em DUAS linhas: o nome fica na primeira linha, na
+   largura toda (inteiro até onde caber, uma linha com reticências só para
+   nomes enormes); os botões descem para a própria linha, embaixo — deixam de
+   roubar a largura do nome. */
+.category-header { display: flex; flex-direction: column; align-items: stretch; gap: 8px; border-bottom: 1px solid color-mix(in srgb, var(--border-color) 65%, transparent); padding-bottom: 8px; margin-bottom: 12px; cursor: pointer; user-select: none; }
+.cat-title-area { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .cat-title-area h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chevron { font-size: 0.8em; color: var(--text-muted); transition: transform 0.3s; flex-shrink: 0; }
 .category h2 { margin: 0; font-size: 1.3em; color: var(--text-main); transition: color 0.2s;}

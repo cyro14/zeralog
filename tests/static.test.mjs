@@ -471,10 +471,11 @@ test('Layout: seções com divisores discretos, sidebar mais baixa e % na barra 
 
 // ---------- 16) CARDS E CATEGORIAS: alinhamento uniforme + categoria compartilhável ----------
 // Explorar e Lançamentos: título de 1 ou 2 linhas não pode mais mover os ícones do
-// card (corpo estica, selo e botões colam no fundo). Categorias: nome comprido não
-// pode mais empurrar os botões para baixo (título em uma linha, botões fixos) — e
-// cada categoria ganhou um botão para compartilhar só ela.
-test('Cards e categorias: zona de baixo alinhada, título em uma linha e botão de compartilhar', () => {
+// card (corpo estica, selo e botões colam no fundo). Categorias: o NOME ganha a
+// primeira linha inteira (uma linha, reticências só em nomes enormes) e os
+// botões ficam numa linha própria, embaixo — e cada categoria tem um botão para
+// compartilhar só ela.
+test('Cards e categorias: zona de baixo alinhada, nome da categoria na própria linha e botão de compartilhar', () => {
     const css = read(join(ROOT, 'style.css'));
     const ui = read(join(JS, 'ui.js'));
     const main = read(join(JS, 'main.js'));
@@ -490,11 +491,15 @@ test('Cards e categorias: zona de baixo alinhada, título em uma linha e botão 
     const wvsrc = read(join(JS, 'wishview.js'));
     assert(/<div class="gm-x-actions">\s*<span class="gm-match/.test(gmsrc), 'Explorar: o selo abre a linha de ações (alinhado com os ícones)');
     assert(/<div class="gm-x-actions">\s*<span class="gm-match/.test(wvsrc), 'Lançamentos: o selo abre a linha de ações (alinhado com os ícones)');
-    // categorias: o nome em UMA linha com reticências; os botões nunca caem pra baixo
+    // categorias: o cabeçalho é em DUAS linhas — nome na primeira (inteiro até onde
+    // caber) e botões na linha de baixo, sem roubar a largura do nome
+    const head = /^\.category-header \{[^}]*\}/m.exec(css);
+    assert(head && head[0].includes('flex-direction: column'), 'cabeçalho da categoria em duas linhas (nome em cima, botões embaixo)');
+    assert(head && !head[0].includes('flex-wrap'), 'nada de embrulhar: nome e botões nunca dividem a mesma linha');
     const title = /^\.cat-title-area h2 \{[^}]*\}/m.exec(css);
-    assert(title && title[0].includes('white-space: nowrap') && title[0].includes('text-overflow: ellipsis'), 'título da categoria em uma linha (reticências)');
+    assert(title && title[0].includes('white-space: nowrap') && title[0].includes('text-overflow: ellipsis'), 'título da categoria em uma linha (reticências só em nomes enormes)');
     assert(/^\.cat-title-area \{[^}]*min-width: 0/m.test(css), 'área do título pode encolher (min-width: 0)');
-    assert(/^\.cat-actions \{[^}]*flex-shrink: 0/m.test(css), 'botões da categoria não encolhem (ficam na mesma linha)');
+    assert(/^\.cat-actions \{[^}]*flex-shrink: 0/m.test(css), 'botões da categoria não encolhem (linha própria embaixo do nome)');
     // e cada categoria tem o botão de compartilhar ela inteira
     assert(/openCategoryShare\('\$\{cat\.id\}'\)/.test(ui), 'o header de cada categoria chama openCategoryShare com o id dela');
     assert(ui.includes('Compartilhar categoria'), 'botão com rótulo acessível');
