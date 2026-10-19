@@ -95,6 +95,10 @@ function installGlobals() {
     };
     globalThis.document = {
         addEventListener() {}, removeEventListener() {},
+        // dispatchEvent existe no navegador (o Steam avisa a troca de foto por
+        // evento, zeralog:photo-changed) — no shim é no-op: cada teste espia
+        // trocando document.dispatchEvent/addEventListener por conta própria
+        dispatchEvent() { return true; },
         createElement: () => { const e = makeEl(); created.push(e); return e; },
         getElementById: id => { if (!byId.has(id)) byId.set(id, makeEl()); return byId.get(id); },
         querySelector: () => null, querySelectorAll: () => [],

@@ -1574,6 +1574,12 @@ export function initGameMatch(deps) {
         if (e.detail.tab === 'gamematch') gmActivate();
         if (e.detail.tab === 'profile') renderGmProfile();   // aba Perfil do app
     });
+    // Os círculos do topo (topbar do desktop + header do mobile) nascem com o
+    // ícone de COROA no HTML — antes, a foto só entrava ao VISITAR a aba Perfil.
+    // Agora pinta no boot com a foto salva no banco e repinta quando a Steam
+    // avisa que a foto mudou em segundo plano (zeralog:photo-changed).
+    document.addEventListener('zeralog:photo-changed', paintTopAvatars);
+    paintTopAvatars();
 }
 
 

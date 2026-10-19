@@ -26,6 +26,12 @@ const st = () => appData.settings.steam || {};
 // ---------- helpers ----------
 function steamStatus(msg) { const el = $('steam-sync-status'); if (el) el.textContent = msg; }
 
+// A foto do topo (coroa → foto do perfil) é pintada pelo GameMatch. Quando a
+// Steam muda ela (avatar chegando em segundo plano, conta desconectada), avisa
+// por EVENTO — evento em vez de import direto para não criar o ciclo
+// Steam ↔ GameMatch (o GameMatch já importa o fetchPersona daqui).
+const photoChanged = () => { document.dispatchEvent(new CustomEvent('zeralog:photo-changed')); };
+
 const normName = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u00ae\u2122\u00a9]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
 // ---------- chamadas à Steam Web API (via proxy CORS) ----------
@@ -147,6 +153,7 @@ export function steamLogout() {
     if (!confirm('Desconectar a Steam? Os jogos já importados continuam na categoria Steam.')) return;
     appData.settings.steam = { ...st(), steamId: null, persona: '', avatar: '', lastSync: null, lastCount: null };
     saveData(() => { hooks.render(); renderSteamSettings(); });
+    photoChanged();   // sem avatar da Steam o topo volta para a coroa (ou mantém a foto enviada)
     hooks.toast('Steam desconectada.', false);
 }
 
@@ -241,6 +248,7 @@ export async function fetchPersona() {
         appData.settings.steam = { ...st(), persona: pl.personaname || '', avatar: pl.avatarfull || pl.avatarmedium || pl.avatar || '' };   // avatarfull: 184px (o medium é 64px, fica borrado no perfil)
         saveData(null);
         renderSteamSettings();
+        photoChanged();   // círculos do topo saem da coroa assim que o avatar chega
     }
 }
 

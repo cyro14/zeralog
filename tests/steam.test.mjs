@@ -43,3 +43,21 @@ test('steamLogout desconecta o usuário mas mantém chave e proxy configurados',
     assertEq(s.apiKey, 'CHAVE', 'chave preservada');
     assertEq(s.proxy, 'https://p.com/?url=%s', 'proxy preservado');
 });
+
+test('Steam avisa o topo quando a foto muda (zeralog:photo-changed)', async () => {
+    // A coroa do header só vira foto quando o topo é repinto — quem pinta são os
+    // círculos do GameMatch. Ao chegar avatar (fetchPersona) e ao desconectar a
+    // conta (steamLogout) a Steam dispara o evento para repintar.
+    const fired = [];
+    const orig = document.dispatchEvent;
+    document.dispatchEvent = ev => { fired.push(ev.type); return true; };
+    try {
+        appData.settings.steam = { steamId: '76561197960287930', apiKey: 'CHAVE' };
+        mockFetch([['GetPlayerSummaries', SUMMARY]]);
+        await fetchPersona();
+        assert(fired.includes('zeralog:photo-changed'), 'avatar chegando dispara o evento (coroa → foto)');
+        appData.settings.steam = { steamId: '123', persona: 'X', avatar: 'https://a.jpg', apiKey: 'CHAVE', proxy: 'https://p.com/?url=%s', catId: 'c1', lastSync: 1, lastCount: 2 };
+        steamLogout();
+    } finally { document.dispatchEvent = orig; }
+    assertEq(fired.filter(t => t === 'zeralog:photo-changed').length, 2, 'desconectar também dispara (foto → coroa)');
+});

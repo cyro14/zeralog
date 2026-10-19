@@ -6,7 +6,8 @@ import { listGames } from '../js/gameApi.js';
 import {
     GM_GENRES, GM_X_STYLES, GM_PLATFORMS, GENRE_RAWG, PLAT_RAWG_IDS,
     profileGenreOf, matchScore, gmIsClean, farFuture, renderGmProfile, exploreParams,
-    releaseWindow, inReleaseWindow, RELEASES_MONTHS_BACK, registeredKeys, gmIsRegistered
+    releaseWindow, inReleaseWindow, RELEASES_MONTHS_BACK, registeredKeys, gmIsRegistered,
+    initGameMatch
 } from '../js/gamematch.js';
 
 test('integridade: TODO gênero do filtro do Explorar tem mapeamento para a RAWG', () => {
@@ -197,6 +198,39 @@ test('perfil: a foto aparece no círculo do topo mesmo sem perfil do GameMatch',
     try { renderGmProfile(); } finally { document.querySelectorAll = orig; }
     assert(circles[0].innerHTML.includes('SEMPERFIL'), 'círculo do desktop pintado sem perfil montado');
     assert(circles[1].innerHTML.includes('SEMPERFIL'), 'círculo do mobile pintado sem perfil montado');
+});
+
+test('perfil: a foto do topo aparece no BOOT (sem precisar visitar a aba Perfil)', () => {
+    // O bug: os círculos do header/topbar nascem com a COROA no HTML e só eram
+    // pintados pela renderGmProfile (ao visitar a aba) — ao abrir o app a
+    // coroa ficava no lugar da foto salva. O initGameMatch pinta no boot.
+    appData.settings.userPhoto = 'data:image/jpeg;base64,FOTOBOOT';
+    const circles = [{ innerHTML: '' }, { innerHTML: '' }];
+    const handlers = {};
+    const origQsa = document.querySelectorAll, origAel = document.addEventListener;
+    document.querySelectorAll = sel => (sel === '.dtb-avatar-wrap' ? circles : []);
+    document.addEventListener = (type, fn) => { handlers[type] = fn; };
+    try {
+        initGameMatch({});
+        assert(circles[0].innerHTML.includes('FOTOBOOT'), 'círculo do desktop pintado no boot');
+        assert(circles[1].innerHTML.includes('FOTOBOOT'), 'círculo do mobile pintado no boot');
+        // avatar da Steam chegando em segundo plano (zeralog:photo-changed) repinta o topo
+        delete appData.settings.userPhoto;
+        appData.settings.steam = { avatar: 'https://avatars/steam_bg.jpg' };
+        circles[0].innerHTML = ''; circles[1].innerHTML = '';
+        assert(handlers['zeralog:photo-changed'], 'initGameMatch escuta o zeralog:photo-changed');
+        handlers['zeralog:photo-changed']();
+        assert(circles[0].innerHTML.includes('steam_bg.jpg'), 'evento repinta o círculo com o avatar da Steam');
+        assert(circles[1].innerHTML.includes('steam_bg.jpg'), 'e o círculo do mobile também');
+        // e sem foto nenhuma o círculo volta para a coroa
+        appData.settings.steam = {};
+        circles[0].innerHTML = '';
+        handlers['zeralog:photo-changed']();
+        assert(circles[0].innerHTML.includes('<svg'), 'sem foto o círculo volta para a coroa');
+    } finally {
+        document.querySelectorAll = origQsa;
+        document.addEventListener = origAel;
+    }
 });
 
 // ---------- Explorar: botões Filtros/Ordenar, painéis e capa vertical ----------
