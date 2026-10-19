@@ -377,18 +377,20 @@ test('Ordenação: a Fila e os Zerados usam botão com painel; Lançamentos impo
 });
 
 // ---------- 17) GUARDA DO HERO "JOGANDO ATUALMENTE": cards altos e centrados + painel escuro ----------
-// O 1fr da grade antiga esticava 1-2 capas pela largura quase toda do painel
-// mantendo a ALTURA FIXA — no celular sobravam capas largas e ACHATADAS.
-// Agora a coluna tem TETO (--cart-max), o que sobra fica nas laterais (grade
-// centralizada) e a ALTURA ACOMPANHA a largura (aspect-ratio): o cartucho
-// fica em pé, alto igual no celular e no desktop. O painel segue num azul
-// quase preto com o roxo concentrado no topo e nas bordas.
-test('Hero "Jogando Atualmente": capas altas e centradas no celular e no desktop', () => {
+// Duas lições travadas aqui:
+// 1) Colunas contadas pelo PISO (máx 1fr): um teto DEFINIDO dentro do minmax
+//    faz o auto-fit contar as colunas pelo teto — o celular ficava em UMA
+//    capa por linha. O teto mora no CARD (max-width + margin auto).
+// 2) Altura PROPORCIONAL à largura (aspect-ratio): sem altura fixa de linha,
+//    a capa fica alta igual no celular e no desktop (nada de faixa achatada).
+// O painel segue num azul quase preto com o roxo no topo e nas bordas.
+test('Hero "Jogando Atualmente": duas capas por linha no celular, altas e centradas', () => {
     const css = read(join(ROOT, 'style.css'));
     const heroGrid = /#playing-category \.game-list\.shelf \{([^}]*)\}/.exec(css);
     assert(heroGrid, 'regra da grade do hero existe');
-    assert(heroGrid[1].includes('repeat(auto-fit, minmax(min(100%, var(--cart-min)), min(100%, var(--cart-max))))'), 'colunas fluidas com TETO: card nunca vira faixa larga e achatada');
-    assert(heroGrid[1].includes('--cart-max: 190px'), 'teto da largura no celular');
+    assert(heroGrid[1].includes('repeat(auto-fit, minmax(min(100%, var(--cart-min)), 1fr))'), 'colunas contadas pelo PISO (máx 1fr): duas por linha no celular');
+    assert(heroGrid[1].includes('--cart-min: 130px'), 'piso baixo para caberem 2 colunas no celular');
+    assert(heroGrid[1].includes('--cart-max: 190px'), 'teto da largura (consumido pelo card)');
     assert(heroGrid[1].includes('justify-content: center'), 'grade centralizada quando sobra espaço');
     assert(heroGrid[1].includes('grid-auto-rows: auto'), 'altura da linha vem do próprio card');
     assert(!heroGrid[1].includes('--row-h'), 'sem altura de linha fixa no hero');
@@ -396,6 +398,8 @@ test('Hero "Jogando Atualmente": capas altas e centradas no celular e no desktop
     const heroItem = /#playing-category \.shelf-item \{([^}]*)\}/.exec(css);
     assert(heroItem, 'regra do item do hero existe');
     assert(heroItem[1].includes('height: auto') && heroItem[1].includes('aspect-ratio: 7 / 10'), 'a altura acompanha a largura (cartucho em pé, proporção de desktop)');
+    assert(heroItem[1].includes('max-width: var(--cart-max)'), 'teto no CARD, não na coluna: um jogo sozinho não vira faixa larga');
+    assert(heroItem[1].includes('margin-inline: auto'), 'card com teto centraliza dentro da coluna');
     // desktop: mesmo comportamento, só com cartuchos maiores
     assert(css.includes('--cart-min: 165px; --cart-max: 210px;'), 'desktop sobe o piso e o teto da largura');
     assert(!/--row-h: (215|270)px/.test(css), 'as alturas fixas do hero (215/270px) saíram de vez');
