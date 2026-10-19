@@ -1594,8 +1594,67 @@ export function shelfDo(fn, id) {
 const scoreChip = m => `<span class="chip score ${m >= 75 ? 'good' : m >= 50 ? 'mid' : 'bad'}" title="Nota Metacritic">Metacritic ${esc(m)}</span>`;
 const franchiseChip = name => `<span class="chip chip-franchise" data-f="${esc(name)}" onclick="filterByFranchise(this.dataset.f)" title="Ver jogos da franquia">${esc(name)}</span>`;
 
-const WISH_SORTS = { release: 'Lançamento', added: 'Adicionado', az: 'A-Z', meta: 'Nota' };
-export function setWishSort(k) { appData.settings.wishSort = WISH_SORTS[k] ? k : 'release'; saveData(() => render()); }
+// ---------- Ordenação da Wish list: botão + painel (mesmo padrão da Fila) ----------
+// A tela usava uma barra de chips (tabs) ocupando a largura toda; agora é o
+// MESMO botão das outras abas, abrindo um painel. "Manual" é a ordem em que
+// você ARRASTA os desejos dentro de cada seção (Em breve / Já lançados).
+const WISH_SORTS = [
+    ['release', 'Lançamento', 'o mais recente primeiro'],
+    ['manual', 'Manual', 'a ordem em que você arrastou'],
+    ['added', 'Adicionado', 'quando você colocou na lista'],
+    ['az', 'A-Z', 'título em ordem alfabética'],
+    ['meta', 'Nota', 'a nota do Metacritic'],
+];
+const wishSortLabel = k => { const s = WISH_SORTS.find(x => x[0] === k); return s ? s[1] : 'Lançamento'; };
+
+function wishListSortPanelHtml() {
+    const cur = appData.settings.wishSort;
+    return `<div class="gm-x-panel-head">
+            <strong class="gm-x-title">Ordenar a wish list</strong>
+            <button type="button" class="gm-x-close" aria-label="Fechar ordenação" onclick="wishListSortClose()">${icon('x', { size: '1em' })}</button>
+        </div>
+        <div class="gm-x-sorts">${WISH_SORTS.map(([k, label, hint]) => `
+        <button type="button" class="gm-x-sort-btn${k === cur ? ' on' : ''}" data-sort="${k}" onclick="setWishSort('${k}')">
+            <span class="gm-sort-name">${esc(label)}</span><small>${esc(hint)}</small><span class="gm-sort-tick">${icon('check', { size: '1em' })}</span>
+        </button>`).join('')}</div>`;
+}
+
+// O botão mostra a ordem ativa; "Lançamento" é o padrão de fábrica e fica neutro
+function paintWishListSort() {
+    const s = appData.settings.wishSort;
+    const btn = document.getElementById('wish-sortlist-btn');
+    if (btn) btn.classList.toggle('on', s !== 'release');
+    const label = document.getElementById('wish-sortlist-label');
+    if (label) label.textContent = s === 'release' ? 'Ordenar' : wishSortLabel(s);
+}
+
+export function wishListSortClose() {
+    const panel = document.getElementById('wish-sortlist-panel');
+    if (panel) panel.hidden = true;
+    const btn = document.getElementById('wish-sortlist-btn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+export function wishListSortToggle() {
+    const panel = document.getElementById('wish-sortlist-panel');
+    if (!panel) return;
+    const open = panel.hidden;
+    if (open) panel.innerHTML = wishListSortPanelHtml();   // nasce com a ordem atual marcada
+    panel.hidden = !open;
+    const btn = document.getElementById('wish-sortlist-btn');
+    if (btn) btn.setAttribute('aria-expanded', String(open));
+}
+
+// Clique fora fecha o painel (sem fechar ao clicar no próprio botão, que alterna)
+document.addEventListener('click', e => {
+    const panel = document.getElementById('wish-sortlist-panel');
+    if (!panel || panel.hidden) return;
+    const t = e.target;
+    if (t && t.closest && (t.closest('#wish-sortlist-panel') || t.closest('#wish-sortlist-btn'))) return;
+    wishListSortClose();
+}, true);
+
+export function setWishSort(k) { appData.settings.wishSort = WISH_SORTS.some(s => s[0] === k) ? k : 'release'; wishListSortClose(); saveData(() => render()); }
 export function setWishView(v) { appData.settings.wishView = v === 'shelf' ? 'shelf' : 'list'; saveData(() => render()); }
 
 function wishReleaseHtml(w) {
@@ -1663,11 +1722,12 @@ export function wishSections(items) {
     // Jogos sem data ficam na mesma seção do "Em breve" (por último dentro dela)
     const st = w => releaseState(w);
     const dated = w => st(w) === 'future' || st(w) === 'today';
-    const upcoming = items.filter(w => st(w) !== 'released').sort((a, b) => {
+    // "Manual" é a ordem em que você ARRASTA: as seções só agrupam, não ordenam
+    const upcoming = items.filter(w => st(w) !== 'released').sort(sort === 'manual' ? () => 0 : (a, b) => {
         const da = dated(a) ? a.released : '9999', db = dated(b) ? b.released : '9999';
         return da.localeCompare(db) || cmp(a, b);
     });
-    const released = items.filter(w => st(w) === 'released').sort(sort === 'release' ? (a, b) => b.released.localeCompare(a.released) : cmp);
+    const released = items.filter(w => st(w) === 'released').sort(sort === 'release' ? (a, b) => b.released.localeCompare(a.released) : (sort === 'manual' ? () => 0 : cmp));
     return [{ key: 'soon', title: 'Em breve', list: upcoming }, { key: 'out', title: 'Já lançados', list: released }].filter(s => s.list.length);
 }
 
@@ -1696,7 +1756,7 @@ export function renderWishlist() {
     const box = document.getElementById('wish-list-container');
     const all = appData.wishlist || [];
     document.getElementById('count-wish').innerText = all.length;
-    Object.keys(WISH_SORTS).forEach(k => { const el = document.getElementById(`sort-wish-${k}`); if (el) el.classList.toggle('active', appData.settings.wishSort === k); });
+    paintWishListSort();   // o botão de ordenação (as tabs antigas saíram)
     box.innerHTML = '';
     renderWishSummary(all);
     if (!all.length) { box.innerHTML = '<div class="empty-state">Sua Wish list está vazia. Use o botão <strong>+ Desejo</strong> para cadastrar um jogo — ou abra a tela <strong>Lançamentos</strong>, logo aqui em cima, para ver o que vem por aí.</div>'; return; }
@@ -1705,7 +1765,8 @@ export function renderWishlist() {
     wishSections(items).forEach(sec => {
         const cat = document.createElement('div');
         cat.className = `category wish-sec wish-${sec.key}`;
-        cat.innerHTML = `<div class="category-header"><div class="cat-title-area"><h2>${sec.title}</h2><span class="chip">${sec.list.length}</span></div></div><div class="game-list-wrapper"><ul class="game-list"></ul></div>`;
+        // id na lista: o arrasto da wishlist (dragdrop.js) acha a seção por ele
+        cat.innerHTML = `<div class="category-header"><div class="cat-title-area"><h2>${sec.title}</h2><span class="chip">${sec.list.length}</span></div></div><div class="game-list-wrapper"><ul class="game-list" id="wish-list-${sec.key}"></ul></div>`;
         const ul = cat.querySelector('ul');
         ul.classList.add('shelf');
         sec.list.forEach(w => ul.appendChild(createShelfItem(w, 'wish')));

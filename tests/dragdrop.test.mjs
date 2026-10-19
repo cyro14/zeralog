@@ -152,6 +152,45 @@ test('applyDrop: alvo inválido é recusado (nada acontece)', () => {
     assertEq(appData.games.map(g => g.id).join(','), 'a,b', 'array intacto');
 });
 
+test('applyDrop: arrastar na WISHLIST reordena e pede ordem MANUAL', () => {
+    appData.categories = [];
+    appData.settings.sort = 'manual';
+    appData.settings.wishSort = 'release';
+    appData.wishlist = [
+        { id: 'w1', title: 'Futuro A', released: '2099-01-01' },
+        { id: 'w3', title: 'Futuro C', released: '2099-06-01' },
+    ];
+    const res = applyDrop('w3', 'w1', true, { kind: 'wish', id: 'soon' });
+    assert(res && res.flipped && res.wish && !res.statusChanged, 'reordenou a wishlist e virou manual');
+    assertEq(appData.settings.wishSort, 'manual', 'wishSort virou manual');
+    assertEq(appData.settings.sort, 'manual', 'a ordenação da FILA nem foi tocada');
+    assertEq(appData.wishlist.map(w => w.id).join(','), 'w3,w1', 'posição aplicada no ARRAY da wishlist (não no de jogos)');
+    assertEq(appData.games.length, 0, 'e os jogos da biblioteca continuam lá');
+});
+
+test('applyDrop: cruzar "Em breve" ↔ "Já lançados" é recusado (a data manda)', () => {
+    appData.categories = [];
+    appData.settings.wishSort = 'manual';
+    appData.wishlist = [
+        { id: 'w1', title: 'Futuro A', released: '2099-01-01' },
+        { id: 'w2', title: 'Lançado B', released: '2020-01-01' },
+    ];
+    assertEq(applyDrop('w1', 'w2', true, { kind: 'wish', id: 'out' }), null, 'futuro não entra em "Já lançados"');
+    assertEq(applyDrop('w2', 'w1', true, { kind: 'wish', id: 'soon' }), null, 'e lançado não volta para "Em breve"');
+    assertEq(appData.wishlist.map(w => w.id).join(','), 'w1,w2', 'nada foi mexido');
+});
+
+test('placeGame: fim da seção da wishlist conta só os desejos DELA', () => {
+    const wishes = [
+        { id: 's1', released: '2099-01-01' },
+        { id: 'out1', released: '2020-01-01' },
+        { id: 's2', released: '2099-02-01' },
+    ];
+    placeGame(wishes, 's1', null, true, { kind: 'wish', id: 'soon' });
+    // o fim de "Em breve" é o último futuro — o lançado no meio não conta
+    assertEq(wishes.map(w => w.id).join(','), 'out1,s2,s1', 's1 caiu depois do último "Em breve"');
+});
+
 test('Prateleira: o cartucho leva o id do jogo (o arrasto lê dele)', async () => {
     const { createShelfItem } = await import('../js/ui.js');
     const li = createShelfItem({ id: 'drag1', title: 'Jogo Arrastável', platform: 'PC', state: 'playing', catId: 'c1' });

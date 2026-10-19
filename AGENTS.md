@@ -79,12 +79,15 @@ pegariam os dois hoje.
   Atualmente", dourada com `.done` quando completa), sanfona de jogos e
   sugestões da RAWG. Testes: `tests/franchises.test.mjs`.
 - `js/dragdrop.js` — arrastar jogos da Fila (Pointer Events: mover com o mouse
-  ou SEGURAR no toque): troca posição na seção, move entre categorias e TROCA
-  O STATUS sozinho (hero = jogando, contínuos = jogo contínuo, prateleira =
-  volta pra fila). O núcleo é puro e testado (`placeGame`/`applyDrop` — a ordem
-  manual é a ordem de `appData.games`; contínuos se ordenam por horas, sem
-  flip pra manual). A troca pinta antes e grava o banco depois do frame (o
-  snapshot/serialização no soltar era o lag). Testes: `tests/dragdrop.test.mjs`.
+  ou SEGURAR no toque; o `contextmenu` das capas é bloqueado no celular):
+  troca posição na seção, move entre categorias e TROCA O STATUS sozinho
+  (hero = jogando, contínuos = jogo contínuo, prateleira = volta pra fila).
+  Na WISHLIST reordena os desejos dentro de "Em breve"/"Já lançados" (cruzar
+  seções é recusado — a data de lançamento manda) e pede a ordenação Manual.
+  O núcleo é puro e testado (`placeGame`/`applyDrop` — a ordem manual é a
+  ordem de `appData.games`/`appData.wishlist`; contínuos se ordenam por horas,
+  sem flip pra manual). A troca pinta antes e grava o banco depois do frame
+  (o snapshot/serialização no soltar era o lag). Testes: `tests/dragdrop.test.mjs`.
 - `js/covers.js` — capas e fundos: `autoVerticalCover` (capa vertical em
   streaming), `autoBanner` (fundo horizontal automático — devolve só a URL, que
   fica no campo `banner` do jogo), `bannerUrlOf` (userBanner > banner) e o

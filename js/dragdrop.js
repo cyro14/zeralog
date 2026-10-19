@@ -18,6 +18,7 @@
 // ============================================================================
 import { appData, saveData } from './store.js';
 import { render, triggerToast } from './ui.js';
+import { releaseState } from './releases.js';
 
 const HOLD_MS = 260;    // toque: quanto tempo segurar para pegar o cartucho
 const ARM_PX = 7;       // mouse: quanto mover para começar a arrastar
@@ -25,29 +26,35 @@ const SCROLL_PX = 12;   // toque: mover além disso antes de segurar = rolagem (
 
 const isFilaCat = id => !!id && appData.categories.some(c => c.id === id);
 
-// Seção da Fila: uma prateleira de categoria, o hero ou os contínuos. As
-// listas seguem o padrão list-<id da categoria>, list-playing e list-continuous
-// (as prateleiras dos Zerados e da wishlist não têm id — ficam fora).
+// Seção arrastável: uma prateleira de categoria, o hero, os contínuos (todos na
+// aba Fila) ou uma seção da WISHLIST ("Em breve" / "Já lançados").
 function sectionOfList(ul) {
-    if (!ul || !ul.id || !ul.id.startsWith('list-')) return null;
+    if (!ul || !ul.id) return null;
+    if (ul.id === 'wish-list-soon') return { kind: 'wish', id: 'soon' };
+    if (ul.id === 'wish-list-out') return { kind: 'wish', id: 'out' };
+    if (!ul.id.startsWith('list-')) return null;
     const id = ul.id.slice(5);
     if (id === 'playing') return { kind: 'playing' };
     if (id === 'continuous') return { kind: 'continuous' };
     return isFilaCat(id) ? { kind: 'cat', id } : null;
 }
 function sectionOfCategory(el) {
-    if (!el || !el.id) return null;
+    if (!el) return null;
+    // wishlist: as seções nascem de classes (wish-sec wish-soon / wish-out)
+    if (el.classList && el.classList.contains('wish-sec')) return { kind: 'wish', id: el.classList.contains('wish-out') ? 'out' : 'soon' };
+    if (!el.id) return null;
     if (el.id === 'playing-category') return { kind: 'playing' };
     if (el.id === 'continuous-category') return { kind: 'continuous' };
     return isFilaCat(el.id) ? { kind: 'cat', id: el.id } : null;
 }
-const listIdOf = sec => sec.kind === 'cat' ? `list-${sec.id}` : `list-${sec.kind}`;
+const listIdOf = sec => sec.kind === 'wish' ? `wish-list-${sec.id}` : sec.kind === 'cat' ? `list-${sec.id}` : `list-${sec.kind}`;
 
 // O jogo pertence à seção? (define o "fim da seção" quando não há referência)
 function inSection(g, sec) {
     if (sec.kind === 'cat') return g.catId === sec.id && !g.state && !g.continuous;
     if (sec.kind === 'playing') return g.state === 'playing' && !g.continuous;
-    return !!g.continuous;
+    if (sec.kind === 'continuous') return !!g.continuous;
+    return sec.id === 'out' ? releaseState(g) === 'released' : releaseState(g) !== 'released';   // wish: Em breve / Já lançados
 }
 
 // ================= NÚCLEO (testado direto em tests/dragdrop.test.mjs) =================
@@ -72,6 +79,7 @@ export function placeGame(games, dragId, ref, before, sec) {
 
 // Estado que o jogo ganha ao cair na seção (o arrasto TROCA O STATUS sozinho)
 function landOnSection(g, sec) {
+    if (sec.kind === 'wish') return { statusChanged: false, catChanged: false, wasPlaying: false, wasContinuous: false };   // desejo continua desejo
     const wasPlaying = g.state === 'playing', wasContinuous = !!g.continuous, wasCat = g.catId;
     if (sec.kind === 'cat') { g.state = null; g.continuous = false; g.catId = sec.id; }
     else if (sec.kind === 'playing') { g.state = 'playing'; g.continuous = false; }
@@ -83,18 +91,23 @@ function landOnSection(g, sec) {
     };
 }
 
-// Aplica o soltar no banco: troca o status/categoria, posiciona e, se a Fila
+// Aplica o soltar no banco: troca o status/categoria, posiciona e, se a tela
 // estiver com outra ordenação, volta para a MANUAL (arrastar É ordem manual —
 // exceto nos contínuos, que se ordenam pelas horas jogadas).
 export function applyDrop(dragId, ref, before, sec) {
-    const game = appData.games.find(g => g.id === dragId);
+    const arr = sec && sec.kind === 'wish' ? (appData.wishlist || []) : appData.games;   // a wishlist é outro array
+    const game = arr.find(g => g.id === dragId);
     if (!game || !sec || (sec.kind === 'cat' && !isFilaCat(sec.id))) return null;
     const same = inSection(game, sec);   // já estava na seção? então é só reordenar
-    const flip = same && sec.kind !== 'continuous' && appData.settings.sort !== 'manual';
-    if (flip) appData.settings.sort = 'manual';
+    // As seções da wishlist vêm da DATA de lançamento: cruzar "Em breve" ↔
+    // "Já lançados" não é arrasto — mover o cartucho não muda a data do jogo.
+    if (sec.kind === 'wish' && !same) return null;
+    const sortKey = sec.kind === 'wish' ? 'wishSort' : 'sort';
+    const flip = same && sec.kind !== 'continuous' && appData.settings[sortKey] !== 'manual';
+    if (flip) appData.settings[sortKey] = 'manual';
     const landed = landOnSection(game, sec);
-    placeGame(appData.games, dragId, ref, before, sec);
-    return { ...landed, flipped: flip };
+    placeGame(arr, dragId, ref, before, sec);
+    return { ...landed, flipped: flip, wish: sec.kind === 'wish' };
 }
 
 // ================= UI: pegar, arrastar e soltar =================
@@ -247,16 +260,22 @@ function onUp(e) {
     // sem retrato de estado para o Desfazer: arrastar é manipulação direta —
     // arrastar de volta é o desfazer (e o snapshot serializava tudo, era o lag)
     if (msg) triggerToast(msg, false);
-    else if (res.flipped) triggerToast('Ordenação da Fila trocada para manual.', false);
+    else if (res.flipped) triggerToast(res.wish ? 'Ordenação da Wish list trocada para manual.' : 'Ordenação da Fila trocada para manual.', false);
     suppressClick();
 }
 
 function onCancel() { cleanupDrag(); }
 
 export function initDragDrop() {
-    const tab = document.getElementById('tab-home');
-    if (!tab) return;
-    tab.addEventListener('pointerdown', onDown);
-    // o <img> das capas é arrastável por padrão no desktop: não pode roubar o gesto
-    tab.addEventListener('dragstart', e => { if (e.target && e.target.closest && e.target.closest('.shelf-item')) e.preventDefault(); });
+    // Fila (prateleiras, hero e contínuos) e Wish list (Em breve / Já lançados)
+    ['tab-home', 'tab-wish'].forEach(id => {
+        const tab = document.getElementById(id);
+        if (!tab) return;
+        tab.addEventListener('pointerdown', onDown);
+        // o <img> das capas é arrastável por padrão no desktop: não pode roubar o gesto
+        tab.addEventListener('dragstart', e => { if (e.target && e.target.closest && e.target.closest('.shelf-item')) e.preventDefault(); });
+    });
+    // Toque longo na capa não pode abrir o menu do navegador (salvar/abrir
+    // imagem): no celular esse gesto é do ARRASTO — em qualquer prateleira do app
+    document.addEventListener('contextmenu', e => { if (e.target && e.target.closest && e.target.closest('.shelf-item')) e.preventDefault(); });
 }

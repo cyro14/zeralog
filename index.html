@@ -246,17 +246,13 @@
             <div class="tab-tools" data-tab="wish">
                 <button type="button" class="tool-btn wish-add" onclick="openGameModal('wishlist')"><span data-icon="plus" data-size="1em"></span>Desejo</button>
                 <button type="button" class="tool-btn" onclick="openFilters('wish')"><span data-icon="filter" data-size="1em"></span>Filtros<span class="tool-count" id="fb-wish" style="display:none"></span></button>
+                <button type="button" class="tool-btn" id="wish-sortlist-btn" onclick="wishListSortToggle()" aria-haspopup="true" aria-expanded="false" title="Ordenar a wish list"><span data-icon="sort" data-size="1em"></span><span id="wish-sortlist-label">Ordenar</span></button>
                 <button type="button" class="tool-btn" onclick="openShare('wish')"><span data-icon="share2" data-size="1em"></span>Compartilhar</button>
                 <button type="button" class="tool-btn" id="wish-refresh-btn" onclick="refreshDatesUI()"><span data-icon="refresh" data-size="1em"></span>Atualizar datas</button>
+                <div class="gm-x-panel" id="wish-sortlist-panel" hidden></div>
             </div>
             <div class="filter-chips" id="fc-wish" style="display:none"></div>
             <small id="wish-refresh-status" class="wish-refresh-status"></small>
-            <div class="sort-bar" id="wish-sort-bar">
-                <div class="sort-chip" id="sort-wish-release" onclick="setWishSort('release')">Lançamento</div>
-                <div class="sort-chip" id="sort-wish-added" onclick="setWishSort('added')">Adicionado</div>
-                <div class="sort-chip" id="sort-wish-az" onclick="setWishSort('az')">A-Z</div>
-                <div class="sort-chip" id="sort-wish-meta" onclick="setWishSort('meta')">Nota</div>
-            </div>
             <div id="wish-list-container"></div>
         </section>
 

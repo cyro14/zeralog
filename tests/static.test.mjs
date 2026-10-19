@@ -112,10 +112,10 @@ test('Módulos: todo import nomeado existe como export no módulo alvo', () => {
 // ---------- 4) GUARDA DE HTML: ids essenciais usados pelo JS existem no index.html ----------
 test('HTML: ids essenciais referenciados pelo JS existem no index.html', () => {
     const html = read(join(ROOT, 'index.html'));
-    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-x-owned', 'gm-classic-decades', 'quick-match', 'qm-body', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'fin-sort-btn', 'fin-sort-panel', 'modal-ach', 'ach-detail', 'sh-style-timeline', 'wish-pane-list', 'wish-pane-releases', 'wish-sub-list', 'wish-sub-releases', 'wish-releases-grid', 'wish-summary', 'wish-list-container', 'wish-filter-btn', 'wish-sort-btn', 'wish-x-filter-panel', 'wish-x-sort-panel', 'wish-x-genre', 'wish-x-plat', 'wish-dev-filter', 'wish-pub-filter', 'home-sort-btn', 'home-sort-panel'])
+    for (const id of ['gm-profile', 'gm-explore-filters', 'gm-explore-grid', 'tab-profile', 'gm-x-genre', 'gm-x-plat', 'gm-dev-filter', 'gm-pub-filter', 'gm-x-owned', 'gm-classic-decades', 'quick-match', 'qm-body', 'sh-tiny', 'fin-view-timeline', 'fin-view-shelf', 'fin-sort-btn', 'fin-sort-panel', 'modal-ach', 'ach-detail', 'sh-style-timeline', 'wish-pane-list', 'wish-pane-releases', 'wish-sub-list', 'wish-sub-releases', 'wish-releases-grid', 'wish-summary', 'wish-list-container', 'wish-filter-btn', 'wish-sort-btn', 'wish-x-filter-panel', 'wish-x-sort-panel', 'wish-x-genre', 'wish-x-plat', 'wish-dev-filter', 'wish-pub-filter', 'home-sort-btn', 'home-sort-panel', 'wish-sortlist-btn', 'wish-sortlist-panel'])
         assert(html.includes(`id="${id}"`), `index.html deveria ter #${id}`);
     // ids que FORAM REMOVIDOS não podem estar no HTML (senão o JS pode tentar usá-los de volta)
-    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips', 'qm-count', 'home-sort-bar', 'sort-home-manual', 'sort-home-az', 'sort-home-time', 'sort-home-meta', 'fin-sort-bar', 'sort-fin-date', 'sort-fin-rating', 'sort-fin-time', 'sort-fin-played', 'sort-fin-portable'])
+    for (const gone of ['fin-view-list', 'home-view-list', 'home-view-shelf', 'wish-view-list', 'wish-view-shelf', 'compact-toggle', 'sh-style-cards', 'sh-chips', 'qm-count', 'home-sort-bar', 'sort-home-manual', 'sort-home-az', 'sort-home-time', 'sort-home-meta', 'fin-sort-bar', 'sort-fin-date', 'sort-fin-rating', 'sort-fin-time', 'sort-fin-played', 'sort-fin-portable', 'wish-sort-bar', 'sort-wish-release', 'sort-wish-added', 'sort-wish-az', 'sort-wish-meta'])
         assert(!html.includes(`id="${gone}"`), `index.html NÃO deveria ter #${gone} (foi removido)`);
     // o botão de sortear não tem mais números nem o "Sortear agora!" de cima
     assert(!html.includes('Sortear agora!'), 'o botão de sortear em cima foi removido (o confirmar é no final do carrossel)');
@@ -350,6 +350,17 @@ test('Ordenação: a Fila e os Zerados usam botão com painel; Lançamentos impo
     assert(ui.includes('function paintHomeSort'), 'o render pinta o botão (ordem ativa) a cada redesenho');
     // o painel abre ancorado na barra de ferramentas, não no botãozinho de 90px
     assert(/\.tab-tools\s*\{[^}]*position:\s*relative/.test(css), '.tab-tools posiciona o painel de ordenação');
+    // Wish LIST: a MESMA troca — as tabs de ordenação (Lançamento/Adicionado/
+    // A-Z/Nota) saíram e o botão com painel entrou (com a opção Manual p/ arrastar)
+    const wishList = html.slice(html.indexOf('id="wish-pane-list"'), html.indexOf('id="wish-pane-releases"'));
+    assert(!wishList.includes('class="sort-bar"'), 'a Wish list não tem mais tabs de ordenação');
+    const wlAt = wishList.indexOf('id="wish-sortlist-btn"');
+    assert(wlAt > -1, 'a Wish list tem o botão de ordenação');
+    assert(wishList.slice(wlAt, wishList.indexOf('</button>', wlAt)).includes('wishListSortToggle()'), 'o botão abre o painel');
+    assert(wishList.includes('id="wish-sortlist-panel"'), 'e o painel existe dentro da barra de ferramentas');
+    assert(ui.includes('function wishListSortPanelHtml'), 'o painel da Wish list é montado no ui.js');
+    assert(ui.includes('function paintWishListSort'), 'o render pinta o botão (ordem ativa) a cada redesenho');
+    assert(ui.includes("['manual', 'Manual', 'a ordem em que você arrastou']"), 'com a opção Manual (a ordem do arrasto)');
     // Lançamentos da wishlist: os MESMOS botões e painéis do Explorar, com estado próprio
     const wish = html.slice(html.indexOf('id="wish-pane-releases"'), html.indexOf('<!-- FINISHED TAB -->'));
     for (const id of ['wish-filter-btn', 'wish-sort-btn', 'wish-x-filter-panel', 'wish-x-sort-panel', 'wish-filter-foot', 'wish-filter-clear'])

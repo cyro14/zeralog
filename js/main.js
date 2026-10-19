@@ -3,7 +3,7 @@ import { initStorageUI, restoreSnapshotUI, clearLegacyCopyUI } from './storage-u
 import { openShare, openCardGenerator, initShare, shareSetStyle, sharePage, shareTitleChanged, shareTitlesChanged, shareDownload, shareShare, canShareFiles } from './share.js';
 import { initFilters, openFilters, filtersClear, filtersSaveCurrent, filterSummary } from './filters.js';
 import { checkReleases, refreshReleaseDates, registerPeriodicCheck, fmtDate } from './releases.js';
-import { getTabGames, setWishSort, toggleWishNotify, refreshDatesUI, paintWishNotify } from './ui.js';
+import { getTabGames, setWishSort, wishListSortToggle, wishListSortClose, toggleWishNotify, refreshDatesUI, paintWishNotify } from './ui.js';
 import { initWishView, wishSubShow, wishReleasesLoad, wishReleasesMore, wishReleasesAdd, wishFilterToggle, wishSortToggle, wishFilterGenre, wishFilterPlat, wishFilterClear, wishFilterRemove, wishSort, wishClosePanels } from './wishview.js';
 import { hydrateIcons } from './icons.js';
 import { applyTheme, currentTheme } from './themes.js';
@@ -42,7 +42,7 @@ window.viewImage = viewImage;   // visualizador de screenshot (os cards da galer
 window.openAchDetail = openAchDetail;   // detalhe da conquista (como desbloquear)
 Object.assign(window, {
     openFilters, filtersClear, filtersSaveCurrent, shareSetStyle, sharePage, shareTitleChanged, shareTitlesChanged, shareDownload, shareShare,
-    setWishSort, toggleWishNotify, refreshDatesUI, paintWishNotify,
+    setWishSort, wishListSortToggle, wishListSortClose, toggleWishNotify, refreshDatesUI, paintWishNotify,
     wishSubShow, wishReleasesLoad, wishReleasesMore, wishReleasesAdd,
     wishFilterToggle, wishSortToggle, wishFilterGenre, wishFilterPlat, wishFilterClear, wishFilterRemove, wishSort, wishClosePanels,
     openShare: tab => {

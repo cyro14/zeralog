@@ -152,6 +152,31 @@ test('wishlist: sem botão de diário (diário é só dos jogos da biblioteca)',
     assert(!lastPage().innerHTML.includes('gp-sec-foot'), 'sem rodapé de diário na wishlist');
 });
 
+test('Wishlist: ordenação MANUAL mantém a ordem arrastada (as seções só agrupam)', async () => {
+    const { wishSections, setWishSort } = await import('../js/ui.js');
+    appData.wishlist = [
+        { id: 's2', title: 'Futuro C', released: '2099-06-01' },
+        { id: 'out2', title: 'Lançado D', released: '2019-01-01' },
+        { id: 's1', title: 'Futuro A', released: '2099-01-01' },
+        { id: 'out1', title: 'Lançado B', released: '2020-01-01' },
+    ];
+    appData.settings.wishSort = 'manual';
+    let secs = wishSections(appData.wishlist);
+    assertEq(secs.map(s => s.key).join(','), 'soon,out', 'as duas seções na ordem da tela');
+    assertEq(secs[0].list.map(w => w.id).join(','), 's2,s1', 'Em breve na ordem do array (não por data)');
+    assertEq(secs[1].list.map(w => w.id).join(','), 'out2,out1', 'Já lançados também');
+    // nas outras ordenações continua ordenando como sempre
+    appData.settings.wishSort = 'release';
+    secs = wishSections(appData.wishlist);
+    assertEq(secs[0].list.map(w => w.id).join(','), 's1,s2', 'por lançamento: futuros pela data');
+    assertEq(secs[1].list.map(w => w.id).join(','), 'out1,out2', 'lançados: o mais recente primeiro');
+    // e o seletor valida as chaves (a antiga sem "manual" cai no padrão)
+    try { setWishSort('manual'); } catch (e) { /* o render do shim pode falhar; a escolha é o que interessa */ }
+    assertEq(appData.settings.wishSort, 'manual', 'manual é uma ordenação válida da wish list');
+    try { setWishSort('chave-nova'); } catch (e) { /* idem */ }
+    assertEq(appData.settings.wishSort, 'release', 'chave desconhecida cai em Lançamento');
+});
+
 // ---------- Fundo automático nos dados do jogo (campo `banner`) ----------
 // A busca automática escolhe uma arte HORIZONTAL e guarda só a URL no jogo: a página
 // abre com o fundo no lugar, sem depender de fetch (o <img> não passa por CORS — era
