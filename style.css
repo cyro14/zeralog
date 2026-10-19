@@ -896,10 +896,7 @@ body.compact-mode .gi-chips, body.compact-mode .gi-progress, body.compact-mode .
 .franchise-summary span + span::before { content: "·"; margin-right: 14px; opacity: 0.6; }
 .franchise-summary strong { color: var(--accent-playing); font-size: 1.12em; }
 .fr-done { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: rgba(255, 215, 0, 0.14); border: 1px solid rgba(255, 215, 0, 0.45); color: var(--star-color); font-weight: 700; margin-left: 8px; font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.05em; }
-.fr-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; }
-.fr-head span { font-size: 0.85em; color: var(--text-muted); white-space: nowrap; }
-.fr-item small { display: block; margin-top: 4px; color: var(--text-muted); }
-.fr-item.complete .gi-bar span { background: var(--star-color); }
+.fr-item small { display: block; color: var(--text-muted); }
 
 /* ===== Linha do tempo (Zerados): cada mês é uma prateleira de cartuchos ===== */
 .view-toggle { display: inline-flex; border: 1px solid var(--border-color); border-radius: 999px; overflow: hidden; margin-bottom: 14px; }
@@ -1083,17 +1080,24 @@ body.session-on { padding-top: calc(20px + 42px + env(safe-area-inset-top, 0px))
 .fr-item.open { border-color: var(--accent-playing); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); }
 .fr-item.complete { border-color: rgba(255, 215, 0, 0.45); }
 .fr-item.complete.open { border-color: var(--star-color); }
-.fr-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: transparent; color: var(--text-main); padding: 14px 16px 10px; border-radius: 0; font-weight: 400; text-align: left; }
+.fr-toggle { width: 100%; display: flex; align-items: center; gap: 14px; background: transparent; color: var(--text-main); padding: 14px 16px; border-radius: 0; font-weight: 400; text-align: left; }
 .fr-toggle:hover { opacity: 1; }
 .fr-chevron { display: inline-flex; color: var(--text-muted); transition: transform 0.2s; }
 .fr-item.open .fr-chevron { transform: rotate(180deg); color: var(--accent-playing); }
-.fr-toggle .fr-head { flex: 1; min-width: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 0; }
-.fr-toggle .fr-head strong { font-size: 1.02em; }
-.fr-item .gi-bar { height: 8px; border-radius: 999px; margin: 0 16px; background: rgba(128, 128, 128, 0.18); }
-.fr-item .gi-bar span { background: linear-gradient(90deg, var(--chart-finished, var(--accent-finished)), color-mix(in srgb, var(--chart-finished, var(--accent-finished)) 45%, #ffffff)); border-radius: 999px; }
-.fr-extra { display: block; margin: 6px 16px 12px; color: var(--text-muted); }
-.fr-cover { width: 32px; height: 48px; flex-shrink: 0; border-radius: 5px; overflow: hidden; border: 1px solid var(--border-color); background: var(--card-bg); }
-.fr-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Caixa de capa da franquia: capa GRANDE do jogo mais antigo com a barra de
+   progresso (% de zerados) na base — o MESMO desenho do hero "Jogando
+   Atualmente" (shelf-prog com a legenda na própria barra). */
+.fr-box { position: relative; width: clamp(88px, 26vw, 112px); aspect-ratio: 7 / 10; flex-shrink: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--border-color); background: linear-gradient(#3a3a42, #1e1e24); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3); }
+.fr-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fr-box-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+/* A barra mora SOBRE a capa (porcentagem na capa, como pediu o herói): id na
+   frente para vencer o ajuste do modo "prateleira limpa" do shelf comum */
+#franchise-stats .fr-box .shelf-prog { left: 6px; right: 6px; bottom: 5px; }
+.fr-item.complete .fr-box { border-color: var(--star-color); box-shadow: 0 0 0 2px color-mix(in srgb, var(--star-color) 40%, transparent), 0 6px 14px rgba(0, 0, 0, 0.3); }
+.fr-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.fr-meta strong { font-size: 1.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fr-count { font-size: 0.85em; color: var(--text-muted); white-space: nowrap; }
+.fr-extra { margin: 2px 0 0; }
 .fr-panel { margin: 4px 16px 16px; padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; display: flex; flex-direction: column; gap: 12px; }
 .fr-actions .fr-share { display: inline-flex; align-items: center; gap: 6px; border-color: var(--accent-playing); color: var(--accent-playing); }
 .fr-actions .fr-share:hover { background: color-mix(in srgb, var(--accent-playing) 14%, transparent); color: var(--accent-playing); }

@@ -141,17 +141,23 @@ export function renderFranchiseStats() {
         const full = f.total >= 2 && f.done === f.total;
         const isOpen = f.key === openKey;
         const extra = [f.playing ? `${f.playing} jogando` : '', f.wish ? `+${f.wish} na wishlist` : ''].filter(Boolean).join(' · ');
+        const cover = f.earliestGame && f.earliestGame.image;
+        // Caixa de capa GRANDE no mesmo desenho do hero "Jogando Atualmente":
+        // a capa do jogo mais antigo da franquia com a barra de progresso e a
+        // PORCENTAGEM DE ZERADOS na base (shelf-prog) — dourada quando completa.
         return `<div class="fr-item ${full ? 'complete' : ''} ${isOpen ? 'open' : ''}" data-key="${esc(f.key)}">
             <button type="button" class="fr-toggle" data-act="toggle" aria-expanded="${isOpen}">
-                <span class="fr-head">
-                    ${f.earliestGame && f.earliestGame.image ? `<span class="fr-cover"><img src="${esc(resizeUrl(f.earliestGame.image, 80))}" alt="${esc(f.name)} cover" loading="lazy"></span>` : ''}
+                <span class="fr-box">
+                    ${cover ? `<img src="${esc(resizeUrl(f.earliestGame.image, 320))}" alt="${esc(f.name)} cover" loading="lazy">` : `<span class="fr-box-empty">${icon('game-controller', { size: '1.5em' })}</span>`}
+                    <span class="shelf-prog${full ? ' done' : ''}" title="${f.done} de ${f.total} jogos zerados (${p}%)"><i style="width:${p}%"></i><b>${p}%</b></span>
+                </span>
+                <span class="fr-meta">
                     <strong>${esc(f.name)}${full ? '<span class="fr-done">Completa</span>' : ''}</strong>
-                    <span>${f.total ? `${f.done}/${f.total} · ${p}%` : 'só na wishlist'}</span>
+                    <span class="fr-count">${f.games.length ? `${f.done}/${f.total} zerados · ${p}%` : 'só na wishlist'}</span>
+                    ${extra ? `<small class="fr-extra">${esc(extra)}</small>` : ''}
                 </span>
                 <span class="fr-chevron">${icon('chevron', { size: '1em' })}</span>
             </button>
-            <div class="gi-bar"><span style="width:${p}%"></span></div>
-            ${extra ? `<small class="fr-extra">${esc(extra)}</small>` : ''}
             ${isOpen ? panelHtml(f) : ''}
         </div>`;
     }).join('');

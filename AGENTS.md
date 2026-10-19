@@ -74,6 +74,10 @@ pegariam os dois hoje.
 - `js/gamematch.js` — perfil, match, filtros do Explorar (todo gênero novo
   precisa de slug em `GENRE_RAWG` — o teste de integridade exige), bloqueio
   adulto. Testes: `tests/gamematch.test.mjs`.
+- `js/franchises.js` — tela de Franquias (aba Estatísticas): caixa de capa
+  grande com a % de zerados na base (a MESMA `shelf-prog` do hero "Jogando
+  Atualmente", dourada com `.done` quando completa), sanfona de jogos e
+  sugestões da RAWG. Testes: `tests/franchises.test.mjs`.
 - `js/covers.js` — capas e fundos: `autoVerticalCover` (capa vertical em
   streaming), `autoBanner` (fundo horizontal automático — devolve só a URL, que
   fica no campo `banner` do jogo), `bannerUrlOf` (userBanner > banner) e o
