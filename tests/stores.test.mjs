@@ -3,7 +3,7 @@
 // arquivos da pasta icons/ realmente existem.
 import { test, assert, assertEq, sleep } from './shim.mjs';
 import { appData } from '../js/store.js';
-import { applyStoreCatIcons, gogSaveCode, epicSaveCode } from '../js/stores.js';
+import { applyStoreCatIcons, gogSaveCode, epicSaveCode, cleanStoreTitle } from '../js/stores.js';
 import { STORE_ICONS, brandImg, platformIcons } from '../js/icons.js';
 import { anyIconHtml } from '../js/phosphor.js';
 import { existsSync } from 'node:fs';
@@ -106,9 +106,12 @@ test('GOG: colar o endereço depois do login (?code=...) conecta e importa a bib
         if (u.includes('auth.gog.com'))
             return { ok: true, status: 200, text: async () => JSON.stringify({ access_token: 'TOKEN_GOG', refresh_token: 'REFR_GOG', user_id: 'u1', expires_in: 3600 }) };
         if (u.includes('embed.gog.com'))
-            return { ok: true, status: 200, text: async () => JSON.stringify({ owned: [1207658924] }) };
+            return { ok: true, status: 200, text: async () => JSON.stringify({ owned: [1207658924, 2083224] }) };
         if (u.includes('api.gog.com'))
-            return { ok: true, status: 200, text: async () => JSON.stringify({ 1207658924: { title: 'The Witcher 3: Wild Hunt' } }) };
+            return { ok: true, status: 200, text: async () => JSON.stringify({
+                1207658924: { title: 'The Witcher 3: Wild Hunt' },
+                2083224: { title: 'ControlAmazon Prime' }   // jogo resgatado pela Prime: nome vem sujo da GOG
+            }) };
         // RAWG/capas (enriquecimento em segundo plano): vazio, nada de rede
         return { ok: true, status: 200, text: async () => '{}', json: async () => ({ results: [] }), blob: async () => new Blob(['x'], { type: 'image/jpeg' }) };
     };
@@ -117,7 +120,20 @@ test('GOG: colar o endereço depois do login (?code=...) conecta e importa a bib
     await sleep(500);   // gogSync e o enriquecimento rodam em segundo plano
     assertEq(appData.settings.stores.gog.token, 'TOKEN_GOG', 'endereço colado trocado por token');
     assertEq(appData.settings.stores.gog.userId, 'u1', 'usuário da conta salvo');
-    assertEq(appData.games.filter(g => g.store === 'gog').length, 1, 'jogo da conta entrou na categoria GOG');
+    const gogGames = appData.games.filter(g => g.store === 'gog');
+    assertEq(gogGames.length, 2, 'os jogos da conta entraram na categoria GOG');
+    assert(gogGames.some(g => g.title === 'Control'), 'o jogo da Prime entrou com o nome LIMPO');
+    assert(!gogGames.some(g => /amazon|prime/i.test(g.title)), 'nenhum sufixo de promoção no nome dos jogos');
+});
+
+test('cleanStoreTitle: sufixos de promoção da GOG saem do nome (títulos legítimos ficam)', () => {
+    assertEq(cleanStoreTitle('GhostrunnerAmazon Prime'), 'Ghostrunner', 'colado, sem separador');
+    assertEq(cleanStoreTitle('Control (Amazon Prime)'), 'Control', 'com parêntese');
+    assertEq(cleanStoreTitle('Ghostrunner 2 — Amazon Prime Gaming'), 'Ghostrunner 2', 'travessão e "Gaming"');
+    assertEq(cleanStoreTitle('Some Game - Prime Gaming'), 'Some Game', 'só "Prime Gaming"');
+    assertEq(cleanStoreTitle('The Witcher 3: Wild Hunt'), 'The Witcher 3: Wild Hunt', 'nome limpo intocado');
+    assertEq(cleanStoreTitle('Metroid Prime'), 'Metroid Prime', '"Prime" legítimo no fim não é mexido');
+    assertEq(cleanStoreTitle(''), '', 'vazio não explode');
 });
 
 test('Epic: colar o endereço da página final (localhost/launcher/authorized?code=...) conecta', async () => {

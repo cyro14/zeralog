@@ -4,7 +4,7 @@
 // sincronização é GRAVADO na central de notificações (o sino), com o logo da loja.
 import { test, assert, assertEq, sleep, created } from './shim.mjs';
 import { appData } from '../js/store.js';
-import { syncShow, syncHide } from '../js/syncbar.js';
+import { syncShow, syncHide, syncAskPermission } from '../js/syncbar.js';
 import { STORE_ICONS } from '../js/icons.js';
 
 // Service worker + Notification de mentira: os espiões registram tudo o que a
@@ -101,5 +101,25 @@ test('sem permissão da barra do sistema: o progresso não vai, mas o FIM AINDA 
         await syncShow('Epic: buscando dados e capas', 1, 10, 'epic');
         await syncHide('Epic: dados e capas de 2/4 jogos.', 'epic');
         assert(appData.notifications.some(x => x.title === 'Epic Games · Sincronização'), 'registro do fim sem Notification definida');
+    } finally { cleanSW(); }
+});
+
+test('syncAskPermission: o app PERGUNTA na primeira sincronização — e nunca mais', () => {
+    const calls = [];
+    try {
+        globalThis.Notification = class {
+            static permission = 'default';
+            static requestPermission() { calls.push('ask'); this.permission = 'granted'; return Promise.resolve('granted'); }
+        };
+        syncAskPermission();
+        assertEq(calls.length, 1, 'primeira vez: o prompt da barra de notificações aparece');
+        syncAskPermission();
+        syncAskPermission();
+        assertEq(calls.length, 1, 'concedida: não pergunta de novo');
+        globalThis.Notification = class { static permission = 'denied'; static requestPermission() { calls.push('ask'); return Promise.resolve('denied'); } };
+        syncAskPermission();
+        assertEq(calls.length, 1, 'bloqueada: nunca mais incomoda');
+        delete globalThis.Notification;
+        syncAskPermission();   // WebView sem suporte: não explode
     } finally { cleanSW(); }
 });

@@ -8,7 +8,7 @@ import { appData, saveData } from './store.js';
 import { searchGames, esc, normText, coverToDataURL } from './gameApi.js';
 import { autoVerticalCover } from './covers.js';
 import { platformIcons, brandImg, STORE_ICONS } from './icons.js';
-import { syncShow, syncHide } from './syncbar.js';
+import { syncShow, syncHide, syncAskPermission } from './syncbar.js';
 
 // Mesmo Cloudflare Worker da Steam (js/steam.js): atualize-o com steam-proxy/worker.js novo,
 // que agora também aceita POST e os hosts das outras lojas.
@@ -300,6 +300,7 @@ async function gogExchange(params) {
 }
 
 export async function gogSaveCode() {
+    syncAskPermission();   // primeira vez que vincula: pede a barra de notificações (só com gesto)
     const raw = String(($('gog-code-input') && $('gog-code-input').value) || '').trim();
     // Aceita: URL completa (?code=...), fragmento (#code=...) ou o código puro colado
     let code = null;
@@ -334,19 +335,36 @@ async function gogToken() {
     return gog().token;
 }
 
+// Sufixos de campanha que a GOG cola no nome de alguns produtos (jogos resgatados
+// pela Amazon/Prime Gaming chegam como "Jogo XAmazon Prime", "Jogo X — Prime
+// Gaming"...) — o jogo é o mesmo, mas o lixo no título quebra a busca de dados e
+// capas na RAWG. Só casa no FIM do nome: "Metroid Prime" e afins ficam intocados.
+const PROMO_SUFFIX = /[\s\-–—:()\[\]]{0,3}\s*(?:amazon\s+prime(?:\s+gaming)?|prime\s+gaming|amazon\s+games?)\s*[)\]]?$/i;
+export function cleanStoreTitle(raw) {
+    let t = String(raw || '').trim();
+    for (let i = 0; i < 3 && PROMO_SUFFIX.test(t); i++) {
+        t = t.replace(PROMO_SUFFIX, '').replace(/[\s\-–—:]+$/, '').trim();
+    }
+    return t;
+}
+
 // ids da biblioteca → nomes dos jogos (em lotes de 50, aceitos pelo products endpoint)
 async function gogProductNames(ids) {
     const names = [];
     for (let i = 0; i < ids.length; i += 50) {
         const chunk = ids.slice(i, i + 50);
         const data = await storeFetch(`https://api.gog.com/products?ids=${chunk.join(',')}`);
-        // resposta: objeto { id: { name ... } } ou array
-        Object.values(data || {}).forEach(p => { const n = p && (p.name || p.title); if (n) names.push(String(n)); });
+        // resposta: objeto { id: { name ... } } ou array — com o nome LIMPO de sufixos de promoção
+        Object.values(data || {}).forEach(p => {
+            const n = cleanStoreTitle(p && (p.name || p.title));
+            if (n) names.push(n);
+        });
     }
     return names;
 }
 
 export async function gogSync() {
+    syncAskPermission();   // sincronizar pelo botão: pede a barra de notificações na primeira vez
     const S = STORES.gog;
     if (!gog().token && !gog().refresh) { gogStatus('Conecte sua conta GOG primeiro (botão acima).'); return; }
     gogStatus('Buscando sua biblioteca GOG...');
@@ -416,6 +434,7 @@ async function epicExchange(form) {
 }
 
 export async function epicSaveCode() {
+    syncAskPermission();   // primeira vez que vincula: pede a barra de notificações (só com gesto)
     const raw = String(($('epic-code-input') && $('epic-code-input').value) || '').trim();
     let code = null;
     // Pode colar: o JSON da página ({"authorizationCode":"..."}), o endereço (?code=...) ou o código puro
@@ -461,6 +480,7 @@ async function epicToken() {
 }
 
 export async function epicSync() {
+    syncAskPermission();   // sincronizar pelo botão: pede a barra de notificações na primeira vez
     if (!epic().token && !epic().refresh) { epicStatus('Conecte sua conta Epic primeiro (botão acima).'); return; }
     const btn = $('epic-sync-btn'); if (btn) btn.disabled = true;
     epicStatus('Buscando sua biblioteca Epic...');
@@ -541,6 +561,7 @@ const itch = () => st('itch');
 function itchStatus(msg) { const el = $('itch-sync-status'); if (el) el.textContent = msg; }
 
 export function itchSaveKey() {
+    syncAskPermission();   // primeira vez que vincula: pede a barra de notificações (só com gesto)
     const v = String(($('itch-key-input') && $('itch-key-input').value) || '').trim();
     if (!v) { itchStatus('Cole sua chave de API. É gerada em 1 clique em itch.io/user/settings/api-keys ("Generate new API key") — a Itch.io não tem login direto para apps de terceiros, a chave é o caminho oficial dela.'); return; }
     appData.settings.stores.itch = { ...itch(), apiKey: v };
@@ -560,6 +581,7 @@ export function itchDisconnect() {
 }
 
 export async function itchSync() {
+    syncAskPermission();   // sincronizar pelo botão: pede a barra de notificações na primeira vez
     const key = itch().apiKey;
     if (!key) { itchStatus('Cole sua chave da API primeiro.'); return; }
     const btn = $('itch-sync-btn'); if (btn) btn.disabled = true;

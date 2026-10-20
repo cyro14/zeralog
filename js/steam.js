@@ -15,7 +15,7 @@
 import { appData, saveData } from './store.js';
 import { esc, blobToSmallJpeg, searchGames, guessFranchise } from './gameApi.js';
 import { platformIcons, brandImg, STORE_ICONS } from './icons.js';
-import { syncShow, syncHide } from './syncbar.js';
+import { syncShow, syncHide, syncAskPermission } from './syncbar.js';
 import { renderShopHub } from './stores.js';
 
 const $ = id => document.getElementById(id);
@@ -117,6 +117,7 @@ function catchOpenIdReturn() {
 
 // ---------- vincular manualmente (link do perfil ou SteamID64) ----------
 export async function steamSaveManualId() {
+    syncAskPermission();   // vincular a conta: pede a barra de notificações na primeira vez
     const inp = $('steam-id-input');
     const raw = String(inp && inp.value || '').trim();
     let id = null;
@@ -144,6 +145,7 @@ export async function steamSaveManualId() {
 
 // ---------- chave da API e proxy (Salvos nos dados do app, vão no backup) ----------
 export function steamSaveKey(v) {
+    syncAskPermission();   // salvar a chave: pede a barra de notificações na primeira vez
     const k = String(v || '').trim();
     appData.settings.steam = { ...st(), apiKey: k };
     saveData(null);
@@ -182,6 +184,7 @@ function ensureSteamRefs() {
 // ---------- sincronização (o botão de refresh chama aqui) ----------
 let syncing = false;
 export async function steamSync() {
+    syncAskPermission();   // sincronizar pelo botão: pede a barra de notificações na primeira vez
     if (syncing) { hooks.toast('A sincronização da Steam já está em andamento.', false); return; }
     const s = st();
     if (!s.steamId) { steamStatus('Conecte sua conta primeiro (ou cole o link do perfil abaixo).'); hooks.toast('Conecte a Steam antes de sincronizar.', false); return; }

@@ -28,6 +28,19 @@ const PLATFORM = {
 };
 
 const canNotify = () => typeof Notification !== 'undefined' && Notification.permission === 'granted';
+
+// Pede a permissão da barra de notificações UMA vez, direto no gesto do botão de
+// sincronizar/vincular (o Chrome só mostra o prompt com um toque recente; sem
+// gesto o pedido fica pendente e não incomoda ninguém). Quem já decidiu nunca é
+// perguntado de novo: 'granted' e 'denied' não repetem o prompt.
+export function syncAskPermission() {
+    try {
+        if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
+        const p = Notification.requestPermission();
+        if (p && typeof p.then === 'function') p.then(() => {}, () => {});
+    } catch (e) { /* WebView sem prompt: o progresso segue no status da tela de Conexões */ }
+}
+
 async function swReg() {
     if (!('serviceWorker' in navigator)) return null;
     try { return await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), 2500))]); } catch (e) { return null; }

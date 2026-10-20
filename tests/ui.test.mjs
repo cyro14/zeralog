@@ -211,7 +211,10 @@ test('primeira abertura: a busca automática GUARDA o fundo no jogo', async () =
     const g = addGame('g11');
     await openGamePage('g11', false);
     assert(!g.banner, 'ainda não havia fundo nos dados');
-    await sleep(120);
+    // A busca do fundo roda em segundo plano: sleep fixo flakava com a máquina
+    // carregada (probes e enriquecimentos pendurados de testes anteriores) —
+    // agora o teste ESPERA a condição aparecer, com teto de tempo.
+    for (let i = 0; i < 30 && !(g.banner && elById('gp-banner').innerHTML.includes('arte-extra.jpg')); i++) await sleep(100);
     assertEq(g.banner, DETAILS.background_image_additional, 'arte extra da RAWG guardada no jogo');
     assert(elById('gp-banner').innerHTML.includes('arte-extra.jpg'), 'e já aparece no topo da página');
 });
