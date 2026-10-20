@@ -5,7 +5,7 @@
 // projeto (steam-proxy/worker.js — mesmo proxy da Steam, agora multi-loja).
 // Como plano B, cada loja também aceita "importar colando a lista" (um título por linha).
 import { appData, saveData } from './store.js';
-import { searchGames, esc, normText, coverToDataURL } from './gameApi.js';
+import { searchGames, esc, normText, coverToDataURL, searchTitle, bestRawgMatch } from './gameApi.js';
 import { autoVerticalCover } from './covers.js';
 import { platformIcons, brandImg, STORE_ICONS } from './icons.js';
 import { syncShow, syncHide, syncAskPermission } from './syncbar.js';
@@ -141,9 +141,10 @@ export async function enrichStoreGames(newGames) {
         while (queue.length && !stopped) {
             const g = queue.shift();
             try {
-                const results = await searchGames(g.title, 4);
-                const want = normText(g.title).replace(/\s+/g, '');
-                const d = (results || []).find(r => normText(r.title).replace(/\s+/g, '') === want) || (results || [])[0];
+                // Busca pelo título SEM a edição ("Gold Edition", "Trilogy"...) e casa de
+                // forma tolerante — o jogo da loja raramente tem o nome exato da RAWG.
+                const results = await searchGames(searchTitle(g.title), 4);
+                const d = bestRawgMatch(results, g.title);
                 if (d) {
                     if (!g.rawgId) g.rawgId = d.rawgId;
                     if ((!g.genres || !g.genres.length) && d.genres.length) g.genres = d.genres;

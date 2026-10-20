@@ -157,6 +157,46 @@ export async function searchCompanies(kind, query) {
 }
 export const normText = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
+// ---------- título de BUSCA e casamento tolerante (edições não atrapalham mais) ----------
+// As lojas colam a EDIÇÃO no nome do jogo que o usuário tem ("Gothic II Gold
+// Edition", "Dark Souls: Remastered", "Mafia: Trilogy"...) — e na RAWG o jogo
+// quase sempre é o BASE. O nome com edição não casa exato (ou a busca nem acha),
+// e a sincronização ficava sem dados/capas. O searchTitle limpa os sufixos de
+// edição SÓ PARA BUSCAR — o título salvo no jogo continua sendo o do usuário.
+const EDITION_TAILS = [
+    // "Gold/Definitive/Enhanced/… Edition|Version|Package|Collection" (adjetivo + palavra final)
+    /[\s:–—-]+\s*(?:game\s+of\s+the\s+year|director'?s?\s+cut|definitive|enhanced|extended|remastered?|complete|premium|ultimate|deluxe|gold(?:en)?|silver|platinum|legendary|collector'?s|standard|digital|master|special|limited|anniversary)\s+(?:edition|version|package|collection)\b\s*[)]?\s*$/i,
+    // "BFG Edition", "Windows Edition" — um termo qualquer + Edition/Version
+    /[\s:–—-]+\s*[a-z0-9'’&.]+\s+(?:edition|version)\s*[)]?\s*$/i,
+    // sufixo entre parênteses/chaves: "(Definitive Edition)", "[GOTY]"
+    /\s*[([][^\])]*(?:edition|version|package|remaster)[^\])]*[)\]]\s*$/i,
+    // termos que andam sozinhos no fim: "…: Remastered", "… - Trilogy", "… GOTY"
+    /[\s:–—-]+\s*(?:goty|remastered?|trilogy|anthology|compilation|collection|hd|4k)\s*[)]?\s*$/i,
+];
+export function searchTitle(raw) {
+    let t = String(raw || '').trim();
+    for (let pass = 0; pass < 3; pass++) {
+        for (const re of EDITION_TAILS) {
+            const cut = t.replace(re, '').replace(/[\s:–—-]+$/, '').trim();
+            if (cut && cut !== t) t = cut;
+        }
+    }
+    return t;
+}
+// Casa o título da biblioteca com o resultado certo da RAWG, em cascata: exato com
+// o título inteiro (a edição pode existir por lá) > exato com o título de busca >
+// o resultado que contém (ou é contido por) o título de busca > o primeiro da lista.
+export function bestRawgMatch(results, title) {
+    const rs = results || [];
+    const flat = s => normText(s).replace(/\s+/g, '');
+    const full = flat(title);
+    const base = flat(searchTitle(title));
+    return rs.find(r => flat(r.title) === full)
+        || rs.find(r => base && flat(r.title) === base)
+        || rs.find(r => base && (() => { const rt = flat(r.title); return rt.startsWith(base) || base.startsWith(rt); })())
+        || rs[0];
+}
+
 // Adivinha a franquia a partir do título: corta subtítulo ("The Witcher 3: Wild Hunt" -> "The Witcher"),
 // número final, edição e variações ("Remake", "HD", "GOTY"...). Vazio se não parecer série.
 export function guessFranchise(title) {

@@ -3,7 +3,7 @@
 // arquivos da pasta icons/ realmente existem.
 import { test, assert, assertEq, sleep } from './shim.mjs';
 import { appData } from '../js/store.js';
-import { applyStoreCatIcons, gogSaveCode, epicSaveCode, cleanStoreTitle } from '../js/stores.js';
+import { applyStoreCatIcons, gogSaveCode, epicSaveCode, cleanStoreTitle, enrichStoreGames } from '../js/stores.js';
 import { STORE_ICONS, brandImg, platformIcons } from '../js/icons.js';
 import { anyIconHtml } from '../js/phosphor.js';
 import { existsSync } from 'node:fs';
@@ -139,6 +139,27 @@ test('cleanStoreTitle: sufixos de promoção da GOG saem do nome (títulos legí
     assertEq(cleanStoreTitle('The Witcher 3: Wild Hunt'), 'The Witcher 3: Wild Hunt', 'nome limpo intocado');
     assertEq(cleanStoreTitle('Metroid Prime'), 'Metroid Prime', '"Prime" legítimo no fim não é mexido');
     assertEq(cleanStoreTitle(''), '', 'vazio não explode');
+});
+
+test('enriquecimento acha o jogo BASE quando a loja colou "Gold Edition" no nome', async () => {
+    // A RAWG responde com o jogo base — antes o casamento era EXATO com o título
+    // da loja ("Gothic II Gold Edition") e os dados/capas nunca chegavam.
+    globalThis.fetch = async url => {
+        const u = String(url);
+        if (u.includes('api.rawg.io/api/games?'))
+            return { ok: true, status: 200, text: async () => JSON.stringify({ results: [
+                { id: 77, name: 'Gothic II', released: '2002-11-29', genres: [{ name: 'RPG' }] }
+            ] }), json: async () => ({ results: [
+                { id: 77, name: 'Gothic II', released: '2002-11-29', genres: [{ name: 'RPG' }] }
+            ] }) };
+        // capas/wikis/Steam: vazio, nada de rede
+        return { ok: true, status: 200, text: async () => '{}', json: async () => ({}), blob: async () => new Blob(['x'], { type: 'image/jpeg' }) };
+    };
+    const g = { id: 'gx', title: 'Gothic II Gold Edition', platform: 'GOG', store: 'gog', catId: 'c', genres: [], rawgId: null, image: null, state: null };
+    await enrichStoreGames([g]);
+    assertEq(g.rawgId, 77, 'casou com o jogo base da RAWG (pelo título sem edição)');
+    assertEq(g.genres.length, 1, 'gênero do jogo base preenchido');
+    assert(g.released, 'ano de lançamento preenchido');
 });
 
 test('Epic: colar o endereço da página final (localhost/launcher/authorized?code=...) conecta', async () => {

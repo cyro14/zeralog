@@ -13,7 +13,7 @@
 // 4. Os jogos entram na categoria "Steam" (criada automaticamente), plataforma "Steam",
 //    com as horas jogadas; as capas verticais são baixadas e salvas no app em segundo plano.
 import { appData, saveData } from './store.js';
-import { esc, blobToSmallJpeg, searchGames, guessFranchise } from './gameApi.js';
+import { esc, blobToSmallJpeg, searchGames, guessFranchise, searchTitle, bestRawgMatch } from './gameApi.js';
 import { platformIcons, brandImg, STORE_ICONS } from './icons.js';
 import { syncShow, syncHide, syncAskPermission } from './syncbar.js';
 import { renderShopHub } from './stores.js';
@@ -335,9 +335,10 @@ async function enrichSteamGames(newGames) {
         while (queue.length && !stopped) {
             const g = queue.shift();
             try {
-                const results = await searchGames(g.title, 4);
-                const want = normName(g.title);
-                const d = (results || []).find(r => normName(r.title) === want) || (results || [])[0];
+                // Busca pelo título SEM a edição ("GOTY", "Enhanced"...) e casa de forma
+                // tolerante — mesmo motivo do enriquecimento das outras lojas.
+                const results = await searchGames(searchTitle(g.title), 4);
+                const d = bestRawgMatch(results, g.title);
                 if (d) {
                     if (!g.rawgId) g.rawgId = d.rawgId;
                     if ((!g.genres || !g.genres.length) && d.genres.length) g.genres = d.genres;

@@ -4,7 +4,7 @@ import {
     resizeUrl, esc, shotsGalleryHtml, normText, guessFranchise, describeError,
     searchCompanies, listGames, getGameDetails, getGameScreenshots,
     fetchImageBlob, imageAttempts, IMAGE_PROXIES,
-    fetchHLTBData, fetchHLTBTime, scrapeUrl, _resetHltbToken
+    fetchHLTBData, fetchHLTBTime, scrapeUrl, _resetHltbToken, searchTitle, bestRawgMatch
 } from '../js/gameApi.js';
 
 // ---------- puros (rodam sempre) ----------
@@ -39,6 +39,37 @@ test('normText dobra acentos para comparação (o filtro de plataforma depende d
 
 test('guessFranchise deduz a franquia a partir do título', () => {
     assertEq(guessFranchise('The Witcher 3: Wild Hunt'), 'The Witcher', 'corta o subtítulo');
+});
+
+test('searchTitle: edições e versões saem do título de BUSCA (o título salvo fica como está)', () => {
+    // A loja colou a edição no nome — a RAWG quase sempre só tem o jogo base.
+    assertEq(searchTitle('The Witcher 3: Wild Hunt – Complete Edition'), 'The Witcher 3: Wild Hunt', 'Complete Edition');
+    assertEq(searchTitle('Divinity: Original Sin 2 - Definitive Edition'), 'Divinity: Original Sin 2', 'Definitive Edition');
+    assertEq(searchTitle('Baldur’s Gate II: Enhanced Edition'), 'Baldur’s Gate II', 'Enhanced Edition');
+    assertEq(searchTitle('Gothic II Gold Edition'), 'Gothic II', 'Gold Edition');
+    assertEq(searchTitle('Monster Hunter World: Iceborne Master Edition'), 'Monster Hunter World: Iceborne', 'Master Edition');
+    assertEq(searchTitle('Dark Souls: Remastered'), 'Dark Souls', 'Remastered sozinho');
+    assertEq(searchTitle('Mafia: Trilogy'), 'Mafia', 'Trilogy');
+    assertEq(searchTitle('Doom 3: BFG Edition'), 'Doom 3', 'termo exótico + Edition');
+    // títulos legítimos não são mexidos
+    assertEq(searchTitle('Pokémon Gold'), 'Pokémon Gold', '"Gold" sem Edition depois fica');
+    assertEq(searchTitle('The Witcher 3: Wild Hunt'), 'The Witcher 3: Wild Hunt', 'sem edição: intocado');
+    assertEq(searchTitle('Metroid Prime'), 'Metroid Prime', 'idem');
+    assertEq(searchTitle(''), '', 'vazio não explode');
+});
+
+test('bestRawgMatch: acha o jogo BASE quando a loja colou edição no nome', () => {
+    // a RAWG traz o jogo base — o título da loja não casa exato com ele
+    const results = [{ title: 'Divinity: Original Sin' }, { title: 'Divinity: Original Sin 2' }];
+    assertEq(bestRawgMatch(results, 'Divinity: Original Sin 2 - Definitive Edition').title, 'Divinity: Original Sin 2', 'casa pelo título sem edição');
+    // quando a edição EXISTE na RAWG, o exato com o título inteiro vence
+    const goty = [{ title: 'Age of Empires II' }, { title: 'Age of Empires II: Definitive Edition' }];
+    assertEq(bestRawgMatch(goty, 'Age of Empires II: Definitive Edition').title, 'Age of Empires II: Definitive Edition', 'exato com o título inteiro tem prioridade');
+    // começa-com também casa ("Mafia" acha "Mafia", mesmo com outro jogo no topo)
+    assertEq(bestRawgMatch([{ title: 'Mafia II' }, { title: 'Mafia' }], 'Mafia: Trilogy').title, 'Mafia', 'cascata passa pelo contains');
+    // título sem edição continua casando como antes
+    assertEq(bestRawgMatch([{ title: 'Hades' }], 'Hades').title, 'Hades');
+    assertEq(bestRawgMatch([], 'X'), undefined, 'sem resultados não explode');
 });
 
 test('describeError explica erros de rede/chave/limite para o usuário', () => {
