@@ -97,7 +97,9 @@ export function migrateData(data) {
         text: str(n.text),
         at: +n.at || Date.now(),
         read: !!n.read,
-        tab: ['home', 'gamematch', 'wish', 'finished', 'stats', 'profile'].includes(n.tab) ? n.tab : ''
+        tab: ['home', 'gamematch', 'wish', 'finished', 'stats', 'profile'].includes(n.tab) ? n.tab : '',
+        // logo de loja (sincronizações): só arquivo válido da pasta icons/ passa
+        logo: /^icons\/[\w.-]+$/.test(String(n.logo || '')) ? String(n.logo) : ''
     }));
     if (data.notifications.length > 60) data.notifications = data.notifications.slice(0, 60);
 

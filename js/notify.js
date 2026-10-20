@@ -5,7 +5,7 @@
 // abre ao tocá-lo. Cada origem tem seu ícone e cor; lançamentos levam à aba
 // Desejos ao serem tocados.
 import { appData, saveData } from './store.js';
-import { icon } from './icons.js';
+import { icon, STORE_ICONS } from './icons.js';
 import { esc } from './gameApi.js';
 
 // Quantos registros ficam guardados (os mais recentes; o resto descarta)
@@ -15,17 +15,24 @@ const MAX_KEEP = 60;
 // campo entra num onclick, então só aceita valores conhecidos)
 const SAFE_TABS = new Set(['home', 'gamematch', 'wish', 'finished', 'stats', 'profile']);
 
-// Cada origem de notificação: ícone (js/icons.js) e rótulo
+// Cada origem de notificação: ícone (js/icons.js) e rótulo. Sincronizações das
+// lojas (kind 'sync') podem chegar com o LOGO da plataforma no lugar do ícone.
 export const NOTIF_KINDS = {
     session: { ic: 'clock', label: 'Sessão' },
     release: { ic: 'calendar', label: 'Lançamento' },
-    achievement: { ic: 'trophy', label: 'Conquista' }
+    achievement: { ic: 'trophy', label: 'Conquista' },
+    sync: { ic: 'refresh', label: 'Sincronização' }
 };
+
+// Logos aceitos no registro: só os arquivos das lojas (o campo vem de dados que
+// passam por backup/restore — lixo restaurado não vira <img> na página)
+const SAFE_LOGOS = new Set(Object.values(STORE_ICONS));
 
 const list = () => (Array.isArray(appData.notifications) ? appData.notifications : []);
 
 // Registra uma notificação no topo da lista. extra: { tab } — a aba que abre ao
-// tocar no item (ex.: lançamentos da wishlist levam a 'wish').
+// tocar no item (ex.: lançamentos da wishlist levam a 'wish'); { logo } — arquivo
+// de logo de loja (sincronizações) no lugar do ícone por origem.
 export function notifyPush(kind, title, text, extra = {}) {
     if (!Array.isArray(appData.notifications)) appData.notifications = [];
     appData.notifications.unshift({
@@ -35,7 +42,8 @@ export function notifyPush(kind, title, text, extra = {}) {
         text: String(text || ''),
         at: extra.at || Date.now(),
         read: false,
-        tab: SAFE_TABS.has(extra.tab) ? extra.tab : ''
+        tab: SAFE_TABS.has(extra.tab) ? extra.tab : '',
+        logo: SAFE_LOGOS.has(extra.logo) ? extra.logo : ''
     });
     if (appData.notifications.length > MAX_KEEP) appData.notifications.length = MAX_KEEP;
     saveData(null);
@@ -87,8 +95,10 @@ export function renderNotificationCenter() {
         // (o tab volta de dados restaurados: só valores conhecidos geram onclick)
         const tab = SAFE_TABS.has(n.tab) ? n.tab : '';
         const go = tab ? ` role="button" tabindex="0" onclick="notifyGo('${tab}')"` : '';
+        // sincronizações de loja trazem o LOGO da plataforma no lugar do ícone
+        const inner = n.logo ? `<img src="${esc(n.logo)}" alt="" class="brand-ico notif-logo">` : icon(k.ic, { size: '1.1em' });
         return `<div class="notif-item${n.read ? '' : ' unread'}"${go}>
-            <span class="notif-ic k-${esc(n.kind)}" title="${esc(k.label)}">${icon(k.ic, { size: '1.1em' })}</span>
+            <span class="notif-ic k-${esc(n.kind)}${n.logo ? ' has-logo' : ''}" title="${esc(k.label)}">${inner}</span>
             <div class="notif-body">
                 <div class="notif-title">${esc(n.title)}</div>
                 ${n.text ? `<div class="notif-text">${esc(n.text)}</div>` : ''}

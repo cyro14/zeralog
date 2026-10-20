@@ -133,9 +133,10 @@ export async function enrichStoreGames(newGames) {
     enriching = true;
     const queue = [...newGames];
     let done = 0, hit = 0, stopped = false;
-    const storeName = newGames[0] && newGames[0].store ? (STORES[newGames[0].store] || {}).name || 'Loja' : 'Biblioteca';
+    const key = newGames[0] && newGames[0].store ? newGames[0].store : '';
+    const storeName = key ? (STORES[key] || {}).name || 'Loja' : 'Biblioteca';
     const sleep = ms => new Promise(r => setTimeout(r, ms));
-    syncShow(`${storeName}: buscando dados e capas`, 0, newGames.length);
+    syncShow(`${storeName}: buscando dados e capas`, 0, newGames.length, key);
     const worker = async () => {
         while (queue.length && !stopped) {
             const g = queue.shift();
@@ -171,12 +172,12 @@ export async function enrichStoreGames(newGames) {
                 // Arte de FUNDO da página do jogo (só a URL): a horizontal da RAWG
                 if (!g.banner && d) g.banner = d.imageExtra || d.image || null;
                 done++;
-                syncShow(`${storeName}: buscando dados e capas`, done, newGames.length);
+                syncShow(`${storeName}: buscando dados e capas`, done, newGames.length, key);
                 if (done % 3 === 0) saveData(() => hooks.render());
                 await sleep(250);
             } catch (e) {
                 done++;
-                syncShow(`${storeName}: buscando dados e capas`, done, newGames.length);
+                syncShow(`${storeName}: buscando dados e capas`, done, newGames.length, key);
                 if (e && e.kind === 'http' && (e.status === 401 || e.status === 403 || e.status === 429)) stopped = true;
             }
         }
@@ -184,7 +185,8 @@ export async function enrichStoreGames(newGames) {
     await Promise.all([worker(), worker()]);
     saveData(() => hooks.render());
     enriching = false;
-    syncHide();
+    // Fim da sincronização da loja: grava no REGISTRO (sino) com o logo da plataforma
+    syncHide(`${storeName}: dados e capas de ${hit}/${newGames.length} ${newGames.length === 1 ? 'jogo' : 'jogos'}.`, key);
     if (!stopped && hit) hooks.toast(`Dados e capas encontrados para ${hit} de ${newGames.length} jogos.`);
 }
 

@@ -238,17 +238,19 @@ test('sessão em segundo plano: pausa pela notificação da barra (app fechado) 
 test('persistência: registro sobrevive ao migrateData (backup/restore) limpo e com whitelist', () => {
     assertEq(defaultData.notifications.length, 0, 'default com a lista vazia');
     appData.notifications.push(
-        { id: 'ok1', kind: 'release', title: 'Jogo já disponível', text: 'data', at: 1710000000000, read: true, tab: 'wish' },
-        { tab: "'); ruim", kind: 'hack' },
+        { id: 'ok1', kind: 'release', title: 'Jogo já disponível', text: 'data', at: 1710000000000, read: true, tab: 'wish', logo: 'icons/Steam.webp' },
+        { tab: "'); ruim", kind: 'hack', logo: 'https://malicioso.com/x.png' },
         'lixo'
     );
     const m = migrateData(JSON.parse(JSON.stringify(appData)));
     assertEq(m.notifications.length, 2, 'objetos ficam (string vira nada), lixo sai');
     const ok = m.notifications.find(n => n.id === 'ok1');
     assert(ok && ok.title === 'Jogo já disponível' && ok.read === true && ok.tab === 'wish', 'registro válido preservado');
+    assertEq(ok.logo, 'icons/Steam.webp', 'logo de loja válido preservado');
     const sus = m.notifications.find(n => n.id !== 'ok1');
     assertEq(sus.tab, '', 'tab fora da whitelist zera');
     assertEq(sus.kind, 'hack', 'kind desconhecido preserva (só não tem ícone próprio)');
+    assertEq(sus.logo, '', 'logo fora do padrão zera no migrate');
     // cap do migrate: 65 antigas viram 60
     const many = { ...m, notifications: Array.from({ length: 65 }, (_, i) => ({ id: 'k' + i, kind: 'session', title: 'n' + i, at: i })) };
     const m2 = migrateData(many);
@@ -263,4 +265,19 @@ test('tipos: cada origem tem ícone e rótulo no painel', () => {
     assertEq(NOTIF_KINDS.session.ic, 'clock', 'sessão = relógio');
     assertEq(NOTIF_KINDS.release.ic, 'calendar', 'lançamento = calendário');
     assertEq(NOTIF_KINDS.achievement.ic, 'trophy', 'conquista = troféu');
+    assertEq(NOTIF_KINDS.sync.ic, 'refresh', 'sincronização = setas de atualizar');
+});
+
+test('painel: sincronização de loja com o LOGO da plataforma no lugar do ícone', () => {
+    notifyClear();
+    notifyPush('sync', 'Steam · Sincronização', 'Steam: capas prontas!', { logo: 'icons/Steam.webp' });
+    notifyPush('sync', 'GOG · Sincronização', 'GOG: dados e capas de 5/9 jogos.', { logo: 'icons/arquivo-que-nao-existe.png' });
+    elById('notif-center').hidden = true;   // painel fechado, como no index.html
+    notifyToggle();
+    const html = elById('notif-list').innerHTML;
+    assert(html.includes('icons/Steam.webp'), 'logo da Steam pintado no item');
+    assert(html.includes('has-logo'), 'classe do item com logo');
+    assert(html.includes('k-sync'), 'kind da sincronização com cor própria');
+    assert(!html.includes('arquivo-que-nao-existe'), 'logo fora da lista das lojas não vira <img>');
+    notifyClose();
 });

@@ -515,6 +515,9 @@ body.session-on #notif-center { top: calc(70px + 42px + env(safe-area-inset-top,
 .notif-ic { width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent-playing) 14%, transparent); color: var(--accent-playing); }
 .notif-ic.k-release { background: color-mix(in srgb, var(--accent-finished) 16%, transparent); color: var(--accent-finished); }
 .notif-ic.k-achievement { background: color-mix(in srgb, #ffd700 18%, transparent); color: #e6b800; }
+.notif-ic.k-sync { background: color-mix(in srgb, var(--accent-playing) 10%, transparent); }
+.notif-ic.has-logo { background: color-mix(in srgb, var(--card-bg) 85%, transparent); }
+.notif-logo { width: 20px; height: 20px; object-fit: contain; display: block; }
 .notif-body { min-width: 0; flex: 1; }
 .notif-title { font-weight: 700; font-size: 0.88em; overflow-wrap: break-word; }
 .notif-text { color: var(--text-muted); font-size: 0.78em; margin-top: 2px; overflow-wrap: break-word; }
