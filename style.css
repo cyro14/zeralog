@@ -92,6 +92,10 @@ body {
     padding: 20px;
     line-height: 1.6;
     transition: background-color 0.3s, color 0.3s;
+    /* PWA instalada: nada de seleção fantasma ao arrastar o dedo na interface */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
     /* Glass: gradientes suaves que aparecem através do vidro fosco (todas as telas) */
     background:
         radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--accent-playing) 14%, var(--bg-color)) 0%, transparent 55%),
@@ -99,6 +103,17 @@ body {
         radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--accent-live, #a77bff) 6%, var(--bg-color)) 0%, transparent 60%),
         var(--bg-color);
 }
+
+/* Feel NATIVO no celular: o navegador pinta um QUADRADO AZUL sobre qualquer
+   botão tocado (tap highlight do WebKit/Blink) — em app nenhum, e aqui também
+   não. Transparente em tudo, de uma vez (é o retângulo que aparecia no "+" etc.). */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* O que continua selecionável, porque é texto que se digita ou se copia:
+   campos do formulário (o navegador já ignora user-select: none em editáveis,
+   mas o explícito garante em qualquer webview) e a descrição do jogo. */
+input, textarea, [contenteditable="true"] { user-select: text; -webkit-user-select: text; }
+.game-desc p { user-select: text; -webkit-user-select: text; }
 
 /* Topo e Botões Superiores */
 .header-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; margin-top: 10px; }

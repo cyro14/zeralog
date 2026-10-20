@@ -594,3 +594,25 @@ test('Central de notificações: sino abre o registro (badge, painel e origens)'
     assert(store.includes('notifications: []'), 'defaultData nasce com a lista de notificações');
     assert(/data\.notifications = \(Array\.isArray/.test(store), 'migrateData sanitiza as notificações');
 });
+
+// PWA instalada no celular: ao tocar qualquer botão (o "+", por exemplo), o
+// navegador pintava um QUADRADO AZUL sobre ele — o "tap highlight" do WebKit,
+// que denuncia o site por trás da janela. O feel nativo pede o pacote inteiro:
+// highlight transparente em TUDO, sem seleção fantasma de texto na interface e
+// sem menu de longa pressa do iOS — mantendo selecionáveis os campos que se
+// digita (o navegador já ignora o none em editáveis, o explícito garante) e a
+// descrição do jogo, o único texto que vale a pena copiar.
+test('PWA nativa: nenhum quadrado azul no toque (tap highlight transparente em tudo)', () => {
+    const css = read(join(ROOT, 'style.css'));
+    // 1) o quadrado azul morre em qualquer elemento tocado
+    assert(/\*\s*\{\s*-webkit-tap-highlight-color:\s*transparent/.test(css), 'tap highlight transparente no seletor universal');
+    // 2) sem seleção de texto arrastando o dedo na interface, sem callout do iOS
+    const body = /body\s*\{([^}]*)\}/.exec(css);
+    assert(body && /user-select:\s*none/.test(body[1]) && /-webkit-user-select:\s*none/.test(body[1]), 'body sem seleção de texto da UI');
+    assert(body && /-webkit-touch-callout:\s*none/.test(body[1]), 'sem menu de longa pressa do iOS');
+    // 3) o que é texto de verdade continua selecionável
+    const fields = /input,\s*textarea,\s*\[contenteditable="true"\]\s*\{([^}]*)\}/.exec(css);
+    assert(fields && /user-select:\s*text/.test(fields[1]), 'campos digitáveis selecionáveis');
+    const desc = /\.game-desc p\s*\{([^}]*)\}/.exec(css);
+    assert(desc && /user-select:\s*text/.test(desc[1]), 'descrição do jogo continua copiável');
+});
