@@ -378,7 +378,17 @@ export async function gogSync() {
         const names = await gogProductNames(ids);
         const cat = ensureRefs('gog');
         hooks.undo();
-        const have = new Set(appData.games.map(g => normText(g.title)));
+        // Jogos que entraram sujos numa sincronização antiga ("Jogo XAmazon Prime")
+        // são renomeados na hora — e a conferência de duplicados é pelo título
+        // limpo, então o que vem da conta não cria um segundo registro.
+        const have = new Set();
+        appData.games.forEach(g => {
+            have.add(normText(g.title));
+            if (g.store === 'gog') {
+                const clean = cleanStoreTitle(g.title);
+                if (clean && clean !== g.title) { g.title = clean; have.add(normText(clean)); }
+            }
+        });
         const fresh = [];
         for (const t of names) {
             if (have.has(normText(t))) continue;

@@ -116,14 +116,19 @@ test('GOG: colar o endereço depois do login (?code=...) conecta e importa a bib
         return { ok: true, status: 200, text: async () => '{}', json: async () => ({ results: [] }), blob: async () => new Blob(['x'], { type: 'image/jpeg' }) };
     };
     document.getElementById('gog-code-input').value = 'https://embed.gog.com/on_login_success?origin=client&code=CODIGO_ABC123XYZ';
+    // jogo que já entrou SUJO numa sincronização antiga: a sync nova renomeia
+    // para o título limpo em vez de criar um segundo registro
+    appData.games.push({ id: 'gog-velho', title: 'GhostrunnerAmazon Prime', platform: 'GOG', store: 'gog', catId: 'c', genres: [] });
     await gogSaveCode();
     await sleep(500);   // gogSync e o enriquecimento rodam em segundo plano
     assertEq(appData.settings.stores.gog.token, 'TOKEN_GOG', 'endereço colado trocado por token');
     assertEq(appData.settings.stores.gog.userId, 'u1', 'usuário da conta salvo');
     const gogGames = appData.games.filter(g => g.store === 'gog');
-    assertEq(gogGames.length, 2, 'os jogos da conta entraram na categoria GOG');
+    assertEq(gogGames.length, 3, 'os jogos da conta entraram na categoria GOG');
     assert(gogGames.some(g => g.title === 'Control'), 'o jogo da Prime entrou com o nome LIMPO');
     assert(!gogGames.some(g => /amazon|prime/i.test(g.title)), 'nenhum sufixo de promoção no nome dos jogos');
+    const velho = appData.games.find(g => g.id === 'gog-velho');
+    assertEq(velho.title, 'Ghostrunner', 'o jogo antigo foi RENOMEADO (limpo), não duplicado');
 });
 
 test('cleanStoreTitle: sufixos de promoção da GOG saem do nome (títulos legítimos ficam)', () => {

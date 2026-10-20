@@ -201,22 +201,38 @@ test('fundo automático guardado nos dados abre a página como "capa de Facebook
 });
 
 test('primeira abertura: a busca automática GUARDA o fundo no jogo', async () => {
-    mockFetch([
+    // Hermético DE VERDADE: nenhuma chamada sai para a rede (HLTB, probes, wikis) —
+    // as respostas reais penduradas atravessavam os asserts e o teste flakava.
+    const realFetch = globalThis.fetch;
+    const MOCKS = [
         ['/games/3328/stores', { results: [] }],
         ['store.steampowered.com', {}],
         ['wikipedia.org', { query: { pages: [] } }],
         ['/games/3328/screenshots', SHOTS],
         ['/games/3328?', DETAILS],
-    ]);
-    const g = addGame('g11');
-    await openGamePage('g11', false);
-    assert(!g.banner, 'ainda não havia fundo nos dados');
-    // A busca do fundo roda em segundo plano: sleep fixo flakava com a máquina
-    // carregada (probes e enriquecimentos pendurados de testes anteriores) —
-    // agora o teste ESPERA a condição aparecer, com teto de tempo.
-    for (let i = 0; i < 30 && !(g.banner && elById('gp-banner').innerHTML.includes('arte-extra.jpg')); i++) await sleep(100);
-    assertEq(g.banner, DETAILS.background_image_additional, 'arte extra da RAWG guardada no jogo');
-    assert(elById('gp-banner').innerHTML.includes('arte-extra.jpg'), 'e já aparece no topo da página');
+    ];
+    const respond = d => ({ ok: true, status: 200, text: async () => JSON.stringify(d), json: async () => d, blob: async () => new Blob(['x'], { type: 'image/jpeg' }) });
+    globalThis.fetch = async (u, o) => {
+        const s = String(u);
+        for (const [k, d] of MOCKS) if (s.includes(k)) return respond(d);
+        return respond({});
+    };
+    try {
+        const g = addGame('g11');
+        await openGamePage('g11', false);
+        assert(!g.banner, 'ainda não havia fundo nos dados');
+        // A busca do fundo roda em segundo plano: o teste ESPERA a condição (com
+        // teto de tempo), em vez de apostar num sleep fixo.
+        for (let i = 0; i < 60 && !(g.banner && lastPage()._cls.includes('with-banner')); i++) await sleep(100);
+        assertEq(g.banner, DETAILS.background_image_additional, 'arte extra da RAWG guardada no jogo');
+        // "aparece no topo" = a PÁGINA criada neste teste ganhou o fundo (with-banner).
+        // Não dá para ler o #gp-banner do shim: o elemento é COMPARTILHADO com os
+        // fluxos pendurados de outros testes, que repintam o dele em cima (era o
+        // que fazia este teste falhar de vez em quando sem culpa do app).
+        assert(lastPage()._cls.includes('with-banner'), 'a página abre com o fundo no topo (with-banner)');
+    } finally {
+        globalThis.fetch = realFetch;   // devolve o fetch do shim (o reset faz igual)
+    }
 });
 
 test('busca automática do cadastro: o fundo entra no jogo ao salvar', async () => {
