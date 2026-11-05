@@ -248,3 +248,111 @@ export async function igdbScreenshotsById(id, limit = 10) {
     const shots = await igdbApi('/screenshots', `fields image_id; where game = ${Number(id)}; limit ${Math.max(1, Number(limit) || 10)};`);
     return (shots || []).map(s => s.image_id ? shotUrl(s.image_id) : null).filter(Boolean);
 }
+
+// ---------- catálogo (Deck/Explorar/Lançamentos) sem a RAWG ----------
+// O GameMatch pede catálogo ORDENADO com filtros (ordering/genres/platforms/dates) —
+// consulta que só a RAWG oferecia. Com ela fora do ar, a IGDB faz o mesmo papel:
+// sort + where + limit/offset no dialeto Apicalypse. A tradução mora aqui.
+
+// Slug de gênero da RAWG -> slug de gênero da IGDB (o que não existe lá é descartado)
+const GENRE_SLUG_IGDB = {
+    action: 'action', adventure: 'adventure', 'role-playing-games-rpg': 'role-playing-rpg',
+    strategy: 'strategy', simulation: 'simulator', shooter: 'shooter', racing: 'racing',
+    sports: 'sport', indie: 'indie', puzzle: 'puzzle', fighting: 'fighting',
+    platformer: 'platform', arcade: 'arcade', card: 'card-and-board-game', 'board-games': 'card-and-board-game'
+};
+// Slug de tag da RAWG -> slug de keyword da IGDB (filtros de estilo do perfil)
+const TAG_SLUG_IGDB = {
+    horror: 'horror', roguelike: 'roguelike', 'souls-like': 'souls-like', 'open-world': 'open-world',
+    survival: 'survival', zombies: 'zombies', stealth: 'stealth', 'point-and-click': 'point-and-click',
+    'visual-novel': 'visual-novel', metroidvania: 'metroidvania', 'tower-defense': 'tower-defense',
+    'battle-royale': 'battle-royale', 'co-op': 'co-op', 'story-rich': 'story-rich', 'free-to-play': 'free-to-play'
+};
+// Id de plataforma da RAWG -> id de plataforma da IGDB
+const PLAT_ID_IGDB = {
+    1: 49, 3: 39, 4: 6, 5: 14, 6: 3, 7: 130, 14: 11, 15: 8, 16: 9, 18: 48,
+    19: 46, 21: 34, 27: 7, 80: 58, 83: 47, 105: 4, 186: 169, 187: 167
+};
+// Nome de plataforma da IGDB -> como o app chama (chips e casamento por palavra-chave)
+const PLAT_NAME_APP = { 'PC (Microsoft Windows)': 'PC', 'Xbox Series X|S': 'Xbox Series X', Mac: 'macOS' };
+// Ordenação da RAWG -> campo de sort da IGDB
+const SORT_IGDB = {
+    '-popularity': 'total_rating_count desc', '-added': 'hypes desc', '-metacritic': 'aggregated_rating desc',
+    '-rating': 'total_rating desc', rating: 'total_rating asc', released: 'first_release_date asc',
+    '-released': 'first_release_date desc', name: 'name asc', '-name': 'name desc'
+};
+const ESRB_NAMES = { 1: 'Rating Pending', 3: 'Everyone', 4: 'Everyone 10+', 5: 'Teen', 6: 'Mature', 7: 'Adults Only' };
+
+const dayTs = d => { const m = String(d || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / 1000 : 0; };
+
+// Traduz os parâmetros do listGames para a consulta da IGDB. Devolve a string
+// Apicalypse, ou null quando NÃO dá para reproduzir o filtro (ids de estúdio da
+// RAWG, busca por texto) — nesse caso é melhor a tela mostrar o erro do que
+// uma lista que ignora o que o usuário pediu.
+export function igdbListQuery(params = {}) {
+    const p = params || {};
+    if (p.developers || p.publishers || p.search) return null;
+    const where = [];
+    const gslug = String(p.genres || '').split(',').map(s => GENRE_SLUG_IGDB[s.trim()]).filter(Boolean);
+    if (p.genres && gslug.length) where.push(`genres.slug = (${gslug.map(s => `"${s}"`).join(',')})`);
+    const kslug = String(p.tags || '').split(',').map(s => TAG_SLUG_IGDB[s.trim()]).filter(Boolean);
+    if (p.tags && kslug.length) where.push(`keywords.slug = (${kslug.map(s => `"${s}"`).join(',')})`);
+    const plats = [...new Set(String(p.platforms || '').split(',').map(Number).map(id => PLAT_ID_IGDB[id]).filter(Boolean))];
+    if (p.platforms && plats.length) where.push(`platforms = (${plats.join(',')})`);
+    const dates = String(p.dates || '').split(',');
+    if (p.dates && dayTs(dates[0])) {
+        where.push(`first_release_date >= ${dayTs(dates[0])}`);
+        if (dayTs(dates[1])) where.push(`first_release_date < ${dayTs(dates[1]) + 86400}`);   // o fim é inclusivo na RAWG
+    }
+    // exclude_additions: jogo principal, expansão standalone, remake, remaster, port
+    if (p.exclude_additions === 'true') where.push('category = (0,4,8,9,10,11)');
+    if (p.ordering === '-metacritic') where.push('aggregated_rating > 0');
+    if (p.ordering === '-rating') where.push('total_rating_count >= 2');   // nota sem quem avalie infla jogo obscuro
+    const page = Math.max(1, Number(p.page) || 1);
+    const size = Math.max(1, Number(p.page_size) || 20);
+    return `fields ${IGDB_FIELDS_CATALOG}; `
+        + (where.length ? `where ${where.join(' & ')}; ` : '')
+        + `sort ${SORT_IGDB[p.ordering] || 'total_rating_count desc'}; limit ${size + 1}; offset ${(page - 1) * size};`;
+}
+
+const IGDB_FIELDS_CATALOG = IGDB_FIELDS + ',total_rating,total_rating_count,hypes,platforms.name,themes.name,keywords.name,age_ratings.category,age_ratings.rating';
+
+// Ids de PLUMBING para o deck/Explorar (os onclicks e o exploreById andam por
+// rawgId). Negativos e sequenciais: nunca colidem com ids reais nem são salvos
+// como rawgId do jogo (addToWishlist/addToBacklog guardam o igdbId em vez dele).
+let igdbSynthetic = -1001;
+export function _resetIgdbSynthetic() { igdbSynthetic = -1001; }   // determinismo nos testes
+
+// Ficha de catálogo: a base da busca + os campos do normalizeFull da RAWG
+function mapIgdbGameFull(g) {
+    const base = mapIgdbGame(g);
+    const esrb = (g.age_ratings || []).find(a => a.category === 1) || {};   // 1 = ESRB
+    return {
+        ...base,
+        rawgId: igdbSynthetic--,
+        rating: g.total_rating ? Math.round(g.total_rating / 2) / 10 : 0,   // régua 0-5 da RAWG
+        ratingsCount: g.total_rating_count || 0,
+        added: g.hypes || 0,
+        platforms: (g.platforms || []).map(x => PLAT_NAME_APP[x.name] || x.name).filter(Boolean),
+        tags: [...(g.themes || []), ...(g.keywords || [])].map(x => x.name).filter(Boolean),
+        esrb: ESRB_NAMES[esrb.rating] || ''
+    };
+}
+
+// Catálogo do GameMatch pela IGDB. Devolve no MESMO formato do listGames da RAWG
+// ({ items, more, count }) ou null quando não dá para atender (sem credenciais,
+// filtro sem tradução, erro) — quem decide é o listGames no gameApi.js.
+export async function igdbListGames(params = {}) {
+    if (!igdbConfigured()) return null;
+    const query = igdbListQuery(params);
+    if (!query) return null;
+    const size = Math.max(1, Number(params.page_size) || 20);
+    try {
+        const games = await igdbApi('/games', query);
+        const list = games || [];
+        return { items: list.slice(0, size).map(mapIgdbGameFull), more: list.length > size };
+    } catch (e) {
+        console.warn('IGDB: catálogo indisponível —', e && e.message);
+        return null;
+    }
+}

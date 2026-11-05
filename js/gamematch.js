@@ -3,7 +3,7 @@
 // swipe, da página Explorar e da página de Perfil. Os dados vivem em
 // appData.gamematch (persistidos junto com o resto do banco local).
 import { appData, saveData } from './store.js';
-import { listGames, esc, normText, resizeUrl, guessFranchise, getGameDetails, searchCompanies, getGameScreenshots, shotsGalleryHtml, fileToSmallJpeg } from './gameApi.js';
+import { listGames, esc, normText, resizeUrl, guessFranchise, detailsForGame, screenshotsForGame, searchCompanies, shotsGalleryHtml, fileToSmallJpeg } from './gameApi.js';
 import { autoVerticalCover } from './covers.js';
 import { icon } from './icons.js';
 import { fetchPersona } from './steam.js';
@@ -319,7 +319,7 @@ function learn(g, delta) {
 
 function pushLog(g, action) {
     const d = gm();
-    d.swipeLog.push({ rawgId: g.rawgId || null, title: g.title, action, match: g._match ?? matchScore(g), at: Date.now() });
+    d.swipeLog.push({ rawgId: g.rawgId > 0 ? g.rawgId : null, title: g.title, action, match: g._match ?? matchScore(g), at: Date.now() });
     if (d.swipeLog.length > 300) d.swipeLog.splice(0, d.swipeLog.length - 300);
     d.totalSwipes++;
 }
@@ -332,7 +332,12 @@ function addToWishlist(g, opts = {}) {
     const vertical = !!g._vcover;
     const item = {
         id: 'w' + Date.now(), title: g.title,
-        platform: (g.platforms && g.platforms[0]) || '', rawgId: g.rawgId || undefined,
+        platform: (g.platforms && g.platforms[0]) || '',
+        // rawgId sintético (negativo) dos catálogos alternativos NUNCA é salvo como
+        // rawgId: o jogo guarda o id DA FONTE (igdbId/steamAppId) — é por ele que as
+        // consultas seguintes (detalhes, datas) acham a ficha certa.
+        rawgId: g.rawgId > 0 ? g.rawgId : undefined,
+        steamAppId: g.steamAppId || undefined, igdbId: g.igdbId || undefined,
         genres: g.genres || [], released: g.released || '', tba: !!g.tba,
         metacritic: g.metacritic || null, image: vertical ? g._vcover : (g.image || null), wideCover: !vertical,
         // Arte de FUNDO da página do jogo: a horizontal que já veio da RAWG
@@ -381,7 +386,10 @@ function addToBacklog(g) {
     const vertical = !!g._vcover;
     const item = {
         id: 'g' + Date.now(), catId: cat || '', title: g.title,
-        platform: (g.platforms && g.platforms[0]) || '', rawgId: g.rawgId || undefined,
+        platform: (g.platforms && g.platforms[0]) || '',
+        // idem addToWishlist: id sintético de catálogo alternativo não vira rawgId
+        rawgId: g.rawgId > 0 ? g.rawgId : undefined,
+        steamAppId: g.steamAppId || undefined, igdbId: g.igdbId || undefined,
         genres: g.genres || [], released: g.released || '', meta: g.playtime ? `${g.playtime}h` : '',
         metacritic: g.metacritic || null, image: vertical ? g._vcover : (g.image || null), wideCover: !vertical,
         // Arte de FUNDO da página do jogo: a horizontal que já veio da RAWG
@@ -396,7 +404,7 @@ function addToBacklog(g) {
 
 // Execução de um swipe de fato (chamada depois da animação de saída do card)
 function applySwipe(g, action) {
-    const d = gm(), entry = { rawgId: g.rawgId || null, title: g.title, at: Date.now() };
+    const d = gm(), entry = { rawgId: g.rawgId > 0 ? g.rawgId : null, title: g.title, at: Date.now() };
     const match = g._match ?? matchScore(g);
     if (action === 'like') {
         d.likes.push(entry); learn(g, 2); pushLog(g, action);
@@ -1217,7 +1225,9 @@ export async function gmXOpen(rawgId) {
         }).catch(() => {});
     }
     try {
-        const d = await getGameDetails(rawgId);
+        // Roteador multi-fonte: jogo da RAWG, da IGDB (catálogo alternativo) e até os
+        // demonstrativos ganham descrição/créditos pela fonte certa do jogo.
+        const d = await detailsForGame(g);
         const box = document.getElementById('gm-xdesc');
         if (box && el.contains(box)) box.textContent = (d && d.description) || 'Sem descrição desse jogo no catálogo.';
         const extra = document.getElementById('gm-xextra');
@@ -1228,7 +1238,7 @@ export async function gmXOpen(rawgId) {
             if ((d && d.publishers || []).length) creds.push(`<strong>Publicadora:</strong> ${esc(d.publishers.join(', '))}`);
             let html = creds.length ? `<div class="gp-cred">${creds.join(' · ')}</div>` : '';
             let shots = (g.screenshots || []).length ? g.screenshots : [];   // miniaturas que vieram na listagem
-            if (!shots.length && rawgId > 0) { try { shots = await getGameScreenshots(rawgId); } catch (e) { /* segue sem */ } }
+            if (!shots.length) { try { shots = await screenshotsForGame(g); } catch (e) { /* segue sem */ } }
             if (shots.length) html += shotsGalleryHtml(shots);
             extra.innerHTML = html;
         }

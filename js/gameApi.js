@@ -6,7 +6,7 @@
 // Steam (loja, js/steamstore.js) e depois para a IGDB (js/igdb.js, se o usuário
 // configurou as credenciais da Twitch). O roteamento mora aqui.
 import { steamSearch, steamDetails } from './steamstore.js';
-import { igdbConfigured, igdbSearchFull, igdbDetailsById, igdbScreenshotsById } from './igdb.js';
+import { igdbConfigured, igdbSearchFull, igdbDetailsById, igdbScreenshotsById, igdbListGames } from './igdb.js';
 
 const DEFAULT_KEY = 'ae08037aa9fb40a48b12090819cedb07';
 const KEY_STORAGE = 'zeralog_rawg_key';
@@ -246,10 +246,19 @@ function normalizeFull(g) {
         esrb: (g.esrb_rating && g.esrb_rating.name) || ''
     };
 }
-// Lista genérica da RAWG com os campos completos
+// Lista genérica do catálogo com os campos completos. Fonte primária: RAWG. Se ela
+// estiver fora do ar (ou a chave recusada), a IGDB assume o catálogo do GameMatch/
+// Explorar/Lançamentos — os itens vêm com rawgId SINTÉTICO (negativo, só para o
+// encanamento das telas) e igdbId de verdade para as consultas seguintes.
 export async function listGames(params) {
-    const data = await rawg('/games', params);
-    return { items: (data.results || []).map(normalizeFull), more: !!data.next, count: data.count || 0 };
+    try {
+        const data = await rawg('/games', params);
+        return { items: (data.results || []).map(normalizeFull), more: !!data.next, count: data.count || 0 };
+    } catch (e) {
+        const fb = await igdbListGames(params).catch(() => null);
+        if (fb) return fb;   // null = sem credenciais/filtro sem tradução: sobe o erro original
+        throw e;
+    }
 }
 
 // Busca estúdios (developers) ou publicadoras (publishers) pelo nome — filtro do Explorar.

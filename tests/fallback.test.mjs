@@ -4,12 +4,13 @@
 // teste aqui depende de rede. Motivo: a RAWG ficou dias fora do ar (522) e o
 // app precisa continuar achando jogos novos enquanto ela não volta.
 // ============================================================================
-import { test, assert, assertEq, mockFetch } from './shim.mjs';
+import { test, assert, assertEq, mockFetch, elById } from './shim.mjs';
 import { appData } from '../js/store.js';
 import { steamDateToIso, textFromHtml, steamSearch, steamDetails } from '../js/steamstore.js';
-import { searchGames, detailsForGame, screenshotsForGame, hydrateSearchHit, describeError } from '../js/gameApi.js';
-import { setIgdbClient } from '../js/igdb.js';
+import { searchGames, listGames, detailsForGame, screenshotsForGame, hydrateSearchHit, describeError } from '../js/gameApi.js';
+import { setIgdbClient, igdbListQuery, _resetIgdbSynthetic } from '../js/igdb.js';
 import { refreshReleaseDates } from '../js/releases.js';
+import { gmExplore, gmExploreWish } from '../js/gamematch.js';
 
 // "&" montado por charCode: um literal de entidade no código-fonte corre o risco
 // de ser decodificado no caminho até o arquivo (bug real que já aconteceu aqui).
@@ -241,4 +242,90 @@ test('refreshReleaseDates: a data da wishlist vem da Steam quando a RAWG caiu', 
     assertEq(r.changed, 1, 'a data foi atualizada');
     assertEq(w.released, '2022-01-19', 'data convertida do texto da Steam');
     assertEq(w.steamAppId, 1449850, 'o appid fica salvo: próximas rodadas nem buscam');
+});
+
+// ---------- catálogo do GameMatch pela IGDB (RAWG fora do ar) ----------
+const IGDB_CATALOG = [
+    {
+        id: 55, name: 'Gamedec', first_release_date: 1609459200,
+        summary: 'Detetive de realidades virtuais.',
+        genres: [{ name: 'Role-playing (RPG)' }],
+        involved_companies: [{ company: { name: 'Anshar Studios' }, developer: true, publisher: true }],
+        cover: { image_id: 'cov1' }, screenshots: [{ image_id: 's1' }],
+        total_rating: 92, total_rating_count: 350, hypes: 12,
+        platforms: [{ name: 'PC (Microsoft Windows)' }, { name: 'Nintendo Switch' }],
+        themes: [{ name: 'Science fiction' }], keywords: [{ name: 'cyberpunk' }],
+        age_ratings: [{ category: 1, rating: 6 }]
+    },
+    { id: 56, name: 'Jogo Dois', first_release_date: 1577836800, summary: 'Outro.', genres: [{ name: 'Shooter' }], cover: { image_id: 'cov2' }, total_rating: 80, total_rating_count: 40 }
+];
+const IGDB_TOKEN = ['id.twitch.tv', { access_token: 'tok-igdb', expires_in: 3600 }];
+
+test('igdbListQuery traduz os parâmetros da RAWG para o dialeto da IGDB', () => {
+    const q = igdbListQuery({
+        page: 2, page_size: 20, ordering: '-rating', exclude_additions: 'true',
+        genres: 'action,role-playing-games-rpg', platforms: '4,7,187,999',
+        dates: '2022-01-01,2023-12-31'
+    });
+    assert(q.includes('genres.slug = ("action","role-playing-rpg")'), 'gêneros RAWG -> IGDB');
+    assert(q.includes('platforms = (6,130,167)'), 'plataformas traduzidas (id 999 sem mapa cai fora)');
+    assert(q.includes(`first_release_date >= ${Date.UTC(2022, 0, 1) / 1000}`), 'janela começa no dia');
+    assert(q.includes(`first_release_date < ${Date.UTC(2023, 11, 31) / 1000 + 86400}`), 'janela inclusiva no fim (a RAWG é)');
+    assert(q.includes('category = (0,4,8,9,10,11)'), 'exclude_additions tira DLC/complemento');
+    assert(q.includes('sort total_rating desc;'), 'ordering -rating vira total_rating');
+    assert(q.includes('limit 21; offset 20;'), 'paginação: limit page_size+1 (deteta "more") e offset da página');
+    assert(igdbListQuery({ ordering: '-popularity' }).includes('sort total_rating_count desc;'), '-popularity = mais comentados');
+    assert(igdbListQuery({ ordering: '-added' }).includes('sort hypes desc;'), '-added = hype');
+    assert(igdbListQuery({ ordering: 'released' }).includes('sort first_release_date asc;'), 'upcomingOnly ordena por data');
+    assertEq(igdbListQuery({ developers: '802' }), null, 'filtro de estúdio da RAWG não tem tradução: prefere o erro a lista errada');
+    assertEq(igdbListQuery({ search: 'zelda' }), null, 'busca por texto não é catálogo');
+});
+
+test('listGames: RAWG fora do ar → o catálogo vem da IGDB em formato RAWG', async () => {
+    setIgdbClient('cid-teste', 'segredo-teste');
+    _resetIgdbSynthetic();
+    mockFetch([RAWG_DOWN, IGDB_TOKEN, ['api.igdb.com', IGDB_CATALOG]]);
+    try {
+        const res = await listGames({ page: 1, page_size: 20, ordering: '-popularity', exclude_additions: 'true', platforms: '4,7' });
+        assertEq(res.items.length, 2, 'itens do catálogo');
+        const g = res.items[0];
+        assert(g.rawgId < 0, 'rawgId SINTÉTICO (negativo): só para o encanamento das telas');
+        assertEq(g.igdbId, 55, 'igdbId de verdade para as consultas seguintes');
+        assertEq(g.title, 'Gamedec');
+        assertEq(g.released, '2021-01-01');
+        assertEq(g.rating, 4.6, 'total_rating 92 na régua 0-5 da RAWG');
+        assertEq(g.ratingsCount, 350, 'total_rating_count (o filtro de "joias" usa)');
+        assertEq(g.platforms[0], 'PC', '"PC (Microsoft Windows)" no idioma do app');
+        assertEq(g.genres[0], 'RPG', 'gênero traduzido para o matchScore');
+        assert((g.tags || []).includes('cyberpunk'), 'keywords viram tags (bloqueio adulto e perfil)');
+        assertEq(g.esrb, 'Mature', 'ESRB lido do age_ratings');
+        assertEq(res.more, false, 'menos itens que o pedido: acabou');
+    } finally { semIgdb(); }
+});
+
+test('listGames: sem IGDB configurada o erro da RAWG sobe (Deck cai nos demonstrativos)', async () => {
+    semIgdb();
+    mockFetch([RAWG_DOWN]);
+    let err = null;
+    try { await listGames({ ordering: '-popularity' }); } catch (e) { err = e; }
+    assert(err, 'erro sobe quando ninguém responde');
+    assertEq(err.status, 522);
+});
+
+test('GameMatch sem RAWG: Explorar lista pela IGDB e o desejo salvo leva igdbId (não o id sintético)', async () => {
+    setIgdbClient('cid-teste', 'segredo-teste');
+    _resetIgdbSynthetic();
+    mockFetch([RAWG_DOWN, IGDB_TOKEN, ['api.igdb.com', IGDB_CATALOG]]);
+    try {
+        await gmExplore('top');
+        const grid = elById('gm-explore-grid');
+        assert(grid.innerHTML.includes('Gamedec'), 'cartão da IGDB pintado no Explorar');
+        gmExploreWish(-1001);   // o mesmo id que o onclick do cartão recebeu
+        const w = appData.wishlist.find(x => x.title === 'Gamedec');
+        assert(w, 'o desejo entrou pelo botão do cartão');
+        assertEq(w.igdbId, 55, 'o id DA FONTE fica salvo');
+        assert(!w.rawgId, 'o id sintético NUNCA vira rawgId do jogo');
+        assertEq(w.genres[0], 'RPG', 'gênero em português');
+        assert(String(w.image).includes('cov1'), 'capa da IGDB no jogo salvo');
+    } finally { semIgdb(); }
 });
