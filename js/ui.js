@@ -9,7 +9,7 @@ import { applyTheme, renderThemePicker } from './themes.js';
 import { phHtml, openIconPicker, anyIconHtml } from './phosphor.js';
 import { platformLabel } from './platforms.js';
 import { getMatches, filtersActive, describeFilters, renderQuickMatch } from './quickmatch.js';
-import { searchGames, getGameDetails, getGameScreenshots, shotsGalleryHtml, viewImage, coverToDataURL, fileToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
+import { searchGames, getGameDetails, getGameScreenshots, detailsForGame, screenshotsForGame, shotsGalleryHtml, viewImage, coverToDataURL, fileToSmallJpeg, esc, resizeUrl, describeError, getRawgKey, setRawgKey, hasCustomRawgKey, fetchMetacriticScore, fetchHLTBTime, guessFranchise } from './gameApi.js';
 import { openCoverPicker, autoVerticalCover, upgradeAllCovers, stopCoverUpgrade, autoBanner, bannerUrlOf } from './covers.js';
 import { openCropper } from './crop.js';
 import { renderFranchiseStats } from './franchises.js';
@@ -147,7 +147,9 @@ export async function applyRawgGame(base) {
     const box = document.getElementById('rawg-results');
     box.innerHTML = '<div class="rawg-msg">Carregando dados...</div>';
     let g = base;
-    try { g = { ...base, ...(await getGameDetails(base.rawgId)) }; } catch (e) { /* segue só com os dados da busca */ }
+    // Ficha completa pela fonte certa do jogo: RAWG, Steam ou IGDB (o resultado da
+    // busca pode ter vindo de qualquer uma delas quando a RAWG está fora do ar)
+    try { g = { ...base, ...(await detailsForGame(base)) }; } catch (e) { /* segue só com os dados da busca */ }
     pendingRawgId = g.rawgId || null;
 
     document.getElementById('game-title').value = g.title;
@@ -1443,11 +1445,13 @@ function paintMineShots(g, isWish) {
 // salvo em `banner` para a próxima abertura ser instantânea.
 async function hydrateGameExtras(g, page) {
     const rawgId = g.rawgId;
-    if (!(rawgId > 0)) return;
+    // Jogos de fonte alternativa (Steam/IGDB) também têm créditos, screenshots e fundo:
+    // o roteador escolhe a fonte certa; só desiste mesmo quando não há id nenhum.
+    if (!(rawgId > 0) && !g.steamAppId && !g.igdbId) return;
     try {
         const [d, shots] = await Promise.all([
-            getGameDetails(rawgId).catch(() => null),
-            getGameScreenshots(rawgId).catch(() => [])
+            detailsForGame(g).catch(() => null),
+            screenshotsForGame(g).catch(() => [])
         ]);
         const el = document.getElementById('gp-extra');
         if (!el || !page.isConnected || !page.contains(el)) return;   // usuário fechou/trocou de jogo antes da resposta

@@ -5,7 +5,7 @@
 // projeto (steam-proxy/worker.js — mesmo proxy da Steam, agora multi-loja).
 // Como plano B, cada loja também aceita "importar colando a lista" (um título por linha).
 import { appData, saveData } from './store.js';
-import { searchGames, esc, normText, coverToDataURL, searchTitle, bestRawgMatch } from './gameApi.js';
+import { searchGames, esc, normText, coverToDataURL, searchTitle, bestRawgMatch, hydrateSearchHit } from './gameApi.js';
 import { autoVerticalCover } from './covers.js';
 import { platformIcons, brandImg, STORE_ICONS } from './icons.js';
 import { syncShow, syncHide, syncAskPermission } from './syncbar.js';
@@ -144,9 +144,13 @@ export async function enrichStoreGames(newGames) {
                 // Busca pelo título SEM a edição ("Gold Edition", "Trilogy"...) e casa de
                 // forma tolerante — o jogo da loja raramente tem o nome exato da RAWG.
                 const results = await searchGames(searchTitle(g.title), 4);
-                const d = bestRawgMatch(results, g.title);
+                let d = bestRawgMatch(results, g.title);
                 if (d) {
-                    if (!g.rawgId) g.rawgId = d.rawgId;
+                    // Ficha de fonte alternativa (Steam/IGDB, com a RAWG fora do ar) chega
+                    // só com o essencial — completa pelo id dela antes de preencher o jogo.
+                    d = await hydrateSearchHit(d);
+                    if (!g.rawgId && d.rawgId) g.rawgId = d.rawgId;
+                    if (!g.steamAppId && d.steamAppId) g.steamAppId = d.steamAppId;
                     if ((!g.genres || !g.genres.length) && d.genres.length) g.genres = d.genres;
                     if (!g.released && d.released) g.released = d.released;
                     if (g.metacritic == null && d.metacritic) g.metacritic = d.metacritic;

@@ -1,5 +1,13 @@
 // Busca automática de dados de jogos via RAWG (https://rawg.io/apidocs).
 // Dica: crie sua própria chave gratuita lá e troque abaixo.
+//
+// FONTES EM CAMADAS: a RAWG é a primária, mas anda ficando fora do ar por dias
+// (522 em nov/2025). Quando ela falha — ou não conhece o jogo — a busca cai para a
+// Steam (loja, js/steamstore.js) e depois para a IGDB (js/igdb.js, se o usuário
+// configurou as credenciais da Twitch). O roteamento mora aqui.
+import { steamSearch, steamDetails } from './steamstore.js';
+import { igdbConfigured, igdbSearchFull, igdbDetailsById, igdbScreenshotsById } from './igdb.js';
+
 const DEFAULT_KEY = 'ae08037aa9fb40a48b12090819cedb07';
 const KEY_STORAGE = 'zeralog_rawg_key';
 
@@ -59,14 +67,33 @@ export function describeError(err) {
     if (err && err.kind === 'http') {
         if (err.status === 401 || err.status === 403) return 'A chave da RAWG foi recusada (inválida ou expirada). Gere uma chave grátis em rawg.io/apidocs e cole em Configurações.';
         if (err.status === 429) return 'Limite de buscas da chave da RAWG atingido. Use sua própria chave grátis (rawg.io/apidocs) em Configurações.';
+        if (err.status >= 500) {
+            const base = `A RAWG está fora do ar agora (erro ${err.status} — problema nos servidores deles, não na sua chave).`;
+            return err.exhausted
+                ? `${base} As fontes alternativas (Steam/IGDB) também não responderam; tente mais tarde.`
+                : `${base} A busca cai para as fontes alternativas (Steam/IGDB).`;
+        }
         return `A RAWG respondeu com erro ${err.status}. Tente de novo em instantes.`;
     }
     return 'Não consegui falar com a RAWG. Verifique a internet ou se algum bloqueador de anúncios está barrando api.rawg.io.';
 }
 
+// Busca em camadas: RAWG primeiro (fonte primária); se ela falhar (fora do ar, sem
+// rede) ou não conhecer o jogo, Steam e depois IGDB. O erro só sobe quando TODAS
+// falham — e vai com a marca "exhausted" para a mensagem contar o que foi tentado.
 export async function searchGames(query, pageSize = 6) {
-    const data = await rawg('/games', { search: query, page_size: pageSize });
-    return (data.results || []).map(normalize);
+    let rawgErr = null, got = [];
+    try {
+        const data = await rawg('/games', { search: query, page_size: pageSize });
+        got = (data.results || []).map(normalize);
+    } catch (e) { rawgErr = e; }
+    if (got.length) return got;
+    const steamHits = await steamSearch(query, pageSize).catch(() => []);
+    if (steamHits.length) return steamHits;
+    const igdbHits = await igdbSearchFull(query, pageSize).catch(() => []);
+    if (igdbHits.length) return igdbHits;
+    if (rawgErr) throw Object.assign(rawgErr, { exhausted: true });
+    return [];   // todas responderam e ninguém conhece o jogo: "nada encontrado" mesmo
 }
 
 // Busca paginada sem DLCs/complementos (usada nas sugestões de franquia)
@@ -96,6 +123,88 @@ export async function getGameDetails(id) {
 export async function getGameScreenshots(id, pageSize = 10) {
     const data = await rawg(`/games/${id}/screenshots`, { page_size: pageSize });
     return (data.results || []).map(x => x.image).filter(Boolean);
+}
+
+// ---------- roteadores multi-fonte (RAWG > Steam > IGDB > título) ----------
+// Casa tolerante MAS estrito (sem o "pega o primeiro" do bestRawgMatch — aqui não
+// há usuário conferindo a escolha): título exato, ou um contém o outro.
+function strictMatch(hits, title) {
+    const t = normText(title);
+    if (!t) return null;
+    return (hits || []).find(h => normText(h.title) === t)
+        || (hits || []).find(h => { const n = normText(h.title); return n && (n.startsWith(t) || t.startsWith(n)); })
+        || null;
+}
+
+// Ficha completa pelo TÍTULO quando o jogo não tem nenhum id de fonte: uso depois
+// que a RAWG falha (fichas antigas salvas só com rawgId, por exemplo).
+async function fallbackDetailsByTitle(title) {
+    const hits = await steamSearch(title, 5).catch(() => []);
+    const hit = strictMatch(hits, title);
+    if (hit && hit.steamAppId) {
+        const d = await steamDetails(hit.steamAppId).catch(() => null);
+        if (d) return d;
+    }
+    const igdbHits = await igdbSearchFull(title, 5).catch(() => []);
+    return strictMatch(igdbHits, title);
+}
+
+// Detalhes do jogo por QUALQUER fonte: rawgId direto na RAWG; steamAppId no
+// appdetails da Steam; igdbId na IGDB; sem nenhum id, busca pelo título. Um erro
+// da RAWG (chave, fora do ar) NÃO impede as outras fontes — elas não usam a chave.
+export async function detailsForGame(game) {
+    const g = game || {};
+    let rawgErr = null;
+    if (g.rawgId > 0) {
+        try { return normalize(await rawg(`/games/${g.rawgId}`)); }
+        catch (e) { rawgErr = e; }
+    }
+    if (g.steamAppId) {
+        const d = await steamDetails(g.steamAppId).catch(() => null);
+        if (d) return d;
+    }
+    if (g.igdbId && igdbConfigured()) {
+        const d = await igdbDetailsById(g.igdbId).catch(() => null);
+        if (d) return d;
+    }
+    const t = String(g.title || '').trim();
+    if (t) {
+        const d = await fallbackDetailsByTitle(t).catch(() => null);
+        if (d) return d;
+    }
+    throw Object.assign(rawgErr || new Error('sem fonte de dados para o jogo'), { exhausted: true });
+}
+
+// Screenshots por qualquer fonte: a Steam traz as delas dentro do appdetails; a
+// IGDB tem endpoint próprio; a RAWG usa o de sempre.
+export async function screenshotsForGame(game, pageSize = 10) {
+    const g = game || {};
+    if (g.rawgId > 0) return getGameScreenshots(g.rawgId, pageSize);
+    if (g.steamAppId) {
+        const d = await steamDetails(g.steamAppId).catch(() => null);
+        if (d && d.screenshots.length) return d.screenshots.slice(0, Math.max(1, pageSize));
+    }
+    if (g.igdbId && igdbConfigured()) {
+        const shots = await igdbScreenshotsById(g.igdbId, pageSize).catch(() => []);
+        if (shots.length) return shots;
+    }
+    return [];
+}
+
+// A busca da Steam/IGDB traz só o essencial (a da Steam nem gêneros tem): quando a
+// ficha veio de fonte alternativa, completa pelo id dela. Uma chamada a mais, SÓ no
+// caso alternativo — com a RAWG de pé nada muda (a ficha já está completa).
+export async function hydrateSearchHit(d) {
+    if (!d || d.rawgId) return d || null;
+    if (d.steamAppId) {
+        const full = await steamDetails(d.steamAppId).catch(() => null);
+        if (full) return { ...d, ...full };
+    }
+    if (d.igdbId && igdbConfigured()) {
+        const full = await igdbDetailsById(d.igdbId).catch(() => null);
+        if (full) return { ...d, ...full };
+    }
+    return d;
 }
 
 // Galeria de screenshots (página do jogo na biblioteca e no Explorar):

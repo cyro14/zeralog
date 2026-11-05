@@ -2,7 +2,7 @@
 // Sem servidor não existe "push" garantido: o app confere ao abrir e a cada hora com ele aberto; em Android
 // com o app instalado, o service worker também confere em segundo plano (Periodic Background Sync), sem rede.
 import { appData, saveData } from './store.js';
-import { searchGames, getGameDetails } from './gameApi.js';
+import { searchGames, detailsForGame } from './gameApi.js';
 import { notifyPush } from './notify.js';
 
 const DAY = 86400000;
@@ -132,14 +132,19 @@ export async function refreshReleaseDates({ force = false, onProgress } = {}) {
     for (const w of items) {
         onProgress && onProgress({ done, total: items.length, title: w.title });
         try {
-            let id = w.rawgId;
-            if (!id) {
+            // Sem id nenhum? Busca (RAWG, ou Steam/IGDB quando ela está fora do ar) e
+            // guarda o id DA FONTE que respondeu — as próximas rodadas nem buscam mais.
+            if (!w.rawgId && !w.steamAppId && !w.igdbId) {
                 const res = await searchGames(w.title, 5);
                 const hit = res.find(r => norm(r.title) === norm(w.title));
-                if (hit) { id = hit.rawgId; w.rawgId = id; }
+                if (hit) {
+                    w.rawgId = hit.rawgId || w.rawgId;
+                    w.steamAppId = hit.steamAppId || w.steamAppId;
+                    w.igdbId = hit.igdbId || w.igdbId;
+                }
             }
-            if (id) {
-                const d = await getGameDetails(id);
+            if (w.rawgId || w.steamAppId || w.igdbId) {
+                const d = await detailsForGame(w);
                 const before = w.released || '';
                 if ((d.released || '') !== before || !!d.tba !== !!w.tba) {
                     w.released = d.released || '';

@@ -13,7 +13,7 @@
 // 4. Os jogos entram na categoria "Steam" (criada automaticamente), plataforma "Steam",
 //    com as horas jogadas; as capas verticais são baixadas e salvas no app em segundo plano.
 import { appData, saveData } from './store.js';
-import { esc, blobToSmallJpeg, searchGames, guessFranchise, searchTitle, bestRawgMatch } from './gameApi.js';
+import { esc, blobToSmallJpeg, searchGames, guessFranchise, searchTitle, bestRawgMatch, hydrateSearchHit } from './gameApi.js';
 import { platformIcons, brandImg, STORE_ICONS } from './icons.js';
 import { syncShow, syncHide, syncAskPermission } from './syncbar.js';
 import { renderShopHub } from './stores.js';
@@ -338,9 +338,14 @@ async function enrichSteamGames(newGames) {
                 // Busca pelo título SEM a edição ("GOTY", "Enhanced"...) e casa de forma
                 // tolerante — mesmo motivo do enriquecimento das outras lojas.
                 const results = await searchGames(searchTitle(g.title), 4);
-                const d = bestRawgMatch(results, g.title);
+                let d = bestRawgMatch(results, g.title);
                 if (d) {
-                    if (!g.rawgId) g.rawgId = d.rawgId;
+                    // Ficha de fonte alternativa (Steam/IGDB, com a RAWG fora do ar) chega
+                    // só com o essencial: completa pelo id DELA — e prefere o appid PRÓPRIO
+                    // do jogo (a busca por nome pode casar um homônimo).
+                    d = await hydrateSearchHit({ ...d, steamAppId: d.steamAppId || g.steamAppId });
+                    if (!g.rawgId && d.rawgId) g.rawgId = d.rawgId;
+                    if (!g.steamAppId && d.steamAppId) g.steamAppId = d.steamAppId;
                     if ((!g.genres || !g.genres.length) && d.genres.length) g.genres = d.genres;
                     if (!g.released && d.released) g.released = d.released;
                     if (g.metacritic == null && d.metacritic) g.metacritic = d.metacritic;

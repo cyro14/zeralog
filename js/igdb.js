@@ -174,3 +174,77 @@ export async function igdbSelfTest(title = 'Portal 2') {
         return { ok: false, error: (e && e.message) || 'falha desconhecida' };
     }
 }
+
+// ---------- busca e ficha completas (segunda fonte de dados) ----------
+// A RAWG anda ficando fora do ar por dias; a IGDB cobre TODOS os jogos (não só os
+// da Steam). Usa o mesmo igdbApi de cima (token da Twitch + Worker do projeto).
+// Gêneros da IGDB vêm em inglês com nomes próprios deles — traduza os comuns.
+const GENRES_IGDB_PT = {
+    'Role-playing (RPG)': 'RPG', 'Shooter': 'Tiro', 'Platform': 'Plataforma', 'Adventure': 'Aventura',
+    'Puzzle': 'Quebra-cabeça', 'Strategy': 'Estratégia', 'Simulator': 'Simulação', 'Sport': 'Esportes',
+    'Racing': 'Corrida', 'Fighting': 'Luta', 'Music': 'Música', 'Arcade': 'Arcade', 'Indie': 'Indie',
+    'Point-and-click': 'Aponte e clique', 'Visual Novel': 'Novela visual', 'Card & Board Game': 'Cartas e tabuleiro',
+    'Turn-based strategy (TBS)': 'Estratégia por turnos', 'Tactical': 'Tático', 'Quiz/Trivia': 'Quiz',
+    'Pinball': 'Pinball', 'MOBA': 'MOBA', 'Real Time Strategy (RTS)': 'Estratégia em tempo real',
+    'Hack and slash/Beat \'em up': 'Hack and slash'
+};
+const igdbGenrePt = n => GENRES_IGDB_PT[n] || n || '';
+const shotUrl = id => `https://images.igdb.com/igdb/image/upload/t_screenshot_huge/${id}.jpg`;
+
+const IGDB_FIELDS = 'name,first_release_date,summary,genres.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,cover.image_id,screenshots.image_id';
+
+// Ficha da IGDB no MESMO formato do normalize() da RAWG (js/gameApi.js)
+function mapIgdbGame(g) {
+    const dev = [], pub = [];
+    (g.involved_companies || []).forEach(ic => {
+        const n = ic.company && ic.company.name;
+        if (!n) return;
+        if (ic.developer) dev.push(n);
+        if (ic.publisher) pub.push(n);
+    });
+    return {
+        rawgId: null,
+        igdbId: g.id || null,
+        title: g.name || '',
+        released: g.first_release_date ? new Date(g.first_release_date * 1000).toISOString().slice(0, 10) : '',
+        tba: false,
+        genres: (g.genres || []).map(x => igdbGenrePt(x.name)).filter(Boolean),
+        metacritic: null,   // a nota da IGDB é outra régua (agregado próprio): não finja Metacritic
+        playtime: 0,
+        image: g.cover && g.cover.image_id ? coverUrl(g.cover.image_id) : null,
+        imageExtra: null,
+        description: String(g.summary || '').trim(),
+        developers: dev.slice(0, 8),
+        publishers: pub.slice(0, 8),
+        screenshots: (g.screenshots || []).map(s => s.image_id ? shotUrl(s.image_id) : null).filter(Boolean)
+    };
+}
+
+// Busca por título com a ficha já completa (a IGDB devolve tudo de uma vez — não
+// precisa de segunda chamada como a Steam). Erro devolve lista vazia: é fallback.
+export async function igdbSearchFull(title, limit = 6) {
+    const q = apicalypseText(title);
+    if (!q || !igdbConfigured()) return [];
+    try {
+        const games = await igdbApi('/games', `search "${q}"; fields ${IGDB_FIELDS}; limit ${Math.max(1, Number(limit) || 6)};`);
+        return (games || []).filter(g => g && g.name).map(mapIgdbGame);
+    } catch (e) {
+        console.warn('IGDB: busca indisponível —', e && e.message);
+        return [];
+    }
+}
+
+// Ficha pelo id da IGDB (roteada por detailsForGame quando o jogo tem igdbId)
+export async function igdbDetailsById(id) {
+    if (!id || !igdbConfigured()) return null;
+    const games = await igdbApi('/games', `fields ${IGDB_FIELDS}; where id = ${Number(id)}; limit 1;`);
+    const g = (games || [])[0];
+    return g && g.name ? mapIgdbGame(g) : null;
+}
+
+// Screenshots do endpoint próprio da IGDB (a busca pode vir sem elas)
+export async function igdbScreenshotsById(id, limit = 10) {
+    if (!id || !igdbConfigured()) return [];
+    const shots = await igdbApi('/screenshots', `fields image_id; where game = ${Number(id)}; limit ${Math.max(1, Number(limit) || 10)};`);
+    return (shots || []).map(s => s.image_id ? shotUrl(s.image_id) : null).filter(Boolean);
+}
