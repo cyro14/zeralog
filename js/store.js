@@ -11,7 +11,7 @@ export const sortLabels = { 'date': 'Data', 'rating': 'Nota', 'time': 'Tempo', '
 export const defaultData = {
     settings: { sort: 'manual', compact: false, finishedSort: 'date', finishedSortDir: 'desc', homeSortDir: 'asc', finishedView: 'shelf', timelineDir: 'desc', timelineGroup: 'year', homeView: 'shelf', wishView: 'shelf', wishSub: 'list', platformDisplay: 'icon', shelfPlain: true, autoCoverPref: 'vertical', steam: {} },
     collapsedCats: [], 
-    categories: [ { id: 'c1', name: 'Cartas e Estratégia' }, { id: 'c2', name: 'Plataforma 3D' } ],
+    categories: [ { id: 'c1', name: 'Principal' } ],
     platforms: [
         { name: 'PC', icon: defaultPlatformsIcons['PC'] },
         { name: 'Nintendo', icon: defaultPlatformsIcons['Nintendo'] },
@@ -113,6 +113,24 @@ export function migrateData(data) {
     // Categorias padrão antigas tinham emoji no nome
     const renamed = { '\u{1F0CF} Cartas e Estratégia': 'Cartas e Estratégia', '\u{1F344} Plataforma 3D': 'Plataforma 3D' };
     data.categories.forEach(c => { if (renamed[c.name]) c.name = renamed[c.name]; });
+    // As duas categorias que vinham no banco viram uma só, "Principal". Só mexe em
+    // quem NUNCA personalizou: os nomes precisam ser exatamente os dois padrões.
+    // Jogos da categoria removida migram para a Principal, junto com toda
+    // referência dela nas configurações (Steam, lojas, colapsadas).
+    const catNames = data.categories.map(c => String(c.name || '').trim());
+    if (data.categories.length === 2 && catNames.includes('Cartas e Estratégia') && catNames.includes('Plataforma 3D')) {
+        const gone = data.categories.find(c => c.name === 'Plataforma 3D');
+        const keep = data.categories.find(c => c.name === 'Cartas e Estratégia');
+        const principal = { ...keep, name: 'Principal' };
+        data.categories = [principal];
+        data.games.forEach(g => { if (g.catId === gone.id) g.catId = principal.id; });
+        if (Array.isArray(data.collapsedCats)) data.collapsedCats = data.collapsedCats.filter(id => id !== gone.id);
+        if (isObj(data.settings.steam) && data.settings.steam.catId === gone.id) data.settings.steam.catId = principal.id;
+        if (isObj(data.settings.stores)) Object.keys(data.settings.stores).forEach(k => {
+            const s = data.settings.stores[k];
+            if (isObj(s) && s.catId === gone.id) s.catId = principal.id;
+        });
+    }
     return data;
 }
 

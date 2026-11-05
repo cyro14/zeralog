@@ -53,13 +53,29 @@ function normalize(g) {
     };
 }
 
+// Teto para a chamada RAWG: quando o serviço cai, o Cloudflare demora ~15s para
+// devolver o 522 — sem teto, TODA busca congelava esse tempo antes do fallback
+// (Steam/IGDB) começar. Uma RAWG saudável responde em menos de 2s, então 6s é
+// folga de sobra para conexões lentas sem segurar o app quando ela está morta.
+let rawgTimeout = 6000;
+export function _setRawgTimeout(ms) { rawgTimeout = Math.max(0, Number(ms) || 0); }   // testes
+
 async function rawg(path, params = {}) {
     const qs = new URLSearchParams({ ...params, key: getRawgKey() });
-    let res;
-    try { res = await fetch(`https://api.rawg.io/api${path}?${qs}`); }
-    catch (e) { throw Object.assign(new Error('network'), { kind: 'network' }); }
-    if (!res.ok) throw Object.assign(new Error(`RAWG ${res.status}`), { kind: 'http', status: res.status });
-    return res.json();
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), rawgTimeout);
+    let data;
+    try {
+        const res = await fetch(`https://api.rawg.io/api${path}?${qs}`, { signal: ctrl.signal });
+        if (!res.ok) throw Object.assign(new Error(`RAWG ${res.status}`), { kind: 'http', status: res.status });
+        data = await res.json();
+    } catch (e) {
+        // erro de servidor (522/429/401) sobe como está; abort do teto e falha de
+        // rede viram "network" — os fallbacks tratam os dois do mesmo jeito
+        if (e && e.kind === 'http') throw e;
+        throw Object.assign(new Error('network'), { kind: 'network' });
+    } finally { clearTimeout(timer); }
+    return data;
 }
 
 // Mensagem clara para o usuário, conforme o tipo de falha

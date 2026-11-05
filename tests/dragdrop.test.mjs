@@ -4,7 +4,7 @@
 // O núcleo (placeGame/applyDrop) roda direto — a camada de ponteiro é fina.
 import { test, assert, assertEq } from './shim.mjs';
 import { appData } from '../js/store.js';
-import { placeGame, applyDrop } from '../js/dragdrop.js';
+import { placeGame, applyDrop, edgeSpeed } from '../js/dragdrop.js';
 
 const mk = (id, cat, extra = {}) => Object.assign({ id, title: id, catId: cat, state: null, continuous: false }, extra);
 const CAT = id => ({ kind: 'cat', id });
@@ -14,6 +14,19 @@ const ordemDe = (games, cat) => games.filter(g => g.catId === cat && !g.state &&
 const fila = () => appData.games.filter(g => !g.state && !g.continuous).map(g => g.id).join(',');
 const hero = () => appData.games.filter(g => g.state === 'playing' && !g.continuous).map(g => g.id).join(',');
 const conts = () => appData.games.filter(g => g.continuous).map(g => g.id).join(',');
+
+// ---------- auto-scroll durante o arrasto ----------
+test('edgeSpeed: rola para cima perto do topo, para baixo perto do fim, parado no meio', () => {
+    const H = 800;
+    assertEq(edgeSpeed(400, H), 0, 'meio da tela: nenhuma rolagem');
+    assert(edgeSpeed(0, H) < 0, 'colado no topo: sobe');
+    assert(edgeSpeed(30, H) < 0 && edgeSpeed(30, H) > edgeSpeed(0, H), 'quanto mais perto da borda, mais rápido');
+    assert(edgeSpeed(799, H) > 0, 'colado no fim: desce');
+    assert(edgeSpeed(770, H) > 0 && edgeSpeed(770, H) < edgeSpeed(799, H), 'idem no fim, cresce chegando perto');
+    assert(edgeSpeed(60, H) !== 0, 'dentro da zona de 72px rola');
+    assertEq(edgeSpeed(80, H), 0, 'fora da zona de 72px: parado');
+    assertEq(edgeSpeed(0, 0), -Math.round(22 * 1), 'altura inválida usa o fallback (800) — colado no topo sobe');
+});
 
 test('placeGame: reordena na mesma categoria (antes e depois da referência)', () => {
     const games = [mk('a', 'c1'), mk('b', 'c1'), mk('x', 'c2'), mk('c', 'c1')];

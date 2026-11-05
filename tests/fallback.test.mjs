@@ -7,7 +7,7 @@
 import { test, assert, assertEq, mockFetch, elById } from './shim.mjs';
 import { appData } from '../js/store.js';
 import { steamDateToIso, textFromHtml, steamSearch, steamDetails } from '../js/steamstore.js';
-import { searchGames, listGames, detailsForGame, screenshotsForGame, hydrateSearchHit, describeError } from '../js/gameApi.js';
+import { searchGames, listGames, detailsForGame, screenshotsForGame, hydrateSearchHit, describeError, _setRawgTimeout } from '../js/gameApi.js';
 import { setIgdbClient, igdbListQuery, _resetIgdbSynthetic } from '../js/igdb.js';
 import { refreshReleaseDates } from '../js/releases.js';
 import { gmExplore, gmExploreWish } from '../js/gamematch.js';
@@ -230,6 +230,29 @@ test('describeError: 522 explica que é a RAWG fora do ar (e não a chave do usu
     const semSorte = describeError({ kind: 'http', status: 522, exhausted: true });
     assert(semSorte.includes('também não responderam'), 'quando nem Steam nem IGDB responderam, a mensagem diz');
     assert(describeError({ kind: 'http', status: 429 }).includes('Limite'), '429 continua sendo limite da chave');
+});
+
+// ---------- RAWG pendurada não segura a busca (teto antes do fallback) ----------
+test('searchGames: RAWG pendurada é abortada no teto — o fallback começa na hora', async () => {
+    semIgdb();
+    _setRawgTimeout(80);   // cap curtinho: o teste não pode esperar 6s
+    const prevFetch = globalThis.fetch;
+    globalThis.fetch = async (url, opts = {}) => {
+        if (String(url).includes('api.rawg.io')) {
+            return new Promise((resolve, reject) => {
+                if (opts.signal) opts.signal.addEventListener('abort', () => reject(new Error('abortado')));
+            });
+        }
+        throw new Error('fonte alternativa fora');   // Steam/IGDB falham na hora
+    };
+    const t0 = Date.now();
+    let err = null;
+    try { await searchGames('qualquer'); } catch (e) { err = e; }
+    globalThis.fetch = prevFetch;
+    _setRawgTimeout(6000);   // devolve o teto real
+    assert(err, 'erro sobe quando todas as fontes falham');
+    assertEq(err.kind, 'network', 'abort do teto vira network');
+    assert(Date.now() - t0 < 3000, 'não fica esperando o 522 do Cloudflare (~15s)');
 });
 
 // ---------- fim a fim: datas da wishlist ----------

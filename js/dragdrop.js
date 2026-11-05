@@ -124,6 +124,7 @@ function clearMarks() {
 function cleanupDrag() {
     const d = drag;
     drag = null;
+    stopAutoScroll();
     if (d) {
         clearTimeout(d.timer);
         if (d.ghost) d.ghost.remove();
@@ -148,6 +149,44 @@ function suppressClick() {
 // Toque: com o arrasto ativo o dedo não pode rolar a página
 function blockScroll(e) { if (drag) e.preventDefault(); }
 
+// ================= AUTO-SCROLL durante o arrasto =================
+// Perto do topo ou do fim da janela, a página rola sozinha — velocidade cresce
+// conforme o cartucho chega mais perto da borda (padrão de todo app de arrastar).
+// Loop de rAF lendo a ÚLTIMA posição: funciona até com o dedo/mouse PARADO na
+// borda (eventos de move não continuam chegando quando a mão fica quieta).
+const EDGE_PX = 72;      // zona ativa em cada borda
+const EDGE_MAX = 22;     // px/frame no limite (no 60Hz dá ~1300px/s)
+
+// Velocidade de rolagem para o ponteiro em y numa janela de altura h (px/frame):
+// negativa = subir. Pura para os testes.
+export function edgeSpeed(y, h) {
+    h = Number(h) || (typeof window !== 'undefined' && window.innerHeight) || 800;
+    y = Number(y) || 0;
+    if (y < EDGE_PX) return -Math.round(EDGE_MAX * (1 - y / EDGE_PX));
+    if (y > h - EDGE_PX) return Math.round(EDGE_MAX * (1 - (h - y) / EDGE_PX));
+    return 0;
+}
+
+let scrollRaf = 0;
+function autoScrollStep() {
+    const d = drag;
+    if (!drag || !drag.armed) { scrollRaf = 0; return; }   // arrasto acabou: encerra o loop
+    const v = edgeSpeed(d.y, window.innerHeight);
+    if (v && typeof window.scrollBy === 'function') {
+        window.scrollBy(0, v);
+        // o conteúdo andou sob o ponteiro parado: os alvos precisam ser reavaliados
+        hitTest(d, d.x, d.y);
+    }
+    scrollRaf = requestAnimationFrame(autoScrollStep);
+}
+function startAutoScroll() {
+    if (!scrollRaf && typeof requestAnimationFrame === 'function') scrollRaf = requestAnimationFrame(autoScrollStep);
+}
+function stopAutoScroll() {
+    if (scrollRaf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(scrollRaf);
+    scrollRaf = 0;
+}
+
 function armDrag(d, x, y) {
     d.armed = true;
     document.body.classList.add('dragging');
@@ -163,6 +202,7 @@ function armDrag(d, x, y) {
     try { d.li.setPointerCapture(d.pointerId); } catch (e) { /* sem captura o arrasto segue no document */ }
     document.addEventListener('touchmove', blockScroll, { passive: false, capture: true });
     moveGhost(d, x, y);
+    startAutoScroll();
     if (d.touch && navigator.vibrate) { try { navigator.vibrate(25); } catch (e) { /* sem vibração, sem drama */ } }
 }
 
