@@ -271,7 +271,7 @@ test('igdbListQuery traduz os parâmetros da RAWG para o dialeto da IGDB', () =>
     assert(q.includes('platforms = (6,130,167)'), 'plataformas traduzidas (id 999 sem mapa cai fora)');
     assert(q.includes(`first_release_date >= ${Date.UTC(2022, 0, 1) / 1000}`), 'janela começa no dia');
     assert(q.includes(`first_release_date < ${Date.UTC(2023, 11, 31) / 1000 + 86400}`), 'janela inclusiva no fim (a RAWG é)');
-    assert(q.includes('category = (0,4,8,9,10,11)'), 'exclude_additions tira DLC/complemento');
+    assert(q.includes('game_type = (0,4,8,9,10,11)'), 'exclude_additions tira DLC/complemento (game_type: category foi aposentado)');
     assert(q.includes('sort total_rating desc;'), 'ordering -rating vira total_rating');
     assert(q.includes('limit 21; offset 20;'), 'paginação: limit page_size+1 (deteta "more") e offset da página');
     assert(igdbListQuery({ ordering: '-popularity' }).includes('sort total_rating_count desc;'), '-popularity = mais comentados');

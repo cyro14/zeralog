@@ -207,6 +207,10 @@ export function resetShim() {
     created.length = 0;
     unmockFetch();
     globalThis.fetch = shimFetch;   // devolve o fetch do shim (um teste pode ter trocado)
+    // IGDB desligada por padrão nos testes (as credenciais DEFAULT do app só valem
+    // fora da suíte): os testes de capas assumem que a fonte IGDB não responde.
+    // Quem quiser a IGDB no teste configura credenciais de teste por conta própria.
+    try { localStorage.setItem('zeralog_igdb_client', JSON.stringify({ off: true })); } catch (e) {}
     // banco de dados fresco: mesmo caminho de um usuário novo (migrações inclusas)
     setAppData(migrateData(JSON.parse(JSON.stringify(defaultData))));
 }

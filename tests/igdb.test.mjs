@@ -35,14 +35,23 @@ const GAMES_OK = { json: [{ id: 7346, name: 'Portal 2', cover: { id: 1, image_id
 // a rota casa com a URL do Worker (que carrega o destino codificado) e com a direta
 const ROTAS_OK = [['id.twitch.tv/oauth2/token', TOKEN_OK], ['api.igdb.com', GAMES_OK]];
 
-test('IGDB: sem Client ID/Secret não chama nada (nada de erro no console do usuário)', async () => {
-    localStorage.removeItem('zeralog_igdb_client');
+test('IGDB: apagar as credenciais desliga a IGDB (nada de erro no console do usuário)', async () => {
+    setIgdbClient('', '');
     clearIgdbToken();
     const calls = stubFetch([]);
-    assertEq(igdbConfigured(), false, 'não configurada por padrão');
+    assertEq(igdbConfigured(), false, 'apagar desliga de propósito');
     const covers = await fetchIGDBCovers('Portal 2');
     assertEq(covers.length, 0, 'sem capas');
     assertEq(calls.length, 0, 'nenhuma requisição de rede');
+});
+
+test('IGDB: sem nada no navegador, as credenciais padrão do app valem (ativa de fábrica)', () => {
+    localStorage.removeItem('zeralog_igdb_client');   // navegador "de fábrica"
+    clearIgdbToken();
+    const c = getIgdbClient();
+    assert(c.id && c.secret, 'par padrão do app presente');
+    assertEq(igdbConfigured(), true, 'IGDB ativa sem nenhuma configuração');
+    setIgdbClient('', '');   // volta a desligar: não vaza para os testes seguintes
 });
 
 test('IGDB: Client ID + Secret ficam salvos neste navegador (e apagar desliga tudo)', () => {

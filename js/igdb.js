@@ -17,22 +17,28 @@ const API = 'https://api.igdb.com/v4';
 const WORKER_HINT = 'Atualize o Worker do projeto (docs/steam-proxy.md) — ele precisa liberar a api.igdb.com.';
 
 // ---------- credenciais (Client ID + Client Secret da Twitch) ----------
+// Padrão do APP (colado aqui pelo dono do projeto): a IGDB já vem ativa de fábrica,
+// sem ninguém precisar configurar nada. Quem quiser usar as PRÓPRIAS credenciais,
+// preenche em Configurações → Capas e Busca (vale por cima do padrão).
+const DEFAULT_CLIENT = { id: '3z03dhefpo4ktv8fhnmykftbli2ri3', secret: 'czb366a75zpiejx86t70xvsuj4dvh1' };
+
 export function getIgdbClient() {
     try {
         const raw = localStorage.getItem(CLIENT_KEY);
-        if (!raw) return { id: '', secret: '' };
+        if (!raw) return { ...DEFAULT_CLIENT };   // navegador "de fábrica": par padrão do app
         try {
             const o = JSON.parse(raw);
+            if (o && o.off) return { id: '', secret: '' };   // apagado de propósito nas Configurações: desligada
             if (o && typeof o === 'object') return { id: String(o.id || '').trim(), secret: String(o.secret || '').trim() };
         } catch (e) { /* valor antigo: uma string solta (o token que a tela pedia antes) */ }
         return { id: String(raw).trim(), secret: '' };
-    } catch (e) { return { id: '', secret: '' }; }
+    } catch (e) { return { ...DEFAULT_CLIENT }; }
 }
 
 export function setIgdbClient(id, secret) {
     try {
         const c = { id: String(id || '').trim(), secret: String(secret || '').trim() };
-        if (!c.id && !c.secret) localStorage.removeItem(CLIENT_KEY);
+        if (!c.id && !c.secret) localStorage.setItem(CLIENT_KEY, JSON.stringify({ off: true }));
         else localStorage.setItem(CLIENT_KEY, JSON.stringify(c));
         // credencial nova = token velho não serve mais
         clearIgdbToken();
@@ -304,10 +310,13 @@ export function igdbListQuery(params = {}) {
         where.push(`first_release_date >= ${dayTs(dates[0])}`);
         if (dayTs(dates[1])) where.push(`first_release_date < ${dayTs(dates[1]) + 86400}`);   // o fim é inclusivo na RAWG
     }
-    // exclude_additions: jogo principal, expansão standalone, remake, remaster, port
-    if (p.exclude_additions === 'true') where.push('category = (0,4,8,9,10,11)');
+    // exclude_additions: jogo principal, expansão standalone, remake, remaster, port.
+    // ATENÇÃO: é game_type — o campo category foi aposentado pela IGDB (voltou vazio).
+    if (p.exclude_additions === 'true') where.push('game_type = (0,4,8,9,10,11)');
     if (p.ordering === '-metacritic') where.push('aggregated_rating > 0');
-    if (p.ordering === '-rating') where.push('total_rating_count >= 2');   // nota sem quem avalie infla jogo obscuro
+    // nota sem quem avalie infla jogo obscuro ("5 estrelas" com 2 votos); o piso de 25
+    // é o mesmo corte inferior da aba Joias (25–1500), então ela continua funcionando
+    if (p.ordering === '-rating') where.push('total_rating_count >= 25');
     const page = Math.max(1, Number(p.page) || 1);
     const size = Math.max(1, Number(p.page_size) || 20);
     return `fields ${IGDB_FIELDS_CATALOG}; `
