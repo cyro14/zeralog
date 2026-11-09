@@ -47,9 +47,10 @@ async function wikipedia(title) {
     return out;
 }
 
-// Acha o jogo na RAWG com cuidado para não pegar um homônimo
+// Acha o jogo na RAWG com cuidado para não pegar um homônimo. Ids sintéticos de
+// catálogo alternativo (negativos) NÃO são ids da RAWG: tratados como "sem id".
 async function findRawgId(title, rawgId) {
-    if (rawgId) return rawgId;
+    if (rawgId > 0) return rawgId;
     const res = await searchGames(title, 5);
     const want = norm(title);
     const hit = res.find(r => norm(r.title) === want) || res.find(r => norm(r.title).startsWith(want));

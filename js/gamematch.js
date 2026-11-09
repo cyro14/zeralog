@@ -4,7 +4,7 @@
 // appData.gamematch (persistidos junto com o resto do banco local).
 import { appData, saveData } from './store.js';
 import { listGames, esc, normText, resizeUrl, guessFranchise, detailsForGame, screenshotsForGame, searchCompanies, shotsGalleryHtml, fileToSmallJpeg } from './gameApi.js';
-import { autoVerticalCover } from './covers.js';
+import { autoVerticalCover, autoBanner } from './covers.js';
 import { icon } from './icons.js';
 import { fetchPersona } from './steam.js';
 import { ACHIEVEMENTS, gamerXp, levelFromXp, rankOf } from './achievements.js';
@@ -478,7 +478,7 @@ function cardHtml(g, idx) {
             </div>
             <div class="gm-genres">${(g.genres || []).slice(0, 3).map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>
             <div class="gm-plats">${esc(gmPlatLabel(g))}</div>
-            <button type="button" class="gm-info-btn" data-t="${esc(g.title)}" title="Pesquisar no Google"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
+            <button type="button" class="gm-info-btn" data-id="${g.rawgId}" title="Mais informações do jogo"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
         </div>
     </article>`;
 }
@@ -502,13 +502,12 @@ export async function renderDeck() {
     }
     deck.innerHTML = plannedDeck.slice(0, 3).map((g, i) => cardHtml(g, i)).join('');
     deck.querySelectorAll('.gm-card').forEach((el, i) => { el.style.zIndex = 10 - i; });
-    // botão de pesquisa no Google: não pode iniciar o arrasto do card
+    // botão de lupa: abre a página de informações do jogo (não pode iniciar o arrasto do card)
     deck.querySelectorAll('.gm-info-btn').forEach(b => {
         b.addEventListener('pointerdown', e => e.stopPropagation());
         b.addEventListener('click', e => {
             e.stopPropagation();
-            const q = encodeURIComponent((b.dataset.t || '') + ' jogo');
-            window.open(`https://www.google.com/search?q=${q}`, '_blank', 'noopener');
+            gmXOpen(Number(b.dataset.id));   // dataset vem string e o deck procura por número
         });
     });
     attachDrag(deck.querySelector('.gm-top'));
@@ -1166,8 +1165,12 @@ export async function gmXOpen(rawgId) {
     if (old) old.remove();
     const m = g._match ?? matchScore(g);
     const img = g.image ? resizeUrl(g.image, 1280) : null;
-    // Capa horizontal estilo "capa de Facebook": arte adicional da RAWG (cai para a principal)
-    const bannerSrc = g.imageExtra || g.image || null;
+    // Fundo e banner "capa de Facebook": só o que JÁ É horizontal pinta na hora
+    // (arte extra e screenshots da listagem). A CAPA em si não vira fundo — a página
+    // ficava igualzinha ao cartão. A arte melhor (library_hero da Steam, arte extra,
+    // screenshots) chega em segundo plano pelo autoBanner e troca as duas.
+    const seeds = [g.imageExtra, ...(g.screenshots || [])].filter(Boolean);
+    const bannerSrc = seeds[0] || null;
     const el = document.createElement('div');
     el.id = 'gm-xpage';
     el.className = 'gm-xpage';
@@ -1176,10 +1179,10 @@ export async function gmXOpen(rawgId) {
     // logo abaixo, sem re-render, quando a busca em segundo plano responde
     const heroImg = g._vcover || img;
     el.innerHTML = `
-        ${img ? `<div class="gp-bg"><img src="${esc(img)}" alt=""></div>` : ''}
+        ${bannerSrc ? `<div class="gp-bg" id="gm-x-bg"><img src="${esc(resizeUrl(bannerSrc, 1280))}" alt=""></div>` : ''}
         <div class="gp-scroll">
             <button type="button" class="gp-back" onclick="gmXClose()">‹ Voltar</button>
-            ${bannerSrc ? `<div class="gp-banner"><img src="${esc(resizeUrl(bannerSrc, 1280))}" alt="" onclick="window.viewImage && window.viewImage('${esc(bannerSrc)}')"></div>` : ''}
+            ${bannerSrc ? `<div class="gp-banner" id="gm-x-banner"><img src="${esc(resizeUrl(bannerSrc, 1280))}" alt="" onclick="window.viewImage && window.viewImage('${esc(bannerSrc)}')"></div>` : ''}
             <div class="gp-hero">
                 ${heroImg ? `<img class="gp-cover" id="gm-x-hero" src="${esc(heroImg)}" alt="">` : `<div class="gp-cover gp-cover-empty">${esc(g.title.slice(0, 2))}</div>`}
                 <div class="gp-hero-info">
@@ -1224,6 +1227,30 @@ export async function gmXOpen(rawgId) {
             }
         }).catch(() => {});
     }
+    // Arte horizontal melhor (library_hero da Steam, arte extra, screenshots) em
+    // segundo plano: entra e troca o fundo e o banner sem recarregar a página.
+    const paintArt = url => {
+        if (!url || !el.isConnected) return;   // usuário fechou a página: nada a pintar
+        const bg = document.getElementById('gm-x-bg');
+        if (bg) bg.innerHTML = `<img src="${esc(resizeUrl(url, 1280))}" alt="">`;
+        let bn = document.getElementById('gm-x-banner');
+        if (!bn) {
+            bn = document.createElement('div');
+            bn.className = 'gp-banner';
+            bn.id = 'gm-x-banner';
+            const scroll = el.querySelector('.gp-scroll');
+            const hero = el.querySelector('.gp-hero');
+            if (scroll && hero) scroll.insertBefore(bn, hero);   // banner vem antes do hero
+        }
+        if (bn) {
+            bn.innerHTML = `<img src="${esc(resizeUrl(url, 1280))}" alt="" onclick="window.viewImage && window.viewImage('${esc(url)}')">`;
+            el.classList.add('with-banner');
+        }
+    };
+    if (g._banner) paintArt(g._banner.url);   // já buscou nesta sessão: usa o cache
+    else autoBanner(g.title, rawgId, { seed: seeds }).then(b => {
+        if (b && b.url) { g._banner = b; paintArt(b.url); }
+    }).catch(() => {});
     try {
         // Roteador multi-fonte: jogo da RAWG, da IGDB (catálogo alternativo) e até os
         // demonstrativos ganham descrição/créditos pela fonte certa do jogo.

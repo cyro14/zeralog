@@ -4,13 +4,13 @@
 // teste aqui depende de rede. Motivo: a RAWG ficou dias fora do ar (522) e o
 // app precisa continuar achando jogos novos enquanto ela não volta.
 // ============================================================================
-import { test, assert, assertEq, mockFetch, elById } from './shim.mjs';
+import { test, assert, assertEq, mockFetch, elById, created, sleep } from './shim.mjs';
 import { appData } from '../js/store.js';
 import { steamDateToIso, textFromHtml, steamSearch, steamDetails } from '../js/steamstore.js';
 import { searchGames, listGames, detailsForGame, screenshotsForGame, hydrateSearchHit, describeError, _setRawgTimeout } from '../js/gameApi.js';
 import { setIgdbClient, igdbListQuery, _resetIgdbSynthetic } from '../js/igdb.js';
 import { refreshReleaseDates } from '../js/releases.js';
-import { gmExplore, gmExploreWish } from '../js/gamematch.js';
+import { gmExplore, gmExploreWish, renderDeck, gmXOpen, gmResetPool } from '../js/gamematch.js';
 
 // "&" montado por charCode: um literal de entidade no código-fonte corre o risco
 // de ser decodificado no caminho até o arquivo (bug real que já aconteceu aqui).
@@ -323,6 +323,54 @@ test('listGames: RAWG fora do ar → o catálogo vem da IGDB em formato RAWG', a
         assert((g.tags || []).includes('cyberpunk'), 'keywords viram tags (bloqueio adulto e perfil)');
         assertEq(g.esrb, 'Mature', 'ESRB lido do age_ratings');
         assertEq(res.more, false, 'menos itens que o pedido: acabou');
+    } finally { semIgdb(); }
+});
+
+test('Deck: a lupa do cartão vira "mais informações" (abre a página do jogo, não o Google)', async () => {
+    setIgdbClient('cid-teste', 'segredo-teste');
+    _resetIgdbSynthetic();
+    mockFetch([RAWG_DOWN, IGDB_TOKEN, ['api.igdb.com', IGDB_CATALOG]]);
+    try {
+        appData.gamematch.profile = { name: 'Teste', platforms: [], genres: [], styles: [], era: 'both', time: 'some', upcomingOnly: false };
+        await renderDeck();
+        const html = elById('gm-deck').innerHTML;
+        assert(html.includes('gm-info-btn'), 'o cartão tem o botão de lupa');
+        assert(html.includes('data-id="-1001"') && html.includes('data-id="-1002"'), 'cada lupa leva o id do SEU jogo');
+        assert(html.includes('Mais informações do jogo'), 'o tooltip agora é a tela de informações');
+        assert(!html.includes('Pesquisar no Google') && !html.includes('data-t='), 'a busca no Google saiu do cartão');
+        // o coração do wiring: o id do dataset (string) vira número e abre a página certa
+        await gmXOpen(Number('-1001'));
+        const page = created.find(c => c.id === 'gm-xpage');
+        assert(page && page.innerHTML.includes('Gamedec'), 'o id da lupa abre a página do jogo certo');
+    } finally {
+        semIgdb();
+        gmResetPool();   // plannedDeck/poolExhausted não vazam para os testes do gamematch
+    }
+});
+
+test('gmXOpen: o fundo busca arte horizontal (library_hero da Steam) em vez de repetir a capa', async () => {
+    setIgdbClient('cid-teste', 'segredo-teste');
+    _resetIgdbSynthetic();
+    mockFetch([
+        RAWG_DOWN, IGDB_TOKEN, ['api.igdb.com', IGDB_CATALOG],
+        ['storesearch', { total: 1, items: [{ type: 'app', name: 'Gamedec', id: 917720 }] }],
+        ['wikipedia.org', { query: { pages: [] } }]
+    ]);
+    try {
+        await gmExplore('top');   // mesmo caminho do Explorar: o item entra no exploreById
+        await gmXOpen(-1001);
+        const page = created.find(c => c.id === 'gm-xpage');
+        assert(page, 'a página de informações abriu');
+        // instantâneo: o banner usa a screenshot horizontal que veio na listagem...
+        assert(page.innerHTML.includes('t_screenshot_huge/s1.jpg'), 'banner instantâneo = screenshot (horizontal)');
+        // ...e a CAPA nunca vira fundo (era o comportamento antigo: página igual ao cartão)
+        assert(page.innerHTML.includes('id="gm-x-bg"'), 'o fundo existe');
+        assert(!page.innerHTML.includes('gp-bg"><img src="https://images.igdb.com/igdb/image/upload/t_cover_big'), 'a capa não é o fundo');
+        // em segundo plano o autoBanner acha o library_hero da Steam (via storesearch) e troca
+        await sleep(2700);
+        // (o shim registra os nós por id: as mutações do paintArt aparecem neles)
+        assert(elById('gm-x-bg').innerHTML.includes('steam/apps/917720/library_hero.jpg'), 'fundo trocado pela arte hero da Steam');
+        assert(elById('gm-x-banner').innerHTML.includes('library_hero.jpg'), 'banner trocado pela arte hero da Steam');
     } finally { semIgdb(); }
 });
 
